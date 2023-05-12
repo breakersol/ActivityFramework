@@ -13,11 +13,11 @@ Using **/ActivityPipeline/CMakeList.txt** to build the project ActivityPipeline,
 2. Using **ActivityPipeline/Test/CMakeList.txt** to unit test project.
 3. Running PipelineTest.
 ### Versioning
-
+This project is licensed under the Apache-2.0 license License - see the [LICENSE.md](https://github.com/breakersol/ActivityPipeline/blob/master/LICENSE) file for details
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
-
+This project is licensed under the MIT License - see the LICENSE.md file for details
 ### Basic Usage
 #### Meta Reflex
 This module implements a simple compile-time reflection mechanism and it is part of the infrastructure of **Connection**. It supports reflection of member variables, member functions, static member variables, static member variables, and member enumeration types, and it can reflect the base class information under single-level inheritance relationship, multi-level inheritance relationship. But for diamond inheritance there are still some problems existed now. 
