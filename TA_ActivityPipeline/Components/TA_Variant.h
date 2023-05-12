@@ -1,0 +1,80 @@
+﻿#ifndef TA_VARIANT_H
+#define TA_VARIANT_H
+#include <typeinfo>
+#include <memory>
+
+#include "../TA_ActivityPipeline_global.h"
+
+namespace CoreAsync {
+    class TA_Variant
+    {
+        template <typename VAR>
+        using IsNotPtrType = typename std::enable_if<!std::is_pointer<VAR>::value, VAR>::type;
+        template <typename VAR>
+        using IsPtrType = typename std::enable_if<std::is_pointer<VAR>::value, VAR>::type;
+    public:
+        ASYNC_PIPELINE_EXPORT TA_Variant();
+        ASYNC_PIPELINE_EXPORT ~TA_Variant();
+
+        ASYNC_PIPELINE_EXPORT TA_Variant(const TA_Variant &var);
+        ASYNC_PIPELINE_EXPORT TA_Variant(TA_Variant &&var);
+        ASYNC_PIPELINE_EXPORT TA_Variant & operator = (const TA_Variant &);
+
+        template<typename VAR>
+        void set(VAR v)
+        {
+            m_typeId = typeid (VAR).hash_code();
+            if constexpr(!std::is_pointer_v<VAR>)
+            {
+                m_ptr = std::make_shared<VAR>(v);
+            }
+            else
+            {
+                m_ptr.reset(v);
+            }
+        }
+
+        template <typename VAR>
+        IsNotPtrType<VAR> get()
+        {
+            if(m_typeId == typeid (VAR).hash_code())
+            {
+                return *static_cast<VAR *>(m_ptr.get());
+            }
+            return VAR();
+        }
+
+        template <typename VAR>
+        IsPtrType<VAR> get()
+        {
+            if(m_typeId == typeid (VAR).hash_code())
+            {
+                return static_cast<VAR>(m_ptr.get());
+            }
+            return nullptr;
+        }
+
+        bool isValid() const
+        {
+            return m_typeId != typeid (std::nullptr_t).hash_code();
+        }
+
+        template <typename VAR>
+        constexpr bool isSameType()
+        {
+            return typeid (VAR).hash_code() == m_typeId;
+        }
+
+        constexpr std::size_t typeId() const
+        {
+            return m_typeId;
+        }
+
+    private:
+        std::shared_ptr<void> m_ptr;
+        std::size_t m_typeId;
+
+    };
+}
+
+#endif // TA_VARIANT_H

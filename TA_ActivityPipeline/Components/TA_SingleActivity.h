@@ -1,0 +1,955 @@
+﻿#ifndef TA_SINGLEACTIVITY_H
+#define TA_SINGLEACTIVITY_H
+
+#include <functional>
+#include <mutex>
+
+#include "TA_BasicActivity.h"
+#include "TA_TypeFilter.h"
+
+namespace CoreAsync {
+    template <typename T>
+    using EnableRightReference = std::enable_if_t<std::is_rvalue_reference_v<std::decay_t<T>>, std::decay_t<T>>;
+
+    template <typename Ret,typename ...FuncPara>
+    using NonMemberFunctionPtr = Ret(*)(FuncPara...);
+
+    template <typename Ret,typename ...FuncPara>
+    using LambdaType = std::function<Ret(FuncPara...)>;
+
+    template <typename Ret>
+    using LambdaTypeWithoutPara = std::function<Ret()>;
+
+    struct INVALID_INS {};
+
+    template <typename Fn>
+    using SupportMemberFunction = typename std::enable_if<std::is_member_function_pointer<Fn>::value,Fn>::type;
+
+    template <typename Fn>
+    using SupportNonMemberFunction = typename std::enable_if<!std::is_member_function_pointer<Fn>::value,Fn>::type;
+
+    template <typename Fn,typename Ins, typename Ret,typename... FuncPara>
+    class TA_SingleActivity : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = [&ins,func,&para...]()->Ret{return (ins.*func)(para...);};
+        }
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->Ret{return (m_object.*m_funcPtr)(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->Ret{return (m_object.*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<Ins>(m_object);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            TA_Variant var;
+            var.template set<Ret>(m_funcActivity());
+            return var;
+        }
+
+    protected:
+        std::function<Ret()> m_funcActivity;
+        std::mutex m_mutex;
+
+        Fn &m_funcPtr;
+        Ins &m_object;
+
+    };
+
+    template <typename Fn,typename Ins, typename Ret,typename... FuncPara>
+    class TA_SingleActivity<Fn,Ins *,Ret,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = [&ins,func,&para...]()->Ret{return (ins->*func)(para...);};
+        }
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->Ret{return (m_object->*m_funcPtr)(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->Ret{return (m_object->*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<Ins *>(m_object);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            TA_Variant var;
+            var.template set<Ret>(m_funcActivity());
+            return var;
+        }
+
+    protected:
+        std::function<Ret()> m_funcActivity;
+        std::mutex m_mutex;
+
+        Fn &m_funcPtr;
+        Ins *&m_object;
+
+    };
+
+    template <typename Fn,typename Ins,typename... FuncPara>
+    class TA_SingleActivity<Fn,Ins,void,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {   
+            m_funcActivity = [&ins,func,&para...]()->void{(ins.*func)(para...);};
+        }
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->void{(m_object.*m_funcPtr)(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->void{(m_object.*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<Ins>(m_object);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity();
+            TA_Variant var;
+            var.template set<std::nullptr_t>(nullptr);
+            return var;
+        }
+
+    protected:
+        std::function<void()> m_funcActivity;
+        std::mutex m_mutex;
+
+        Fn &m_funcPtr;
+        Ins &m_object;
+
+    };
+
+    template <typename Fn,typename Ins,typename... FuncPara>
+    class TA_SingleActivity<Fn,Ins *,void,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = [&ins,func,&para...]()->void{(ins->*func)(para...);};
+        }
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->void{(m_object->*m_funcPtr)(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->void{(m_object->*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<Ins *>(m_object);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity();
+            TA_Variant var;
+            var.template set<std::nullptr_t>(nullptr);
+            return var;
+        }
+
+    protected:
+        std::function<void()> m_funcActivity;
+        std::mutex m_mutex;
+
+        Fn &m_funcPtr;
+        Ins *&m_object;
+
+    };
+
+    template <typename Fn,typename Ins, typename Ret,typename... FuncPara>
+    class TA_SingleActivity<Fn,std::shared_ptr<Ins>,Ret,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = [&ins,func,&para...]()->Ret{return (ins.get()->*func)(para...);};
+        }
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->Ret{return (m_object.get()->*m_funcPtr)(para...);});
+        }
+
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->Ret{return (m_object.get()->*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<Ins *>(m_object.get());
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            TA_Variant var;
+            var.template set<Ret>(m_funcActivity());
+            return var;
+        }
+
+    protected:
+        std::function<Ret()> m_funcActivity;
+        std::mutex m_mutex;
+
+        Fn &m_funcPtr;
+        std::shared_ptr<Ins> &m_object;
+
+    };
+
+    template <typename Fn,typename Ins,typename... FuncPara>
+    class TA_SingleActivity<Fn,std::shared_ptr<Ins>,void,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = [&ins,func,&para...]()->void{(ins.get()->*func)(para...);};
+        }
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        {
+            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->void{(m_object.get()->*m_funcPtr)(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->void{(m_object.get()->*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<Ins *>(m_object.get());
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity();
+            TA_Variant var;
+            var.template set<std::nullptr_t>(nullptr);
+            return var;
+        }
+
+    protected:
+        std::function<void()> m_funcActivity;
+        std::mutex m_mutex;
+
+        Fn &m_funcPtr;
+        std::shared_ptr<Ins> &m_object;
+
+    };
+
+    template <typename Fn,typename Ins, typename Ret,typename... FuncPara>
+    class TA_SingleActivity<Fn,std::unique_ptr<Ins>,Ret,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
+        {
+            m_funcActivity = [this,func,&para...]()->Ret{return (m_pObject->*func)(para...);};
+        }
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
+        {
+            m_funcActivity = std::bind(func,m_pObject,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+            if(m_pObject)
+            {
+                delete m_pObject;
+                m_pObject = nullptr;
+            }
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->Ret{return (m_pObject->*m_funcPtr)(para...);});
+        }
+
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->Ret{return (m_pObject->*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<Ins *>(m_pObject);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            TA_Variant var;
+            var.template set<Ret>(m_funcActivity());
+            return var;
+        }
+
+    protected:
+        std::function<Ret()> m_funcActivity;
+        std::mutex m_mutex;
+
+        Fn &m_funcPtr;
+        Ins *m_pObject;
+
+    };
+
+    template <typename Fn,typename Ins,typename... FuncPara>
+    class TA_SingleActivity<Fn,std::unique_ptr<Ins>,void,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
+        {
+            m_funcActivity = [this,func,&para...]()->void{return (m_pObject->*func)(para...);};
+        }
+
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
+        {
+            m_funcActivity = std::bind(func,m_pObject,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+            if(m_pObject)
+            {
+                delete m_pObject;
+                m_pObject = nullptr;
+            }
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->void{return (m_pObject->*m_funcPtr)(para...);});
+        }
+
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->void{return (m_pObject->*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<Ins *>(m_pObject);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {      
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity();
+            TA_Variant var;
+            var.template set<std::nullptr_t>(nullptr);
+            return var;
+        }
+
+    protected:
+        std::function<void()> m_funcActivity;
+        std::mutex m_mutex;
+
+        Fn &m_funcPtr;
+        Ins *m_pObject;
+
+    };
+
+    template <typename Ret,typename... FuncPara>
+    class TA_SingleActivity<NonMemberFunctionPtr<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para) : m_funcActivity(nullptr),m_funcPtr(func)
+        {
+            m_funcActivity = [this,&para...]()->Ret{return (*m_funcPtr)(para...);};
+        }
+
+        TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : m_funcActivity(nullptr),m_funcPtr(func)
+        {
+            m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,&para...]()->Ret{return (*m_funcPtr)(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<nullptr_t>(nullptr);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            TA_Variant var;
+            var.template set<Ret>(m_funcActivity());
+            return var;
+        }
+
+    protected:
+        std::function<Ret()> m_funcActivity;
+        std::mutex m_mutex;
+
+        NonMemberFunctionPtr<Ret,FuncPara...> &m_funcPtr;
+
+    };
+
+    template <typename... FuncPara>
+    class TA_SingleActivity<NonMemberFunctionPtr<void,FuncPara...>,INVALID_INS,void,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para) : m_funcActivity(nullptr),m_funcPtr(func)
+        {
+            m_funcActivity = [this,&para...]()->void{(m_funcPtr)(para...);};
+        }
+
+        TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : m_funcActivity(nullptr),m_funcPtr(func)
+        {
+            m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,&para...]()->void{(*m_funcPtr)(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([this,para...]()->void{(*m_funcPtr)(para...);});
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<nullptr_t>(nullptr);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity();
+            TA_Variant var;
+            var.template set<std::nullptr_t>(nullptr);
+            return var;
+        }
+
+    protected:
+        std::function<void()> m_funcActivity;
+        std::mutex m_mutex;
+
+        NonMemberFunctionPtr<void,FuncPara...> &m_funcPtr;
+
+    };
+
+    template <typename Ret,typename... FuncPara>
+    class TA_SingleActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para) : m_funcActivity(nullptr),m_funcPtr(func)
+        {
+            m_funcActivity = [&,func]()->Ret{return func(para...);};
+        }
+
+        TA_SingleActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : m_funcActivity(nullptr),m_funcPtr(func)
+        {
+            m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->Ret{return m_funcPtr(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<nullptr_t>(nullptr);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            TA_Variant var;
+            var.template set<Ret>(m_funcActivity());
+            return var;
+        }
+
+    protected:
+        std::function<Ret()> m_funcActivity;
+        std::mutex m_mutex;
+
+        LambdaType<Ret,FuncPara...> m_funcPtr;
+
+    };
+
+    template <typename... FuncPara>
+    class TA_SingleActivity<LambdaType<void,FuncPara...>,INVALID_INS,void,FuncPara...> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para) : m_funcActivity(nullptr),m_funcPtr(func)
+        {
+            m_funcActivity = [&,func]()->void{func(para...);};
+        }
+
+        TA_SingleActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : m_funcActivity(nullptr),m_funcPtr(func)
+        {
+            m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap([&]()->void{return m_funcPtr(para...);});
+        }
+
+        template <typename ...NewPara>
+        void setPara(NewPara &&...para)
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<nullptr_t>(nullptr);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity();
+            TA_Variant var;
+            var.template set<std::nullptr_t>(nullptr);
+            return var;
+        }
+
+    protected:
+        std::function<void()> m_funcActivity;
+        std::mutex m_mutex;
+
+        std::function<void(FuncPara...)> m_funcPtr;
+
+    };
+
+    template <typename Ret>
+    class TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(LambdaTypeWithoutPara<Ret> &&func) : m_funcActivity(nullptr)
+        {
+            m_funcActivity = [&,func]()->Ret{return func();};
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<nullptr_t>(nullptr);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            TA_Variant var;
+            var.template set<Ret>(m_funcActivity());
+            return var;
+        }
+
+    protected:
+        std::function<Ret()> m_funcActivity;
+        std::mutex m_mutex;
+
+    };
+
+    template <>
+    class TA_SingleActivity<LambdaTypeWithoutPara<void>,INVALID_INS,void,INVALID_INS> : public TA_BasicActivity
+    {
+    public:
+        TA_SingleActivity() = delete;
+        TA_SingleActivity(const TA_SingleActivity &activity) = delete;
+        TA_SingleActivity(TA_SingleActivity &&activity) = delete;
+        TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
+
+        TA_SingleActivity(LambdaTypeWithoutPara<void> &&func) : m_funcActivity(nullptr)
+        {
+            m_funcActivity = [&,func]()->void{func();};
+        }
+
+        virtual ~TA_SingleActivity()
+        {
+
+        }
+
+        TA_Variant execute() override
+        {
+            return run();
+        }
+
+        TA_Variant caller() const override
+        {
+            TA_Variant caller;
+            caller.template set<nullptr_t>(nullptr);
+            return caller;
+        }
+
+    protected:
+        virtual TA_Variant run()
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_funcActivity();
+            TA_Variant var;
+            var.template set<std::nullptr_t>(nullptr);
+            return var;
+        }
+
+    protected:
+        std::function<void()> m_funcActivity;
+        std::mutex m_mutex;
+
+    };
+
+}
+
+#endif // TA_SingleActivity_H
