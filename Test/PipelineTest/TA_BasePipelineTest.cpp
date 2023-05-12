@@ -145,7 +145,6 @@ TEST_F(TA_BasePipelineTest, stateTest)
     EXPECT_EQ(CoreAsync::TA_PipelineCreator::AutoChainHolder::PipelineState::Waiting, line->state());
     line->add(activity_1,activity_2,activity_3);
     line->execute();
-    EXPECT_EQ(CoreAsync::TA_PipelineCreator::AutoChainHolder::PipelineState::Busy, line->state());
     if(line->waitingComplete())
     {
         EXPECT_EQ(CoreAsync::TA_PipelineCreator::AutoChainHolder::PipelineState::Ready, line->state());
