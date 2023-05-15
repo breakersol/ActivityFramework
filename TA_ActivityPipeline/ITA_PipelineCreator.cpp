@@ -15,6 +15,7 @@
  */
 
 #include "ITA_PipelineCreator.h"
+#include "Components/TA_PipelineCreator.h"
 
 namespace CoreAsync {
     TA_PipelineCreator::ParallelHolder * ITA_PipelineCreator::createParallelPipeline()

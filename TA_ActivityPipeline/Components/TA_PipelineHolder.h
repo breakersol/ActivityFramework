@@ -46,9 +46,9 @@ namespace CoreAsync {
             destroy();
         }
 
-        void execute()
+        void execute(TA_BasicPipeline::ExecuteType type = TA_BasicPipeline::ExecuteType::Async)
         {
-            m_pBasicPipeline->execute();
+            m_pBasicPipeline->execute(type);
         }
 
         void reset()
