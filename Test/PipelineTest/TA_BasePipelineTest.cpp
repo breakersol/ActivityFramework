@@ -142,12 +142,12 @@ TEST_F(TA_BasePipelineTest, stateTest)
     auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
 
     auto line = CoreAsync::ITA_PipelineCreator::createAutoChainPipeline();
-    EXPECT_EQ(CoreAsync::TA_PipelineCreator::AutoChainHolder::PipelineState::Waiting, line->state());
+    EXPECT_EQ(CoreAsync::TA_BasicPipeline::State::Waiting, line->state());
     line->add(activity_1,activity_2,activity_3);
     line->execute();
     if(line->waitingComplete())
     {
-        EXPECT_EQ(CoreAsync::TA_PipelineCreator::AutoChainHolder::PipelineState::Ready, line->state());
+        EXPECT_EQ(CoreAsync::TA_BasicPipeline::State::Ready, line->state());
     }
 }
 

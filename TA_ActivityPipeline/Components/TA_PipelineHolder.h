@@ -34,13 +34,6 @@ namespace CoreAsync {
     {
         friend class TA_PipelineCreator;
     public:
-        enum class PipelineState
-        {
-            Waiting = 0,            //空闲
-            Busy,                   //繁忙
-            Ready                   //完成
-        };
-
         virtual ~TA_MainPipelineHolder()
         {
             destroy();
@@ -84,57 +77,16 @@ namespace CoreAsync {
         void receivePipelineState(TA_BasicPipeline::State st)
         {
             printf("Receive pipeline state %d\n",st);
-            PipelineState lineState;
-            switch (st) {
-            case TA_BasicPipeline::State::Waiting:
-            {
-                lineState = PipelineState::Waiting;
-                break;
-            }
-            case TA_BasicPipeline::State::Ready:
-            {
-                lineState = PipelineState::Ready;
-                break;
-            }
-            case TA_BasicPipeline::State::Busy:
-            {
-                lineState = PipelineState::Busy;
-                break;
-            }
-            default:
-                break;
-            }
-            TA_Connection::active(this, &TA_MainPipelineHolder::pipelineStateChanged, lineState);
-            if(lineState == PipelineState::Ready)
+            TA_Connection::active(this, &TA_MainPipelineHolder::pipelineStateChanged, st);
+            if(st == TA_BasicPipeline::State::Ready)
             {
                 TA_Connection::active(this, &TA_MainPipelineHolder::pipelineReady);
             }
         }
 
-        PipelineState state()
+        TA_BasicPipeline::State state() const
         {
-            TA_BasicPipeline::State st = m_pBasicPipeline->state();
-            PipelineState lineState;
-            switch (st) {
-            case TA_BasicPipeline::State::Waiting:
-            {
-                lineState = PipelineState::Waiting;
-                break;
-            }
-            case TA_BasicPipeline::State::Ready:
-            {
-                lineState = PipelineState::Ready;
-                break;
-            }
-            case TA_BasicPipeline::State::Busy:
-            {
-                lineState = PipelineState::Busy;
-                break;
-            }
-            default:
-                break;
-            }
-            return lineState;
+            return m_pBasicPipeline->state();
         }
 
         bool switchActivityBranch(int activityIndex, std::deque<unsigned int> branches)
@@ -178,7 +130,7 @@ namespace CoreAsync {
         }
 
     TA_Signals:
-        void pipelineStateChanged(PipelineState state) { std::ignore = state; };
+        void pipelineStateChanged(TA_BasicPipeline::State state) { std::ignore = state; };
         void pipelineReady() {}
         void activityCompleted(unsigned int index) {
             std::printf("Activity completed: %d\n",index);
@@ -254,9 +206,6 @@ namespace CoreAsync {
         struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {Raw::PipelineState::Busy, META_STRING("Busy")},
-                TA_MetaField {Raw::PipelineState::Ready, META_STRING("Ready")},
-                TA_MetaField {Raw::PipelineState::Waiting, META_STRING("Waiting")},
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
@@ -285,9 +234,6 @@ namespace CoreAsync {
         struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ParallelPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ParallelPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {Raw::PipelineState::Busy, META_STRING("Busy")},
-                TA_MetaField {Raw::PipelineState::Ready, META_STRING("Ready")},
-                TA_MetaField {Raw::PipelineState::Waiting, META_STRING("Waiting")},
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
@@ -316,9 +262,6 @@ namespace CoreAsync {
         struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {Raw::PipelineState::Busy, META_STRING("Busy")},
-                TA_MetaField {Raw::PipelineState::Ready, META_STRING("Ready")},
-                TA_MetaField {Raw::PipelineState::Waiting, META_STRING("Waiting")},
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
@@ -347,9 +290,6 @@ namespace CoreAsync {
         struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {Raw::PipelineState::Busy, META_STRING("Busy")},
-                TA_MetaField {Raw::PipelineState::Ready, META_STRING("Ready")},
-                TA_MetaField {Raw::PipelineState::Waiting, META_STRING("Waiting")},
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
@@ -380,9 +320,6 @@ namespace CoreAsync {
         struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {Raw::PipelineState::Busy, META_STRING("Busy")},
-                TA_MetaField {Raw::PipelineState::Ready, META_STRING("Ready")},
-                TA_MetaField {Raw::PipelineState::Waiting, META_STRING("Waiting")},
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
