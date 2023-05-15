@@ -13,7 +13,7 @@ Using **/ActivityPipeline/CMakeList.txt** to build the project ActivityPipeline,
 2. Using **ActivityPipeline/Test/CMakeList.txt** to unit test project.
 3. Running PipelineTest.
 ### Versioning
-
+- [v0.1.0-beta](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.0-beta)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
