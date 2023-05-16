@@ -5,9 +5,9 @@ project(PipelineTest LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(../TA_ActivityPipeline)
+include_directories(../TA_ActivityPipeline/Src)
 include_directories(./ThirdParty/googletest/googletest/include)
-link_directories(../build/output)
+link_directories(../build/TA_ActivityPipeline/output)
 
 if(MSVC)
     if(CMAKE_BUILD_TYPE AND (CMAKE_BUILD_TYPE STREQUAL "Debug"))
