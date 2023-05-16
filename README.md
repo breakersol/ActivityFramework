@@ -7,7 +7,7 @@ These instructions will get you a copy of the project up and running on your loc
 - Windows: MSVC 17.5.33530.505 or higher
 - Linux: GCC11 or higher
 ### Installing
-Using **/ActivityPipeline/CMakeList.txt** to build the project ActivityPipeline, and set the build dir as **/ActivityPipeline/build**.
+Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the project ActivityPipeline, and set the build dir as **/ActivityPipeline/build**.
 ### Running the tests
 1. Build the Google Test under **ActivityPipeline/Test/hirdParty/googletest/**.
 2. Using **ActivityPipeline/Test/CMakeList.txt** to unit test project.
@@ -304,7 +304,7 @@ Activity Pipeline currently offers five types of pipelines to use: **Auto Chain 
 - **void skipKeyActivity()**: Skip the key activity to the next activity. API specific to **Manual Steps Chain Pipeline**. Invalid when called in **Busy** state.
 ---
 ##### Signals:
-- **pipelineStateChanged(PipelineState state)**
+- **pipelineStateChanged(TA_BasicPipeline::State)**
     <br/>This signal will be activated when the state of pipeline changed.
 - **pipelineReady()**
     <br/>This signal will be activated when the pipeline execution finished.
