@@ -158,7 +158,7 @@ namespace CoreAsync
         template <std::size_t N, typename Para, typename ...Paras>
         static constexpr void freeParas(void **pArgs, TA_MetaTypelist<Para, Paras...>)
         {
-            delete [] reinterpret_cast<Para *>(pArgs[0]);
+            delete reinterpret_cast<Para *>(pArgs[0]);
             freeParas<N>(&pArgs[1], TA_MetaTypelist<Paras...> {});
             if constexpr(N == TA_MetaTypelist<Para, Paras...>::size)
             {

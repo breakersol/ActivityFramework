@@ -132,7 +132,7 @@ namespace CoreAsync {
     TA_Signals:
         void pipelineStateChanged(TA_BasicPipeline::State state) { std::ignore = state; };
         void pipelineReady() {}
-        void activityCompleted(unsigned int index) {
+        void activityCompleted(unsigned int index, TA_Variant var) {
             std::printf("Activity completed: %d\n",index);
         };
 

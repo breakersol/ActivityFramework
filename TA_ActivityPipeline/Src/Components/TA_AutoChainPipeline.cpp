@@ -32,7 +32,7 @@ namespace CoreAsync {
             {
                 TA_Variant var = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i)->execute();
                 TA_CommonTools::replace(m_resultList, i, var);
-                TA_Connection::active(this, &TA_AutoChainPipeline::activityCompleted, i);
+                TA_Connection::active(this, &TA_AutoChainPipeline::activityCompleted, i, var);
             }
         };
 //        std::future<void> ft = std::async(std::launch::async,exFunc);

@@ -35,6 +35,7 @@ namespace CoreAsync {
         ASYNC_PIPELINE_EXPORT TA_Variant(const TA_Variant &var);
         ASYNC_PIPELINE_EXPORT TA_Variant(TA_Variant &&var);
         ASYNC_PIPELINE_EXPORT TA_Variant & operator = (const TA_Variant &);
+        ASYNC_PIPELINE_EXPORT TA_Variant & operator = (const TA_Variant &&);
 
         template<typename VAR>
         void set(VAR v)

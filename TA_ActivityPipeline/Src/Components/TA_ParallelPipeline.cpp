@@ -45,7 +45,7 @@ namespace CoreAsync {
             {
                 TA_Variant var = pFArray[index].get();
                 TA_CommonTools::replace(m_resultList, index, std::forward<TA_Variant>(var));
-                TA_Connection::active(this, &TA_ParallelPipeline::activityCompleted, index);;
+                TA_Connection::active(this, &TA_ParallelPipeline::activityCompleted, index, var);;
             }
             delete [] pFArray;
             setState(State::Ready);

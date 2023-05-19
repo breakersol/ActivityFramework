@@ -58,7 +58,8 @@ namespace CoreAsync {
             if(pActivity)
             {
                 TA_Variant var = pActivity->execute();
-               TA_CommonTools::replace(m_resultList, m_currentIndex.load(std::memory_order_acquire),var);
+                TA_CommonTools::replace(m_resultList, m_currentIndex.load(std::memory_order_acquire),var);
+                TA_Connection::active(this, &TA_ManualKeyActivityChainPipeline::activityCompleted, m_currentIndex.load(std::memory_order_acquire), var);
             }
             if(!isAtKey)
             {
@@ -72,8 +73,7 @@ namespace CoreAsync {
         else
         {
             setState(State::Ready);
-        }
-        TA_Connection::active(this, &TA_ManualKeyActivityChainPipeline::activityCompleted, m_currentIndex.load(std::memory_order_acquire));
+        }  
     }
 
     void TA_ManualKeyActivityChainPipeline::reset()

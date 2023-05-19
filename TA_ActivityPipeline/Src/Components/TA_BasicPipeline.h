@@ -148,7 +148,7 @@ namespace CoreAsync {
 
     TA_Signals:
         void stateChanged(TA_BasicPipeline::State st) { std::ignore = st; };
-        void activityCompleted(unsigned int index) { std::ignore = index; };
+        void activityCompleted(unsigned int index, TA_Variant res) { std::ignore = index; std::ignore = res;};
 
     };
 

@@ -32,6 +32,7 @@ namespace CoreAsync {
             {
                 TA_Variant var = pActivity->execute();
                 TA_CommonTools::replace(m_resultList, m_currentIndex.load(std::memory_order_acquire), var);
+                TA_Connection::active(this, &TA_ManualChainPipeline::activityCompleted, m_currentIndex.load(std::memory_order_acquire), var);
             }
             m_currentIndex.fetch_add(1);
         }
@@ -42,8 +43,7 @@ namespace CoreAsync {
         else
         {
             setState(State::Ready);
-        }
-        TA_Connection::active(this, &TA_ManualChainPipeline::activityCompleted, m_currentIndex.load(std::memory_order_acquire));
+        }  
     }
 
     void TA_ManualChainPipeline::setStartIndex(unsigned int index)

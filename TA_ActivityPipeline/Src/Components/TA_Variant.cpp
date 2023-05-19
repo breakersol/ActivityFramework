@@ -48,5 +48,15 @@ namespace CoreAsync {
         }
         return *this;
     }
+
+    TA_Variant & TA_Variant::operator = (const TA_Variant &&var)
+    {
+        if(this != &var)
+        {
+            m_ptr = var.m_ptr;
+            m_typeId = var.m_typeId;
+        }
+        return *this;
+    }
 }
 
