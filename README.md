@@ -308,8 +308,8 @@ Activity Pipeline currently offers five types of pipelines to use: **Auto Chain 
     <br/>This signal will be activated when the state of pipeline changed.
 - **pipelineReady()**
     <br/>This signal will be activated when the pipeline execution finished.
-- **activityCompleted(unsigned int index)**
-    <br/>The signal will be activated when a single activity completed.
+- **activityCompleted(unsigned int index, TA_Variant var)**
+    <br/>The signal will be activated when a single activity completed. _index_ is the index of the activity, and _var_ is the result returned from the activity.
 ---
 Pipeline status description:
 - **Waiting**: Pipeline is idle or suspended.
