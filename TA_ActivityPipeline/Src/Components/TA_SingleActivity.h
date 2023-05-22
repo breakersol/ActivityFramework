@@ -158,7 +158,7 @@ namespace CoreAsync {
         TA_Variant caller() const override
         {
             TA_Variant caller;
-            caller.template set<Ins *>(m_object);
+            caller.template set<std::decay_t<Ins> *>(const_cast<std::decay_t<Ins> *>(m_object));
             return caller;
         }
 
@@ -295,7 +295,7 @@ namespace CoreAsync {
         TA_Variant caller() const override
         {
             TA_Variant caller;
-            caller.template set<Ins *>(m_object);
+            caller.template set<std::decay_t<Ins> *>(const_cast<std::decay_t<Ins> *>(m_object));
             return caller;
         }
 
