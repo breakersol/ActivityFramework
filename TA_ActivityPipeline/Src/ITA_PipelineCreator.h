@@ -17,18 +17,36 @@
 #ifndef ITA_PIPELINECREATOR_H
 #define ITA_PIPELINECREATOR_H
 
-#include "TA_ActivityPipeline_global.h"
 #include "Components/TA_PipelineCreator.h"
 
 namespace CoreAsync {
-    class ASYNC_PIPELINE_EXPORT ITA_PipelineCreator
+    class ITA_PipelineCreator
     {
     public:
-        static TA_PipelineCreator::AutoChainHolder * createAutoChainPipeline() ;
-        static TA_PipelineCreator::ManualChainHolder * createManaualChainPipeline();
-        static TA_PipelineCreator::ParallelHolder * createParallelPipeline();
-        static TA_PipelineCreator::ManualStepsChainHolder * createManualStepsChainPipeline();
-        static TA_PipelineCreator::ManualKeyActivityChainHolder * createManualKeyActivityChainPipeline();
+        static TA_PipelineCreator::ParallelHolder * createParallelPipeline()
+        {
+            return TA_PipelineCreator::GetInstance().createParallelPipeline();
+        }
+
+        static TA_PipelineCreator::AutoChainHolder * createAutoChainPipeline()
+        {
+            return TA_PipelineCreator::GetInstance().createAutoChainPipeline();
+        }
+
+        static TA_PipelineCreator::ManualChainHolder * createManaualChainPipeline()
+        {
+            return TA_PipelineCreator::GetInstance().createManaualChainPipeline();
+        }
+
+        static TA_PipelineCreator::ManualStepsChainHolder * createManualStepsChainPipeline()
+        {
+            return TA_PipelineCreator::GetInstance().createManualStepsChainPipeline();
+        }
+
+        static TA_PipelineCreator::ManualKeyActivityChainHolder * createManualKeyActivityChainPipeline()
+        {
+            return TA_PipelineCreator::GetInstance().createManualKeyActivityChainPipeline();
+        }
 
     };
 }

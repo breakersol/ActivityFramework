@@ -20,7 +20,6 @@ include_directories(${PROJECT_SOURCE_DIR}/Src)
 add_library(AsyncPipeline SHARED
     Src/TA_ActivityPipeline_global.h
     Src/ITA_PipelineCreator.h
-    Src/ITA_PipelineCreator.cpp
     Src/ITA_Connection.h
     Src/ITA_ActivityCreator.h
     Src/Components/TA_ActivityQueue.h
