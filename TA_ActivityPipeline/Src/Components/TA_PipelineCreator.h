@@ -23,7 +23,7 @@
 #include "Components/TA_PipelineHolder.h"
 
 namespace CoreAsync {
-    class TA_PipelineCreator
+    class ASYNC_PIPELINE_EXPORT TA_PipelineCreator
     { 
     public:
         using AutoChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> >;
