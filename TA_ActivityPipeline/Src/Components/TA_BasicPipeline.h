@@ -68,10 +68,8 @@ namespace CoreAsync {
 
         bool switchActivityBranch(int activityIndex, std::deque<unsigned int> branches);
 
-        template <typename T>
-        using EnableActivityType = typename std::enable_if<std::is_pointer<typename std::remove_reference<T>::type>::value, T>::type;
-        template<typename Activity,typename ...Activities>
-        void add(EnableActivityType<Activity> &pActivity,EnableActivityType<Activities> &...pActivities)
+        template<typename Activity,typename ...Activities> 
+        void add(Activity &pActivity,Activities &...pActivities)
         {
             if(State::Waiting != m_state.load(std::memory_order_acquire))
             {
@@ -127,6 +125,7 @@ namespace CoreAsync {
         }
 
         template <typename Activity>
+        requires std::is_pointer<typename std::remove_reference<Activity>::type>::value
         void push(Activity &activity)
         {
             if(activity)
