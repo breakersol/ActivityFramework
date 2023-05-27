@@ -28,6 +28,12 @@
 
 namespace CoreAsync {
 
+    template <typename T>
+    concept Pushedable = requires (T x)
+    {
+        {x}->std::convertible_to<TA_BasicActivity *>;
+    };
+
     ///Activity管线基类
     class ASYNC_PIPELINE_EXPORT TA_BasicPipeline : public TA_MetaObject
     {  
@@ -116,16 +122,15 @@ namespace CoreAsync {
         void setState(State state);
         unsigned int startIndex() const;
 
-    private:
-        template<typename Activity,typename ...Activities>
+    private:        
+        template<Pushedable Activity,Pushedable ...Activities>
         void push(Activity &activity,Activities & ...activities)
         {
             push(activity);
             push(activities...);
         }
 
-        template <typename Activity>
-        requires std::is_pointer<typename std::remove_reference<Activity>::type>::value
+        template <Pushedable Activity>
         void push(Activity &activity)
         {
             if(activity)

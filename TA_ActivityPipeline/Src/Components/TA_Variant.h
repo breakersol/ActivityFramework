@@ -24,10 +24,6 @@
 namespace CoreAsync {
     class TA_Variant
     {
-        template <typename VAR>
-        using IsNotPtrType = typename std::enable_if<!std::is_pointer<VAR>::value, VAR>::type;
-        template <typename VAR>
-        using IsPtrType = typename std::enable_if<std::is_pointer<VAR>::value, VAR>::type;
     public:
         ASYNC_PIPELINE_EXPORT TA_Variant();
         ASYNC_PIPELINE_EXPORT ~TA_Variant();
@@ -52,7 +48,7 @@ namespace CoreAsync {
         }
 
         template <typename VAR>
-        IsNotPtrType<VAR> get()
+        VAR get() requires (!std::is_pointer<VAR>::value)
         {
             if(m_typeId == typeid (VAR).hash_code())
             {
@@ -62,7 +58,7 @@ namespace CoreAsync {
         }
 
         template <typename VAR>
-        IsPtrType<VAR> get()
+        VAR get() requires std::is_pointer<VAR>::value
         {
             if(m_typeId == typeid (VAR).hash_code())
             {

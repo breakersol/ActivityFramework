@@ -31,7 +31,10 @@
 namespace CoreAsync
 {
     template <typename T>
-    using EnableConnectObjectType = std::enable_if_t<!std::is_pointer_v<T> && std::is_convertible_v<T *, TA_MetaObject *>, T>;
+    concept EnableConnectObjectType = requires (T *t)
+    {
+        {t}->std::convertible_to<TA_MetaObject *>;
+    };
 
     enum class TA_ConnectionType
     {
@@ -86,7 +89,7 @@ namespace CoreAsync
 
         std::size_t size() const;
 
-        template <typename Sender, typename SenderFunc, typename = EnableConnectObjectType<Sender> >
+        template <EnableConnectObjectType Sender, typename SenderFunc>
         ReceiversList findReceivers(Sender *&pSender, SenderFunc &&sFunc)
         {
             ReceiversList list {};

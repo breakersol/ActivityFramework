@@ -158,9 +158,15 @@ namespace CoreAsync {
     };
 
     template <typename P>
-    using EnableHolderType = std::enable_if_t<MetaContains<Pipelines, std::decay_t<P> >::value, std::decay_t<P> >;
+    concept ValidHolder = MetaContains<Pipelines, std::decay_t<P> >::value && !std::is_pointer_v<P>;
 
-    template <typename Pip>
+    template <typename P>
+    concept EnableHolderType = requires (P p)
+    {
+        {p}->ValidHolder;
+    };
+
+    template <EnableHolderType Pip>
     class ASYNC_PIPELINE_EXPORT TA_PipelineHolder : public TA_MainPipelineHolder<TA_PipelineHolder<Pip> >
     {
     public:
@@ -197,7 +203,7 @@ namespace CoreAsync {
         }
 
     private:
-        std::decay_t<EnableHolderType<Pip> > *m_pPipeline;
+        Pip *m_pPipeline;
     };
 
     namespace Reflex
