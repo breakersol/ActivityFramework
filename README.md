@@ -1,5 +1,5 @@
 # Activity Pipeline     ![Build Status](https://img.shields.io/github/actions/workflow/status/breakersol/ActivityPipeline/cmake.yml)
-The project focuses on providing a multi-functional pipeline supporting both synchronous and asynchronous processes with functions as the basic task unit. In addition to pipeline function, compile-time reflection, a simple Qt-like signal and slot mechanism, and some other related features have been implemented. The Activity Pipeline is currently supported on Windows and Linux, and I hope more people will suggest and help improve it!
+The library focuses on providing a multi-functional pipeline supporting both synchronous and asynchronous processes with functions as the basic task unit. In addition to pipeline function, compile-time reflection, a simple Qt-like signal and slot mechanism, and some other related features have been implemented. The Activity Pipeline is currently supported on Windows and Linux, and I hope more people will suggest and help improve it!
 ## Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 ### Prerequisites
