@@ -243,7 +243,7 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
     std::function<int()> func_2 = [&]()->int {return m_pTest->sub(2,1);};
     auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
     activity_1->link(activity_2);
-    auto var = activity_1->execute();
+    auto var = (*activity_1)();
 ```
 <br/>When the execution of activity_1 is finished, activity_2 will be executed automatically, and the result of activity_2 will be returned.
 
@@ -254,7 +254,7 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
     std::function<int()> func_2 = [&]()->int {return m_pTest->sub(8,1);};
     auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
     activity_1->parallel(activity_2);
-    auto var = activity_1->execute();
+    auto var = (*activity_1)();
     auto res = var.get<int>();
 ```
 <br/>The execution of activity_1 will execute actvity_2 in parallel and finally return the result of activtiy_2.
@@ -276,10 +276,10 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
     activity_1->branch(activity_2,activity_3);
 
     activity_1->selectBranch({2,2});
-    auto var = activity_1->execute();
+    auto var = (*activity_1)();
     auto res = var.get<std::string>();
 ```
-<br/>The above code indicates that we first create two branches activity_4 and activity_5 on activity_3. At this layer, activity_3 represents branch index 0, while activity_4 and activity_5 represent 1 and 2, respectively. Similarly, we created the branch on activity_1 activity_2 and activity_3. **selectBranch({2,2})** means that when activity_1 is executed(activity_1->execute()), it will be executed in the order from activity_3 to activity_5 and return the result of activity_5. And activity_1 itself will not be executed.
+<br/>The above code indicates that we first create two branches activity_4 and activity_5 on activity_3. At this layer, activity_3 represents branch index 0, while activity_4 and activity_5 represent 1 and 2, respectively. Similarly, we created the branch on activity_1 activity_2 and activity_3. **selectBranch({2,2})** means that when activity_1 is executed(**(*activity_1)()**), it will be executed in the order from activity_3 to activity_5 and return the result of activity_5. And activity_1 itself will not be executed.
 
 #### Pipelines
 Activity Pipeline currently offers five types of pipelines to use: **Auto Chain Pipeline, Parallel Pipeline, Manual Chain Pipeline, Manual Steps Chain Pipeline, and Manual Key Activity Chain Pipeline**, and all types of pipelines can be created through **ITA_PipelineCreator**.
