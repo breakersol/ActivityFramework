@@ -30,7 +30,7 @@ namespace CoreAsync {
         auto exFunc = [&](){
             for(int i = startIndex();i < m_pActivityList.size();++i)
             {
-                TA_Variant var = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i)->execute();
+                TA_Variant var = (*TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i))();
                 TA_CommonTools::replace(m_resultList, i, var);
                 TA_Connection::active(this, &TA_AutoChainPipeline::activityCompleted, i, var);
             }

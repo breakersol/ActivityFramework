@@ -26,7 +26,8 @@ namespace CoreAsync {
     {
     public:
         virtual ~TA_BasicActivity() = default;
-        virtual TA_Variant execute() = 0;
+
+        virtual TA_Variant operator()() = 0;
 
         virtual bool hasBranch() const = 0;
 

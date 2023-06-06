@@ -114,7 +114,7 @@ namespace CoreAsync
         case TA_ConnectionType::Async:
         {
             std::shared_ptr<TA_BasicActivity> pSharedActivity {pActivity};
-            auto ft = std::async(std::launch::async, [pSharedActivity]()->TA_Variant {return pSharedActivity->execute();});
+            auto ft = std::async(std::launch::async, [pSharedActivity]()->TA_Variant {return (*pSharedActivity.get())();});
             return true;
         }
         case TA_ConnectionType::Sync:
@@ -133,7 +133,7 @@ namespace CoreAsync
             TA_BasicActivity *pActivity {nullptr};
             if(m_queue.front() && m_queue.pop(pActivity))
             {
-                pActivity->execute();
+                (*pActivity)();
             }
             else
             {

@@ -82,7 +82,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object.*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -150,7 +150,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object->*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -218,7 +218,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object.*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -287,7 +287,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object->*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -357,7 +357,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object.get()->*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -425,7 +425,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object.get()->*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -499,7 +499,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_pObject->*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -572,7 +572,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{return (m_pObject->*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -641,7 +641,7 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -708,7 +708,7 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(*m_funcPtr)(para...);});
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -776,7 +776,7 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -843,7 +843,7 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -892,7 +892,7 @@ namespace CoreAsync {
 
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }
@@ -938,7 +938,7 @@ namespace CoreAsync {
 
         }
 
-        TA_Variant execute() override
+        TA_Variant operator()() override
         {
             return run();
         }

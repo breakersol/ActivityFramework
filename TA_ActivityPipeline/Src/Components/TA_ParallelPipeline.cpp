@@ -39,7 +39,7 @@ namespace CoreAsync {
             for(std::size_t i = sIndex;i < activitySize;++i)
             {
                 auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i);
-                pFArray[i] = std::async(std::launch::async,[&,pActivity]()->TA_Variant{return pActivity->execute();});
+                pFArray[i] = std::async(std::launch::async,[&,pActivity]()->TA_Variant{return (*pActivity)();});
             }
             for(int index = sIndex;index < activitySize;++index)
             {

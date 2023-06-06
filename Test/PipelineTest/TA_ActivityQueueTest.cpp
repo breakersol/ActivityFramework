@@ -40,7 +40,7 @@ TEST_F(TA_ActivityQueueTest, getFront)
     CoreAsync::ActivityQueue queue;
     auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
     queue.push(activity);
-    auto var =  queue.front()->execute();
+    auto var =  (*queue.front())();
     int res = var.get<int>();
     EXPECT_EQ(3,res);
 }

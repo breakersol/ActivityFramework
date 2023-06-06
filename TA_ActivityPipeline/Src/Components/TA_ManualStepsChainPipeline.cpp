@@ -41,7 +41,7 @@ namespace CoreAsync {
                     auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, m_currentIndex.load(std::memory_order_acquire));
                     if(pActivity)
                     {
-                        TA_Variant var = pActivity->execute();
+                        TA_Variant var = (*pActivity)();
                         TA_CommonTools::replace(m_resultList, m_currentIndex.load(std::memory_order_acquire), var);
                         TA_Connection::active(this, &TA_ManualStepsChainPipeline::activityCompleted, m_currentIndex.load(std::memory_order_acquire), var);
                     }

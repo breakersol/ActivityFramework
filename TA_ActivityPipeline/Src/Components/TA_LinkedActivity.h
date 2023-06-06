@@ -80,7 +80,7 @@ namespace CoreAsync {
                 return false;
             std::shared_ptr<TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...> > pSharedNext = nullptr;
             pSharedNext.reset(pNext);
-            m_pLinkedActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::execute,pSharedNext);
+            m_pLinkedActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::operator(),pSharedNext);
             pNext = nullptr;
             return true;
         }
@@ -92,7 +92,7 @@ namespace CoreAsync {
                 return false;
             std::shared_ptr<TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...> > pSharedNext = nullptr;
             pSharedNext.reset(pNext);
-            m_pParallelActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::execute,pSharedNext);
+            m_pParallelActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::operator(),pSharedNext);
             pNext = nullptr;
             return true;
         }
@@ -129,14 +129,14 @@ namespace CoreAsync {
                 if(m_branchSelected == 0)
                     varBasic = BasicType::run();
                 else
-                    varBasic = TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1)->execute();
+                    varBasic = (*TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1))();
                 if(m_pLinkedActivity)
                 {
                     varLinked = m_pLinkedActivity();
                 }
                 return varLinked.isValid() ? varLinked : ft.valid() ? ft.get() : varBasic;
             }
-            return TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1)->execute();
+            return (*TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1))();
         }
 
     private:
@@ -202,7 +202,7 @@ namespace CoreAsync {
                 return false;
             std::shared_ptr<TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...> > pSharedNext = nullptr;
             pSharedNext.reset(pNext);
-            m_pLinkedActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::execute,pSharedNext);
+            m_pLinkedActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::operator(),pSharedNext);
             pNext = nullptr;
             return true;
         }
@@ -214,7 +214,7 @@ namespace CoreAsync {
                 return false;
             std::shared_ptr<TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...> > pSharedNext = nullptr;
             pSharedNext.reset(pNext);
-            m_pParallelActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::execute,pSharedNext);
+            m_pParallelActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::operator(),pSharedNext);
             pNext = nullptr;
             return true;
         }
@@ -251,14 +251,14 @@ namespace CoreAsync {
                 if(m_branchSelected == 0)
                     varBasic = BasicType::run();
                 else
-                    varBasic = TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1)->execute();
+                    varBasic = (*TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1))();
                 if(m_pLinkedActivity)
                 {
                     varLinked = m_pLinkedActivity();
                 }
                 return varLinked.isValid() ? varLinked : ft.valid() ? ft.get() : varBasic;
             }
-            return TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1)->execute();
+            return (*TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1))();
         }
 
     private:
@@ -324,7 +324,7 @@ namespace CoreAsync {
                 return false;
             std::shared_ptr<TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...> > pSharedNext = nullptr;
             pSharedNext.reset(pNext);
-            m_pLinkedActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::execute,pSharedNext);
+            m_pLinkedActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::operator(),pSharedNext);
             pNext = nullptr;
             return true;
         }
@@ -336,7 +336,7 @@ namespace CoreAsync {
                 return false;
             std::shared_ptr<TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...> > pSharedNext = nullptr;
             pSharedNext.reset(pNext);
-            m_pParallelActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::execute,pSharedNext);
+            m_pParallelActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::operator(),pSharedNext);
             pNext = nullptr;
             return true;
         }
@@ -373,14 +373,14 @@ namespace CoreAsync {
                 if(m_branchSelected == 0)
                     varBasic = BasicType::run();
                 else
-                    varBasic = TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1)->execute();
+                    varBasic = (*TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1))();
                 if(m_pLinkedActivity)
                 {
                     varLinked = m_pLinkedActivity();
                 }
                 return varLinked.isValid() ? varLinked : ft.valid() ? ft.get() : varBasic;
             }
-            return TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1)->execute();
+            return (*TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1))();
         }
 
     private:
@@ -441,7 +441,7 @@ namespace CoreAsync {
                 return false;
             std::shared_ptr<TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...> > pSharedNext = nullptr;
             pSharedNext.reset(pNext);
-            m_pLinkedActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::execute,pSharedNext);
+            m_pLinkedActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::operator(),pSharedNext);
             pNext = nullptr;
             return true;
         }
@@ -453,7 +453,7 @@ namespace CoreAsync {
                 return false;
             std::shared_ptr<TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...> > pSharedNext = nullptr;
             pSharedNext.reset(pNext);
-            m_pParallelActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::execute,pSharedNext);
+            m_pParallelActivity = std::bind(&TA_LinkedActivity<FnNext,InsNext,RetNext,FuncParaNext...>::operator(),pSharedNext);
             pNext = nullptr;
             return true;
         }
@@ -490,14 +490,14 @@ namespace CoreAsync {
                 if(m_branchSelected == 0)
                     varBasic = BasicType::run();
                 else
-                    varBasic = TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1)->execute();
+                    varBasic = (*TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1))();
                 if(m_pLinkedActivity)
                 {
                     varLinked = m_pLinkedActivity();
                 }
                 return varLinked.isValid() ? varLinked : ft.valid() ? ft.get() : varBasic;
             }
-            return TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1)->execute();
+            return (*TA_CommonTools::at<TA_BasicActivity *>(m_pBranchList, m_branchSelected - 1))();
         }
 
     private:
