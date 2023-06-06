@@ -137,7 +137,6 @@ namespace CoreAsync
             }
             else
             {
-                std::printf("Activity queue is empty.\n");
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
             if(pActivity)
