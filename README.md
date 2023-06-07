@@ -14,6 +14,7 @@ Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the proje
 3. Running PipelineTest.
 ### Versioning
 - [v0.1.0-beta](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.0-beta)
+- [v0.1.1](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.1)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
