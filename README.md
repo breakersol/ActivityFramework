@@ -170,6 +170,7 @@ struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest,BaseTest,OtherTest>
     //invoke enum, res = MetaTest::Red
     auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("META_RED"));
 ```
+**Note: If a type is exported to use, then the meta info for that type needs to be exported as well.**
 #### Connection
 This is a simplified version of the Qt-like signal-slot mechanism.It allows objects to communicate with each other in a loosely coupled way, by emitting signals and connecting them to slots. When a signal is emitted, all connected slots are called, allowing objects to respond to events in a flexible and decoupled manner.
 The condition for using this mechanism is to make the target class inherit from **TA_MetaObject** and to implement type info of this type.
