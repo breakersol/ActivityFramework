@@ -5,25 +5,6 @@ project(PipelineTest LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(../TA_ActivityPipeline/Src)
-include_directories(./ThirdParty/googletest/googletest/include)
-link_directories(../build/TA_ActivityPipeline/output)
-
-if(MSVC)
-    if(CMAKE_BUILD_TYPE AND (CMAKE_BUILD_TYPE STREQUAL "Debug"))
-        link_directories(ThirdParty/googletest/output/win32/Debug)
-        link_libraries(AsyncPipeline_d)
-    elseif(CMAKE_BUILD_TYPE AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
-            link_directories(ThirdParty/googletest/output/win32/Release)
-            link_libraries(AsyncPipeline)
-    endif()
-else()
-    link_libraries(AsyncPipeline)
-    link_directories(ThirdParty/googletest/output)
-endif()
-
-link_libraries(gtest)
-
 add_executable(PipelineTest PipelineTest/main.cpp
     PipelineTest/TA_ActivityTest.cpp
     PipelineTest/TA_ActivityTest.h
@@ -50,6 +31,27 @@ add_executable(PipelineTest PipelineTest/main.cpp
     PipelineTest/TA_ActivityQueueTest.h
 
 )
+
+include_directories(../TA_ActivityPipeline/Src)
+include_directories(./ThirdParty/googletest/googletest/include)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_link_libraries(PipelineTest PRIVATE
+    $<$<CONFIG:Debug>:AsyncPipeline_d>
+    $<$<CONFIG:Release>:AsyncPipeline>
+    )
+    target_link_libraries(PipelineTest PRIVATE
+    $<$<CONFIG:Debug>:gtest>
+    $<$<CONFIG:Release>:gtest>
+    )
+    target_link_directories(PipelineTest PRIVATE ThirdParty/googletest/output/win32)
+    target_link_directories(PipelineTest PRIVATE ../build/TA_ActivityPipeline/output)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    link_libraries(AsyncPipeline)
+    link_directories(ThirdParty/googletest/output)
+    link_libraries(gtest)
+    link_directories(../build/TA_ActivityPipeline/output)
+endif()
 
 install(TARGETS PipelineTest
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
