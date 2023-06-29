@@ -51,8 +51,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(ASYNC_PIPELINE_DIR ../TA_ActivityPipeline/output)
     set(GTEST_DIR ../../Test/ThirdParty/googletest/output/win32)
 
-    message("Current binary directory: ${CMAKE_CURRENT_BINARY_DIR}")
-
     add_custom_command(
         TARGET PipelineTest POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
