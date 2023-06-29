@@ -5,8 +5,10 @@ project(PipelineTest LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(PipelineTest 
-    PipelineTest/main.cpp
+include_directories(../TA_ActivityPipeline/Src)
+include_directories(./ThirdParty/googletest/googletest/include)
+
+add_executable(PipelineTest PipelineTest/main.cpp
     PipelineTest/TA_ActivityTest.cpp
     PipelineTest/TA_ActivityTest.h
     PipelineTest/TA_AutoChainPipelineTest.cpp
@@ -30,12 +32,12 @@ add_executable(PipelineTest
     PipelineTest/MetaTest.h
     PipelineTest/TA_ActivityQueueTest.cpp
     PipelineTest/TA_ActivityQueueTest.h
+    # PipelineTest/TA_ThreadPoolTest.h
+    # PipelineTest/TA_ThreadPoolTest.cpp
 )
 
-include_directories(../TA_ActivityPipeline/Src)
-include_directories(./ThirdParty/googletest/googletest/include)
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if(MSVC)
+    message(STATUS "Configuring for MSVC")
     target_link_libraries(PipelineTest PRIVATE
         $<$<CONFIG:Debug>:AsyncPipeline_d>
         $<$<CONFIG:Release>:AsyncPipeline>
@@ -64,12 +66,18 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
             "$<IF:$<CONFIG:Release>,${GTEST_DIR}/Release/gtest.dll,${GTEST_DIR}/Debug/gtest.dll>"
             "$<IF:$<CONFIG:Release>,${DLL_TARGET_DIR}/Release,${DLL_TARGET_DIR}/Debug>"
     )
-
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    link_libraries(AsyncPipeline)
-    link_directories(ThirdParty/googletest/output)
-    link_libraries(gtest)
-    link_directories(../build/TA_ActivityPipeline/output)
+else()
+    message(STATUS "Configuring for GCC")
+    target_link_libraries(PipelineTest PRIVATE
+        $<$<CONFIG:Debug>:AsyncPipeline>
+        $<$<CONFIG:Release>:AsyncPipeline>
+    )
+    target_link_libraries(PipelineTest PRIVATE
+        $<$<CONFIG:Debug>:gtest>
+        $<$<CONFIG:Release>:gtest>
+    )
+    target_link_directories(PipelineTest PRIVATE ThirdParty/googletest/output)
+    target_link_directories(PipelineTest PRIVATE ../build/TA_ActivityPipeline/output)
 endif()
 
 install(TARGETS PipelineTest
