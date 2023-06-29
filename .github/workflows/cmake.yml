@@ -2,7 +2,7 @@ name: Activity Pipeline build
 
 on:
   push:
-    branches: [ "master" , "Release-**"]
+    branches: [ "master" , "Release-**" , "Test"]
   pull_request:
     types: [opened, reopened]
     branches: [ "master" , "Release-**"]
