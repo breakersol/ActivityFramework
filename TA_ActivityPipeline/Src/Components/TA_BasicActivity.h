@@ -18,6 +18,7 @@
 #define TA_BASICACTIVITY_H
 
 #include <deque>
+#include <atomic>
 
 #include "TA_Variant.h"
 #include "TA_ActivityPipeline_global.h"
