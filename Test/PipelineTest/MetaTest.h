@@ -26,7 +26,9 @@ class BaseTest : public TestA
 public:
     int sub(int a, int b)
     {
-        return a - b;
+        int res = a - b;
+        std::printf("sub: %d\n", res);
+        return res;
     }
 };
 

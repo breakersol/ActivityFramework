@@ -33,7 +33,7 @@ TEST_F(TA_ConnectionTest, connectSyncTest)
 
 TEST_F(TA_ConnectionTest, connectAsyncTest)
 {
-    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Async>(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Direct>(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print));
     EXPECT_FALSE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print));
     CoreAsync::ITA_Connection::disconnect(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print);
 }
@@ -48,5 +48,11 @@ TEST_F(TA_ConnectionTest, disconnectTest)
 TEST_F(TA_ConnectionTest, activeTest)
 {
     EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,5,5));
+}
+
+TEST_F(TA_ConnectionTest, asyncActiveTest)
+{
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<ConnectionType::Direct>(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
     EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,5,5));
 }

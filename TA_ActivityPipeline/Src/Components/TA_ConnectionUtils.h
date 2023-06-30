@@ -38,8 +38,8 @@ namespace CoreAsync
 
     enum class TA_ConnectionType
     {
-        Async,
-        Sync
+        Direct,
+        Queued
     };
 
     class TA_ConnectionUnit
@@ -51,13 +51,13 @@ namespace CoreAsync
         std::string_view m_senderFunc {};
         std::string_view m_receiverFunc {};
         std::shared_ptr<TA_BaseReceiverObject> m_pReceiverObject {nullptr};
-        TA_ConnectionType m_type {TA_ConnectionType::Sync};
+        TA_ConnectionType m_type {TA_ConnectionType::Queued};
 
     public:
         TA_ConnectionUnit() {}
 
         template <typename Sender, typename SenderFunc, typename Receiver, typename RecRet, typename RClass, typename ...RPara>
-        TA_ConnectionUnit(Sender *&pSender, SenderFunc &&sFunc, Receiver *&pReceiver, RecRet(RClass::*&&rFunc)(RPara...), TA_ConnectionType type = TA_ConnectionType::Sync) : m_pSender(pSender),m_pReceiver(pReceiver),m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<SenderFunc>(sFunc))),m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<RecRet(RClass::*)(RPara...)>(rFunc))),m_pReceiverObject(new TA_ReceiverObject<std::decay_t<Receiver>>()),m_type(type)
+        TA_ConnectionUnit(Sender *&pSender, SenderFunc &&sFunc, Receiver *&pReceiver, RecRet(RClass::*&&rFunc)(RPara...), TA_ConnectionType type = TA_ConnectionType::Queued) : m_pSender(pSender),m_pReceiver(pReceiver),m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<SenderFunc>(sFunc))),m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<RecRet(RClass::*)(RPara...)>(rFunc))),m_pReceiverObject(new TA_ReceiverObject<std::decay_t<Receiver>>()),m_type(type)
         {
 
         }
@@ -152,7 +152,7 @@ namespace CoreAsync
 
     private:
         ActivityQueue m_queue {};
-        std::atomic<bool> m_enableConsume {true};
+        static std::atomic<bool> m_enableConsume;
 
     };
 

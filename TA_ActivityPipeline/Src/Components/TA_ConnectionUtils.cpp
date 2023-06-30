@@ -15,6 +15,7 @@
  */
 
 #include "Components/TA_ConnectionUtils.h"
+#include "Components/TA_ThreadPool.h"
 
 #include <thread>
 
@@ -89,6 +90,8 @@ namespace CoreAsync
         return m_connections.size();
     }
 
+    std::atomic<bool> TA_ConnectionResponder::m_enableConsume {true};
+
     TA_ConnectionResponder & TA_ConnectionResponder::GetIns()
     {
         static TA_ConnectionResponder responder;
@@ -111,13 +114,12 @@ namespace CoreAsync
         if(!pActivity)
             return false;
         switch (type) {
-        case TA_ConnectionType::Async:
+        case TA_ConnectionType::Direct:
         {
-            std::shared_ptr<TA_BasicActivity> pSharedActivity {pActivity};
-            auto ft = std::async(std::launch::async, [pSharedActivity]()->TA_Variant {return (*pSharedActivity.get())();});
+            auto ft = TA_ThreadHolder::get().sendActivity(pActivity, true);
             return true;
         }
-        case TA_ConnectionType::Sync:
+        case TA_ConnectionType::Queued:
         {
             return m_queue.push(pActivity);
         }

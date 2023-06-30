@@ -34,7 +34,6 @@ namespace CoreAsync {
         {x}->std::convertible_to<TA_BasicActivity *>;
     };
 
-    ///Activity管线基类
     class ASYNC_PIPELINE_EXPORT TA_BasicPipeline : public TA_MetaObject
     {  
     protected:
@@ -44,9 +43,9 @@ namespace CoreAsync {
         using ActivityIndex = unsigned int;
         enum class State
         {
-            Waiting = 0,            //空闲
-            Busy,                   //繁忙
-            Ready                   //完成
+            Waiting = 0,
+            Busy,
+            Ready
         };
 
         enum class ExecuteType
@@ -148,7 +147,6 @@ namespace CoreAsync {
     private:
         std::atomic<State> m_state {State::Waiting};
         std::atomic<unsigned int> m_startIndex {0};
-        std::future<void> m_ft;
 
     TA_Signals:
         void stateChanged(TA_BasicPipeline::State st) { std::ignore = st; };

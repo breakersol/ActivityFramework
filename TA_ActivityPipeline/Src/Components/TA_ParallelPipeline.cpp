@@ -16,38 +16,45 @@
 
 #include "Components/TA_ParallelPipeline.h"
 #include "Components/TA_CommonTools.h"
+#include "Components/TA_ThreadPool.h"
 
 #include <future>
 
 namespace CoreAsync {
-    TA_ParallelPipeline::TA_ParallelPipeline() : TA_BasicPipeline()
+    TA_ParallelPipeline::TA_ParallelPipeline() : TA_BasicPipeline(), m_waitingCount(0)
     {
-
+        TA_Connection::connect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
     }
 
     void TA_ParallelPipeline::run()
     {
-        unsigned int sIndex(std::move(startIndex()));
+        std::size_t sIndex(std::move(startIndex()));
         std::size_t activitySize = m_pActivityList.size();
         if(activitySize > 0)
         {
-            std::future<TA_Variant> *pFArray = nullptr;
-            if(!m_pActivityList.empty())
-            {
-                pFArray = new std::future<TA_Variant> [activitySize];
-            }
+            m_activityIds.resize(activitySize);
+            m_waitingCount = activitySize;
             for(std::size_t i = sIndex;i < activitySize;++i)
             {
-                auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i);
-                pFArray[i] = std::async(std::launch::async,[&,pActivity]()->TA_Variant{return (*pActivity)();});
+                auto [ft, id] = TA_ThreadHolder::get().postActivity(TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i));
+                m_activityIds[i] = id;
             }
-            for(int index = sIndex;index < activitySize;++index)
+        }
+    }
+
+    void TA_ParallelPipeline::taskCompleted(std::size_t id, TA_Variant var)
+    {  
+        for(std::size_t idx = 0;idx < m_activityIds.size();++idx)
+        {
+            if(m_activityIds[idx] == id)
             {
-                TA_Variant var = pFArray[index].get();
-                TA_CommonTools::replace(m_resultList, index, std::forward<TA_Variant>(var));
-                TA_Connection::active(this, &TA_ParallelPipeline::activityCompleted, index, var);;
+                TA_CommonTools::replace(m_resultList, idx, std::forward<TA_Variant>(var));
+                TA_Connection::active(this, &TA_ParallelPipeline::activityCompleted, idx, var);
+                break;
             }
-            delete [] pFArray;
+        }
+        if(--m_waitingCount == 0)
+        {
             setState(State::Ready);
         }
     }

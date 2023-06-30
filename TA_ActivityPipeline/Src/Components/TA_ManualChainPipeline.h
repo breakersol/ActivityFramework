@@ -23,7 +23,7 @@ namespace CoreAsync {
     class TA_ManualChainPipeline : public TA_BasicPipeline
     {
     public:
-        explicit ASYNC_PIPELINE_EXPORT TA_ManualChainPipeline();
+        ASYNC_PIPELINE_EXPORT TA_ManualChainPipeline();
         virtual ~TA_ManualChainPipeline(){}
 
         TA_ManualChainPipeline(const TA_ManualChainPipeline &activity) = delete;

@@ -26,6 +26,7 @@ add_library(AsyncPipeline SHARED
     Src/Components/TA_AutoChainPipeline.cpp
     Src/Components/TA_AutoChainPipeline.h
     Src/Components/TA_BasicActivity.h
+    Src/Components/TA_BasicActivity.cpp
     Src/Components/TA_BasicPipeline.cpp
     Src/Components/TA_BasicPipeline.h
     Src/Components/TA_CommonTools.h
@@ -54,7 +55,7 @@ add_library(AsyncPipeline SHARED
     Src/Components/TA_MetaObject.h
     Src/Components/TA_MetaReflex.h
     Src/Components/TA_MetaStringView.h
-
+    Src/Components/TA_ThreadPool.h
 )
 
 target_compile_definitions(AsyncPipeline PRIVATE ASYNCPIPELINE_LIBRARY)

@@ -72,7 +72,7 @@ namespace CoreAsync
             m_data[m_rearIndex.load(std::memory_order_acquire)].exchange(t);
             m_rearIndex.fetch_add(1);
             m_rearIndex.exchange(m_rearIndex.load(std::memory_order_acquire) % N);
-            printf("Front: %Id, Rear: %Id.\n", m_frontIndex.load(std::memory_order_acquire), m_rearIndex.load(std::memory_order_acquire));
+//            printf("Front: %Id, Rear: %Id.\n", m_frontIndex.load(std::memory_order_acquire), m_rearIndex.load(std::memory_order_acquire));
             return true;
         }
 
@@ -112,7 +112,7 @@ namespace CoreAsync
 
     };
 
-    using ActivityQueue = TA_ActivityQueue<TA_BasicActivity *, 500>;
+    using ActivityQueue = TA_ActivityQueue<TA_BasicActivity *, 10240>;
 }
 
 #endif // TA_ACTIVITYQUEUE_H

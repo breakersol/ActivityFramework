@@ -209,7 +209,7 @@ namespace CoreAsync::Reflex
 <br/>Next, you can use the interface **ITA_Connection::connect** as follow:
 ```cpp
     CoreAsync::ITA_Connection::connect(pTest, &MetaTest::startTest, pTest, &MetaTest::printNums);
-    CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Async>(pTest, &MetaTest::printTest, pTest, &MetaTest::printSlot);
+    CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Direct>(pTest, &MetaTest::printTest, pTest, &MetaTest::printSlot);
 ```
 <br/>**ITA_Connection::connect** requires the same number of arguments for both of sender function and receiver function.
 
@@ -217,11 +217,11 @@ namespace CoreAsync::Reflex
 ```cpp
     enum class TA_ConnectionType
     {
-        Async,
-        Sync
+        Direct,
+        Queued
     };
 ```
-<br/>The default connection type is _Sync_, which means the receiver function won't be executed immediately, but added into the activity queue to wait for call. _Async_ means that the activity will be executed immediately in another thread.
+<br/>The default connection type is _Queued_, which means the receiver function won't be executed immediately, but added into the activity queue to wait for call. _Direct_ means that the activity will be executed immediately in another thread.
 
 <br/>If you'd like to active the signal function by calling **ITA_Connection::active**. 
 ```cpp

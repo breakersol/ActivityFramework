@@ -16,6 +16,7 @@
 
 #ifndef TA_VARIANT_H
 #define TA_VARIANT_H
+
 #include <typeinfo>
 #include <memory>
 
@@ -36,19 +37,26 @@ namespace CoreAsync {
         template<typename VAR>
         void set(VAR v)
         {
-            m_typeId = typeid (VAR).hash_code();
-            if constexpr(!std::is_pointer_v<VAR>)
+            if constexpr(std::is_same_v<VAR, TA_Variant>)
             {
-                m_ptr = std::make_shared<VAR>(v);
+                (*this) = v;
             }
             else
             {
-                m_ptr.reset(v);
+                m_typeId = typeid (VAR).hash_code();
+                if constexpr(!std::is_pointer_v<VAR>)
+                {
+                    m_ptr = std::make_shared<VAR>(v);
+                }
+                else
+                {
+                    m_ptr.reset(v);
+                }
             }
         }
 
         template <typename VAR>
-        VAR get() requires (!std::is_pointer<VAR>::value)
+        VAR get() const requires (!std::is_pointer<VAR>::value)
         {
             if(m_typeId == typeid (VAR).hash_code())
             {
@@ -58,7 +66,7 @@ namespace CoreAsync {
         }
 
         template <typename VAR>
-        VAR get() requires std::is_pointer<VAR>::value
+        VAR get() const requires std::is_pointer<VAR>::value
         {
             if(m_typeId == typeid (VAR).hash_code())
             {
@@ -73,12 +81,12 @@ namespace CoreAsync {
         }
 
         template <typename VAR>
-        constexpr bool isSameType()
+        bool isSameType() const
         {
             return typeid (VAR).hash_code() == m_typeId;
         }
 
-        constexpr std::size_t typeId() const
+        std::size_t typeId() const
         {
             return m_typeId;
         }

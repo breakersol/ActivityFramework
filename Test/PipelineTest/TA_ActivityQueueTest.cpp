@@ -31,7 +31,7 @@ TEST_F(TA_ActivityQueueTest, sizeTest)
 {
 //    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
     CoreAsync::ActivityQueue queue;
-    EXPECT_EQ(500,queue.size());
+    EXPECT_EQ(10240,queue.size());
 }
 
 

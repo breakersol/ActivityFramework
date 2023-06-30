@@ -14,6 +14,7 @@ public:
     void TearDown() override;
 
     MetaTest *m_pTest;
+
 };
 
 #endif // TA_PARALLELPIPELINETEST_H
