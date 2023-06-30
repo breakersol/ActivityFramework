@@ -5,6 +5,9 @@ project(PipelineTest LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_BUILD_TYPE_DEBUG "Debug")
+set(CMAKE_BUILD_TYPE_RELEASE "Release")
+
 include_directories(../TA_ActivityPipeline/Src)
 include_directories(./ThirdParty/googletest/googletest/include)
 
@@ -46,7 +49,11 @@ if(MSVC)
         $<$<CONFIG:Debug>:gtest>
         $<$<CONFIG:Release>:gtest>
     )
-    target_link_directories(PipelineTest PRIVATE ThirdParty/googletest/output/win32)
+    if(CMAKE_BUILD_TYPE STREQUAL ${CMAKE_BUILD_TYPE_DEBUG})
+        target_link_directories(PipelineTest PRIVATE ThirdParty/googletest/output/win32/Debug)
+    else()
+        target_link_directories(PipelineTest PRIVATE ThirdParty/googletest/output/win32/Release)
+    endif()
     target_link_directories(PipelineTest PRIVATE ../build/TA_ActivityPipeline/output)
 
     set(DLL_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
