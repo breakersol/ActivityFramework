@@ -1,5 +1,5 @@
 # Activity Pipeline     ![Build Status](https://img.shields.io/github/actions/workflow/status/breakersol/ActivityPipeline/cmake.yml)
-The library focuses on providing a multi-functional pipeline supporting both synchronous and asynchronous processes with functions as the basic task unit. In addition to pipeline function, compile-time reflection, a simple Qt-like signal and slot mechanism, and some other related features have been implemented. The Activity Pipeline is currently supported on Windows and Linux, and I hope more people will suggest and help improve it!
+The library focuses on providing a multi-functional pipeline supporting asynchronous processes with functions as the basic task unit. In addition to pipeline function, compile-time reflection, thread pool, a simple Qt-like signal and slot mechanism, and some other related features have been implemented. The Activity Pipeline is currently supported on Windows and Linux.
 ## Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 ### Prerequisites
@@ -9,7 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 ### Installing
 Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the project ActivityPipeline, and set the build dir as **/ActivityPipeline/build**.
 ### Running the tests
-1. Build the Google Test under **ActivityPipeline/Test/hirdParty/googletest/**.
+1. Build the Google Test under **ActivityPipeline/Test/ThirdParty/googletest/**.
 2. Using **ActivityPipeline/Test/CMakeList.txt** to unit test project.
 3. Running PipelineTest.
 ### Versioning
