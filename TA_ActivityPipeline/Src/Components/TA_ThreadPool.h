@@ -63,6 +63,7 @@ namespace CoreAsync {
                 m_threads[idx].request_stop();
                 m_states[idx].resource.release();
             }
+            m_threads.clear();
         }
 
         auto postActivity(TA_BasicActivity *pActivity, bool autoDelete = false)
