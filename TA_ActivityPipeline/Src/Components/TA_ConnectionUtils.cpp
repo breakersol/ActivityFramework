@@ -116,7 +116,7 @@ namespace CoreAsync
         switch (type) {
         case TA_ConnectionType::Direct:
         {
-            auto ft = TA_ThreadHolder::get().sendActivity(pActivity, true);
+            auto ft = TA_ThreadHolder::get().postActivity(pActivity, true);
             return true;
         }
         case TA_ConnectionType::Queued:

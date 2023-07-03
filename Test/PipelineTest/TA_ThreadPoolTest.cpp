@@ -44,13 +44,6 @@ TEST_F(TA_ThreadPoolTest, postActivityTest)
     EXPECT_EQ(0, ft.first.get().get<int>());
 }
 
-TEST_F(TA_ThreadPoolTest, sendActivityTest)
-{
-    CoreAsync::TA_ThreadPool threadPool;
-    auto ft = threadPool.sendActivity(activities[0]);
-    EXPECT_EQ(0, ft.first.get().get<int>());
-}
-
 TEST_F(TA_ThreadPoolTest, threadSizeTest)
 {
     CoreAsync::TA_ThreadPool threadPool;

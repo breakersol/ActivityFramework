@@ -26,6 +26,7 @@
 #include <vector>
 #include <semaphore>
 #include <future>
+#include <random>
 
 namespace CoreAsync {
     class TA_ThreadPool : public TA_MetaObject
@@ -40,7 +41,7 @@ namespace CoreAsync {
         };
 
     public:
-        explicit TA_ThreadPool(std::size_t size = std::thread::hardware_concurrency()) : m_states(size)
+        explicit TA_ThreadPool(std::size_t size = std::thread::hardware_concurrency()) : m_states(size), m_activityQueues(size)
         {
             init();
         }
@@ -71,7 +72,7 @@ namespace CoreAsync {
             if(!pActivity)
                 return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
             SharedPromise pr {std::make_shared<std::promise<TA_Variant>>()};
-            std::future<TA_Variant> ft {pr->get_future()};
+            std::future<TA_Variant> ft {pr->get_future()}; 
             auto wrapperActivity = new TA_LinkedActivity<LambdaType<TA_Variant,SharedPromise>,INVALID_INS,TA_Variant,SharedPromise>([pActivity, autoDelete](SharedPromise pr)->TA_Variant {
                 TA_Variant var = (*pActivity)();
                 pr->set_value(var);
@@ -81,39 +82,12 @@ namespace CoreAsync {
                 }
                 return var;
             }, std::move(pr));
-            if(!m_activityQueue.push(wrapperActivity))
+            std::size_t idx = wrapperActivity->id() % m_threads.size();
+            if(!m_activityQueues[idx].push(wrapperActivity))
                 return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
-            for(std::size_t i = 0;i < m_states.size() - 1;++i)
+            if(!m_states[idx].m_isBusy.load(std::memory_order_acquire))
             {
-                if(!m_states[i].m_isBusy.load(std::memory_order_acquire))
-                {
-                    m_states[i].resource.release();
-                    break;
-                }
-            }
-            return std::make_pair(std::move(ft), wrapperActivity->id());
-        }
-
-        auto sendActivity(TA_BasicActivity *pActivity, bool autoDelete = false)
-        {
-            if(!pActivity)
-                return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
-            SharedPromise pr {std::make_shared<std::promise<TA_Variant>>()};
-            std::future<TA_Variant> ft {pr->get_future()};
-            auto wrapperActivity = new TA_LinkedActivity<LambdaType<TA_Variant,SharedPromise>,INVALID_INS,TA_Variant,SharedPromise>([pActivity, autoDelete](SharedPromise pr)->TA_Variant {
-                TA_Variant var = (*pActivity)();
-                pr->set_value(var);
-                if(autoDelete)
-                {
-                    delete pActivity;
-                }
-                return var;
-            }, std::move(pr));
-            if(!m_highPriorityQueue.push(wrapperActivity))
-                return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
-            if(!m_states.back().m_isBusy.load(std::memory_order_acquire))
-            {
-                m_states.back().resource.release(); 
+                m_states[idx].resource.release();
             }
             return std::make_pair(std::move(ft), wrapperActivity->id());
         }
@@ -125,69 +99,63 @@ namespace CoreAsync {
 
     private:
         void init()
-        {
+        {  
             for(std::size_t idx = 0; idx < m_states.size();++idx)
             {
-                if(idx == m_states.size() - 1)
-                {
-                    m_threads.emplace_back(
-                        [&, idx](const std::stop_token &st) {
-                            TA_BasicActivity *pActivity {nullptr};
-                            while (!st.stop_requested()) {
-                                m_states[idx].resource.acquire();
-                                m_states[idx].m_isBusy.store(true, std::memory_order_release);
-                                while (!m_highPriorityQueue.isEmpty())
+                m_threads.emplace_back(
+                    [&, idx](const std::stop_token &st) {
+                        TA_BasicActivity *pActivity {nullptr};
+                        while (!st.stop_requested()) {
+                            m_states[idx].resource.acquire();
+                            m_states[idx].m_isBusy.store(true, std::memory_order_release);
+                            while (!m_activityQueues[idx].isEmpty())
+                            {
+                                if(m_activityQueues[idx].pop(pActivity) && pActivity)
                                 {
-                                    if(m_highPriorityQueue.pop(pActivity) && pActivity)
-                                    {
-                                        TA_Variant var = (*pActivity)();
-                                        TA_Connection::active(this, &TA_ThreadPool::highPrioritytaskCompleted, pActivity->id(), var);
-                                        delete pActivity;
-                                        pActivity = nullptr;
-                                    }
+                                    TA_Variant var = (*pActivity)();
+                                    TA_Connection::active(this, &TA_ThreadPool::taskCompleted, pActivity->id(), var);
+                                    delete pActivity;
+                                    pActivity = nullptr;
                                 }
-                                m_states[idx].m_isBusy.store(false, std::memory_order_release);
                             }
-                            std::printf("Shut down successuflly!\n");
+                            if(trySteal(pActivity) && pActivity)
+                            {
+                                TA_Variant var = (*pActivity)();
+                                TA_Connection::active(this, &TA_ThreadPool::taskCompleted, pActivity->id(), var);
+                                delete pActivity;
+                                pActivity = nullptr;
+                            }
+                            m_states[idx].m_isBusy.store(false, std::memory_order_release);
                         }
-                    );
-                }
-                else
+                        std::printf("Shut down successuflly!\n");
+                    }
+                );
+            }
+        }
+
+        bool trySteal(TA_BasicActivity *&stolenActivity)
+        {
+            std::uniform_int_distribution<std::size_t> distribution(0, m_states.size() - 1);
+            for (std::size_t i = 0; i < m_states.size(); ++i)
+            {
+                std::size_t targetIndex = distribution(m_randomGenerator) % m_states.size();
+                if (!m_activityQueues[targetIndex].isEmpty())
                 {
-                    m_threads.emplace_back(
-                        [&, idx](const std::stop_token &st) {
-                            TA_BasicActivity *pActivity {nullptr};
-                            while (!st.stop_requested()) {
-                                m_states[idx].resource.acquire();
-                                m_states[idx].m_isBusy.store(true, std::memory_order_release);
-                                while (!m_activityQueue.isEmpty())
-                                {
-                                    if(m_activityQueue.pop(pActivity) && pActivity)
-                                    {
-                                        TA_Variant var = (*pActivity)();
-                                        TA_Connection::active(this, &TA_ThreadPool::taskCompleted, pActivity->id(), var);
-                                        delete pActivity;
-                                        pActivity = nullptr;     
-                                    }
-                                }
-                                m_states[idx].m_isBusy.store(false, std::memory_order_release);
-                            }
-                            std::printf("Shut down successuflly!\n");
-                        }
-                    );
+                    if(m_activityQueues[targetIndex].pop(stolenActivity))
+                        return true;
                 }
             }
+            return false;
         }
 
     TA_Signals:
         void taskCompleted(std::size_t id, TA_Variant var) {}
-        void highPrioritytaskCompleted(std::size_t id, TA_Variant var) {}
 
     private:
         std::vector<ThreadState> m_states;;
         std::vector<std::jthread> m_threads;
-        ActivityQueue m_activityQueue;
-        HighPriorityQueue m_highPriorityQueue;
+        std::vector<ActivityQueue> m_activityQueues;
+        std::mt19937 m_randomGenerator;
     };
 
     struct TA_ThreadHolder
@@ -206,7 +174,6 @@ namespace CoreAsync {
     {
         static constexpr TA_MetaFieldList fields = {
             TA_MetaField {&Raw::taskCompleted, META_STRING("taskCompleted")},
-            TA_MetaField {&Raw::highPrioritytaskCompleted, META_STRING("highPrioritytaskCompleted")},
         };
     };
 }
