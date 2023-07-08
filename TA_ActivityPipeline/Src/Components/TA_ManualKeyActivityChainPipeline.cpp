@@ -28,7 +28,7 @@ namespace CoreAsync {
         if(state() == State::Busy)
         {
             assert(state() != State::Busy);
-            std::printf("Set key activity failed!");
+            //std::printf("Set key activity failed!");
             return;
         }
         m_keyIndex.store(index,std::memory_order_release);
@@ -39,7 +39,7 @@ namespace CoreAsync {
         if(state() == State::Busy)
         {
             assert(state() != State::Busy);
-            std::printf("Skip key activity failed!");
+            //std::printf("Skip key activity failed!");
             return;
         }
         if(m_currentIndex.load(std::memory_order_acquire) == m_keyIndex.load(std::memory_order_acquire))
@@ -81,7 +81,7 @@ namespace CoreAsync {
         if(state() == State::Busy)
         {
             assert(state() != State::Busy);
-            std::printf("Reset pipeline failed!");
+            //std::printf("Reset pipeline failed!");
             return;
         }
         m_mutex.lock();
@@ -99,7 +99,7 @@ namespace CoreAsync {
         if(state() == State::Busy)
         {
             assert(state() != State::Busy);
-            std::printf("Clear pipeline failed!");
+            //std::printf("Clear pipeline failed!");
             return;
         }
         m_mutex.lock();

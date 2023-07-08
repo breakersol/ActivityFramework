@@ -106,7 +106,7 @@ namespace CoreAsync
     TA_ConnectionResponder::~TA_ConnectionResponder()
     {
        m_enableConsume.store(false,std::memory_order_release);
-       std::printf("Destroy Responder!\n");
+       //std::printf("Destroy Responder!\n");
     }
 
     bool TA_ConnectionResponder::response(TA_BasicActivity *&pActivity, TA_ConnectionType type)

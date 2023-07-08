@@ -126,7 +126,7 @@ namespace CoreAsync {
                             }
                             m_states[idx].m_isBusy.store(false, std::memory_order_release);
                         }
-                        std::printf("Shut down successuflly!\n");
+                        //std::printf("Shut down successuflly!\n");
                     }
                 );
             }

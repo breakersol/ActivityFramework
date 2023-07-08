@@ -14,8 +14,8 @@ TA_ThreadPoolTest::~TA_ThreadPoolTest()
 void TA_ThreadPoolTest::SetUp()
 {
     std::function<int(int)> func = [](int a) {
-        std::printf("%d\n", a);
-        std::printf("%d has completed an activity!\n", std::this_thread::get_id());
+//        std::printf("%d\n", a);
+//        std::printf("%d has completed an activity!\n", std::this_thread::get_id());
         return a;
     };
     for(int i = 0;i < activities.size();++i)
@@ -44,12 +44,6 @@ TEST_F(TA_ThreadPoolTest, postActivityTest)
     EXPECT_EQ(0, ft.first.get().get<int>());
 }
 
-TEST_F(TA_ThreadPoolTest, threadSizeTest)
-{
-    CoreAsync::TA_ThreadPool threadPool;
-    EXPECT_EQ(std::thread::hardware_concurrency(), threadPool.size());
-}
-
 TEST_F(TA_ThreadPoolTest, notifyResultTest)
 {
     CoreAsync::TA_ThreadPool threadPool;
@@ -65,4 +59,10 @@ TEST_F(TA_ThreadPoolTest, notifyResultTest)
     {
         EXPECT_EQ(testVec[i].get().get<int>(), validVec[i]);
     }
+}
+
+TEST_F(TA_ThreadPoolTest, threadSizeTest)
+{
+    CoreAsync::TA_ThreadPool threadPool;
+    EXPECT_EQ(std::thread::hardware_concurrency(), threadPool.size());
 }

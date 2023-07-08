@@ -27,7 +27,7 @@ namespace CoreAsync {
         if(State::Waiting != m_state.load(std::memory_order_consume))
         {
             assert(State::Waiting == m_state.load(std::memory_order_consume));
-            std::printf("Remove activity failed!");
+            //std::printf("Remove activity failed!");
             return false;
         }
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
@@ -44,7 +44,7 @@ namespace CoreAsync {
         if(State::Busy == m_state.load(std::memory_order_consume))
         {
             assert(State::Busy != m_state.load(std::memory_order_consume));
-            std::printf("Clear pipeline failed!");
+            //std::printf("Clear pipeline failed!");
             return;
         }
         m_mutex.lock();
@@ -68,7 +68,7 @@ namespace CoreAsync {
         if(State::Ready != m_state.load(std::memory_order_consume))
         {
             assert(State::Ready == m_state.load(std::memory_order_consume));
-            std::printf("Reset pipeline failed!");
+            //std::printf("Reset pipeline failed!");
             return;
         }
         m_mutex.lock();
@@ -84,7 +84,7 @@ namespace CoreAsync {
         if(State::Waiting != m_state.load(std::memory_order_consume))
         {
             assert(State::Waiting == m_state.load(std::memory_order_consume));
-            std::printf("Execute pipeline failed!");
+            //std::printf("Execute pipeline failed!");
             return;
         }
         setState(State::Busy);
@@ -133,7 +133,7 @@ namespace CoreAsync {
         if(State::Waiting != m_state.load(std::memory_order_consume))
         {
             assert(State::Waiting == m_state.load(std::memory_order_consume));
-            std::printf("Set start index failed!");
+            //std::printf("Set start index failed!");
             return;
         }
         m_startIndex.store(index,std::memory_order_release);

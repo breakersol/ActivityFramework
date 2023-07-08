@@ -72,7 +72,7 @@ namespace CoreAsync {
             {
                 return false;
             }
-//            std::printf("Receive the signal: %s\n",Reflex::TA_TypeInfo<Sender>::findName(sFunc));
+//            //std::printf("Receive the signal: %s\n",Reflex::TA_TypeInfo<Sender>::findName(sFunc));
 
             auto receiverList = pSender->m_pRegister->findReceivers(pSender, std::forward<SenderFunc>(sFunc));
 

@@ -76,7 +76,7 @@ namespace CoreAsync {
 
         void receivePipelineState(TA_BasicPipeline::State st)
         {
-            printf("Receive pipeline state %d\n",st);
+            //printf("Receive pipeline state %d\n",st);
             TA_Connection::active(this, &TA_MainPipelineHolder::pipelineStateChanged, st);
             if(st == TA_BasicPipeline::State::Ready)
             {
@@ -133,7 +133,7 @@ namespace CoreAsync {
         void pipelineStateChanged(TA_BasicPipeline::State state) { std::ignore = state; };
         void pipelineReady() {}
         void activityCompleted(unsigned int index, TA_Variant var) {
-            std::printf("Activity completed: %d\n",index);
+            //std::printf("Activity completed: %d\n",index);
         };
 
     protected:

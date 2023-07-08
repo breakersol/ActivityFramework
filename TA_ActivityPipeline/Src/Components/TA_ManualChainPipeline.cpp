@@ -63,7 +63,7 @@ namespace CoreAsync {
         if(state() == State::Busy)
         {
             assert(state() != State::Busy);
-            std::printf("Reset pipeline failed!");
+            //std::printf("Reset pipeline failed!");
             return;
         }
         m_currentIndex.store(0,std::memory_order_release);
@@ -80,7 +80,7 @@ namespace CoreAsync {
         if(state() == State::Busy)
         {
             assert(state() != State::Busy);
-            std::printf("Clear pipeline failed!");
+            //std::printf("Clear pipeline failed!");
             return;
         }
         m_mutex.lock();

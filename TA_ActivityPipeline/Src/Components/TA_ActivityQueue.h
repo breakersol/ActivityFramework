@@ -30,10 +30,6 @@ namespace CoreAsync
     {
     public:
         constexpr TA_ActivityQueue() {}
-        ~TA_ActivityQueue()
-        {
-
-        }
 
 //        void print()
 //        {
@@ -67,34 +63,52 @@ namespace CoreAsync
 
         bool push(T &&t)
         {
-            if(isFull())
-                return false;
-            m_data[m_rearIndex.load(std::memory_order_acquire)].exchange(t);
-            m_rearIndex.fetch_add(1);
-            m_rearIndex.exchange(m_rearIndex.load(std::memory_order_acquire) % N);
-//            printf("Front: %Id, Rear: %Id.\n", m_frontIndex.load(std::memory_order_acquire), m_rearIndex.load(std::memory_order_acquire));
+            std::size_t rearIndexOld, rearIndexNew;
+            do
+            {
+                rearIndexOld = m_rearIndex.load(std::memory_order_acquire);
+                rearIndexNew = (rearIndexOld + 1) % N;
+                if (rearIndexNew == m_frontIndex.load(std::memory_order_acquire))
+                    return false;
+            }
+            while (!m_rearIndex.compare_exchange_weak(rearIndexOld, rearIndexNew, std::memory_order_acq_rel));
+
+            m_data[rearIndexOld].exchange(t);
             return true;
         }
 
         bool push(const T &t)
         {
-            if(isFull())
-                return false;
-            m_data[m_rearIndex.load(std::memory_order_acquire)].exchange(t);
-            m_rearIndex.fetch_add(1);
-            m_rearIndex.exchange(m_rearIndex.load(std::memory_order_acquire) % N);
+            std::size_t rearIndexOld, rearIndexNew;
+            do
+            {
+                rearIndexOld = m_rearIndex.load(std::memory_order_acquire);
+                rearIndexNew = (rearIndexOld + 1) % N;
+                if (rearIndexNew == m_frontIndex.load(std::memory_order_acquire))
+                    return false;
+            }
+            while (!m_rearIndex.compare_exchange_weak(rearIndexOld, rearIndexNew, std::memory_order_acq_rel));
+
+            m_data[rearIndexOld].exchange(t);
             return true;
         }
 
         bool pop(T &t)
         {
-            if(isEmpty())
-                return false;
-            t = m_data[m_frontIndex.load(std::memory_order_acquire)].load(std::memory_order_acquire);
-            m_frontIndex.fetch_add(1);
-            m_frontIndex.exchange(m_frontIndex.load(std::memory_order_acquire) % N);
+            std::size_t frontIndexOld, frontIndexNew;
+            do
+            {
+                frontIndexOld = m_frontIndex.load(std::memory_order_acquire);
+                if (frontIndexOld == m_rearIndex.load(std::memory_order_acquire))
+                    return false;
+                frontIndexNew = (frontIndexOld + 1) % N;
+            }
+            while (!m_frontIndex.compare_exchange_weak(frontIndexOld, frontIndexNew, std::memory_order_acq_rel));
+
+            t = m_data[frontIndexOld].load(std::memory_order_acquire);
             return true;
         }
+
 
         constexpr auto front() const
         {
@@ -107,7 +121,7 @@ namespace CoreAsync
         }
 
     private:
-        std::array<std::atomic<T>,N> m_data {nullptr};
+        std::array<std::atomic<T>,N> m_data {};
         std::atomic<std::size_t> m_frontIndex {0}, m_rearIndex {0};
 
     };
