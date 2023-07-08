@@ -79,7 +79,7 @@ namespace CoreAsync {
             if(State::Waiting != m_state.load(std::memory_order_acquire))
             {
                 assert(State::Waiting == m_state.load(std::memory_order_acquire));
-                //std::printf("Add activity failed!");
+                TA_CommonTools::debugInfo(META_STRING("Add activity failed!"));
                 return;
             }
             m_mutex.lock();
@@ -101,7 +101,7 @@ namespace CoreAsync {
             if(State::Busy == m_state.load(std::memory_order_acquire))
             {
                 assert(State::Busy != m_state.load(std::memory_order_acquire));
-                //std::printf("Get result from pipeline failed!");
+                TA_CommonTools::debugInfo(META_STRING("Get result from pipeline failed!"));
                 return false;
             }
             std::lock_guard<std::recursive_mutex> locker(m_mutex);
