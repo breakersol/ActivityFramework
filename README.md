@@ -3,7 +3,7 @@ The framework focuses on providing a multi-functional pipeline supporting asynch
 ## Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 ### Prerequisites
-- CMake: Not less than 3.14
+- CMake: Not less than 3.5
 - Windows: MSVC 17.5.33530.505 or higher
 - Linux: GCC11 or higher
 ### Installing
@@ -15,6 +15,8 @@ Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the proje
 ### Versioning
 - [v0.1.0-beta](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.0-beta)
 - [v0.1.1](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.1)
+- [v0.1.2](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.2)
+- [v0.1.3](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.3)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
@@ -319,3 +321,27 @@ Pipeline status description:
 - **Ready**: Pipeline execution completed.
 ---
 ***Note: Pipeline Creator has ownership of all pipeline objects. And once an activity is added into a pipeline, its ownership would be transferred to the pipeline and the original activity pointer will be set as nullptr.***
+
+#### Thread Pool
+A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
+- **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
+```cpp
+    CoreAsync::TA_ThreadPool threadPool;
+    std::vector<std::future<CoreAsync::TA_Variant>> testVec;
+    std::vector<int> validVec(1024);
+    for(int i = 0;i < activities.size();++i)
+    {
+        testVec.emplace_back(threadPool.postActivity(activities[i]).first);
+        validVec[i] = i;
+    }
+    for(int i = 0;i < testVec.size();++i)
+    {
+        EXPECT_EQ(testVec[i].get().get<int>(), validVec[i]);
+    }
+```
+- **size**: Return the number of threads.
+- **shutDown**: Request to shut down and clear all of threads.
+---
+##### Signals:
+- **taskCompleted(std::size_t id, TA_Variant var)**
+    <br/>This signal will be activated when an activity is completed. _id_ is the unique id of the activity, and _var_ is the result of execution.
