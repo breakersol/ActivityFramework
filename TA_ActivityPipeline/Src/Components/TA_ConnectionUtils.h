@@ -118,14 +118,6 @@ namespace CoreAsync
                 }
                 start++;
             }
-            if(end != m_connections.end())
-            {
-                auto &&endUnit {end->second};
-                if(endUnit.m_pSender == pSender && endUnit.m_senderFunc == senderFuncName)
-                {
-                    list.emplace_back(std::tuple {endUnit.m_pReceiverObject.get(), endUnit.m_pReceiver, endUnit.m_receiverFunc, endUnit.m_type});
-                }
-            }
             return list;
         }
 

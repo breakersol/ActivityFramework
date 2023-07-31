@@ -47,10 +47,6 @@ namespace CoreAsync
                     return false;
                 start++;
             }
-            if(end != m_connections.end() && end->second.operator == (std::forward<TA_ConnectionUnit>(unit)))
-            {
-                return false;
-            }
             m_connections.emplace(std::forward<std::string_view>(object), std::forward<TA_ConnectionUnit>(unit));
             return true;
         }
@@ -71,11 +67,6 @@ namespace CoreAsync
                 return true;
             }
             start++;
-        }
-        if(end != m_connections.end() && end->second.operator == (std::forward<TA_ConnectionUnit>(unit)))
-        {
-            m_connections.erase(std::forward<std::decay_t<decltype(end)>>(end));
-            return true;
         }
         return false;
     }
