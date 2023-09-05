@@ -95,7 +95,7 @@ namespace CoreAsync
             ReceiversList list {};
 
             using ParentType = typename FunctionTypeInfo<SenderFunc>::ParentClass;
-            if(!std::is_convertible_v<std::decay_t<Sender> *, ParentType *>)
+            if constexpr(!std::is_convertible_v<std::decay_t<Sender> *, ParentType *>)
                 return list;
             if constexpr(!Reflex::TA_MemberTypeTrait<SenderFunc>::noneStaticMemberFuncFlag || !IsReturnTypeEqual<void, std::decay_t<SenderFunc>, std::is_same>::value)
             {
