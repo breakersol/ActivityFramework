@@ -32,21 +32,23 @@ namespace CoreAsync {
             TA_ManualChainPipeline::run();
             break;
         default:
-        {      
-            if(!m_pActivityList.empty() && m_steps.load(std::memory_order_acquire) <= m_pActivityList.size() && m_currentIndex.load(std::memory_order_acquire) + m_steps.load(std::memory_order_acquire) <= m_pActivityList.size())
+        {
+            auto curIndex {m_currentIndex.load(std::memory_order_acquire)};
+            auto step {m_steps.load(std::memory_order_acquire)};
+            if(!m_pActivityList.empty() && step <= m_pActivityList.size() && curIndex + step <= m_pActivityList.size())
             {
-                int endIndex = m_currentIndex.load(std::memory_order_acquire) + m_steps.load(std::memory_order_acquire);
+                int endIndex = curIndex + step;
                 do
                 {
-                    auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, m_currentIndex.load(std::memory_order_acquire));
+                    auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, curIndex);
                     if(pActivity)
                     {
                         TA_Variant var = (*pActivity)();
-                        TA_CommonTools::replace(m_resultList, m_currentIndex.load(std::memory_order_acquire), var);
-                        TA_Connection::active(this, &TA_ManualStepsChainPipeline::activityCompleted, m_currentIndex.load(std::memory_order_acquire), var);
+                        TA_CommonTools::replace(m_resultList, curIndex, var);
+                        TA_Connection::active(this, &TA_ManualStepsChainPipeline::activityCompleted, curIndex, var);
                     }
                     m_currentIndex.fetch_add(1);
-                }while(m_currentIndex.load(std::memory_order_acquire) < endIndex);
+                }while((curIndex = m_currentIndex.load(std::memory_order_acquire)) < endIndex);
                 if(m_currentIndex.load(std::memory_order_acquire) < m_pActivityList.size())
                 {
                     setState(State::Waiting);

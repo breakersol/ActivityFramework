@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 project(PipelineTest LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_BUILD_TYPE_DEBUG "Debug")
@@ -37,6 +37,8 @@ add_executable(PipelineTest PipelineTest/main.cpp
     PipelineTest/TA_ActivityQueueTest.h
     PipelineTest/TA_ThreadPoolTest.h
     PipelineTest/TA_ThreadPoolTest.cpp
+    PipelineTest/TA_CommonToolsTest.h
+    PipelineTest/TA_CommonToolsTest.cpp
 )
 
 if(MSVC)

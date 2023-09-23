@@ -51,15 +51,16 @@ namespace CoreAsync {
 
     void TA_ManualKeyActivityChainPipeline::run()
     {
-        bool isAtKey = m_currentIndex.load(std::memory_order_acquire) == m_keyIndex.load(std::memory_order_acquire);
-        if(!m_pActivityList.empty() && m_currentIndex.load(std::memory_order_acquire) <= m_pActivityList.size() - 1)
+        auto curIndex {m_currentIndex.load(std::memory_order_acquire)};
+        bool isAtKey = curIndex == m_keyIndex.load(std::memory_order_acquire);
+        if(!m_pActivityList.empty() && curIndex <= m_pActivityList.size() - 1)
         {
-            auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, m_currentIndex.load(std::memory_order_acquire));
+            auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, curIndex);
             if(pActivity)
             {
                 TA_Variant var = (*pActivity)();
-                TA_CommonTools::replace(m_resultList, m_currentIndex.load(std::memory_order_acquire),var);
-                TA_Connection::active(this, &TA_ManualKeyActivityChainPipeline::activityCompleted, m_currentIndex.load(std::memory_order_acquire), var);
+                TA_CommonTools::replace(m_resultList, curIndex, var);
+                TA_Connection::active(this, &TA_ManualKeyActivityChainPipeline::activityCompleted, curIndex, var);
             }
             if(!isAtKey)
             {

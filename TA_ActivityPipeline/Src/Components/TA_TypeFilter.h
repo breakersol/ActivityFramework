@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <functional>
+#include <concepts>
 
 namespace CoreAsync {
 
@@ -147,6 +148,13 @@ struct FunctionTypeInfo<R(*)(PARA...)>
     using RetType = R;
     using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
     static constexpr std::size_t paraSize = sizeof...(PARA);
+};
+
+template <typename T>
+concept Iterator = requires (T t)
+{
+    {*std::declval<std::decay_t<T>>()};
+    {++std::declval<std::decay_t<T> &>()};
 };
 
 }

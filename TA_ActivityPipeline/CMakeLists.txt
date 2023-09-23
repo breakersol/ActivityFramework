@@ -4,7 +4,7 @@ project(AsyncPipeline LANGUAGES CXX)
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fms-extensions")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/build)
 #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/build/debug)
@@ -57,6 +57,7 @@ add_library(AsyncPipeline SHARED
     Src/Components/TA_MetaStringView.h
     Src/Components/TA_ThreadPool.h
     Src/Components/TA_MarcoDefine.h
+    Src/Components/TA_CommonTools.cpp
 )
 
 target_compile_definitions(AsyncPipeline PRIVATE ASYNCPIPELINE_LIBRARY)
