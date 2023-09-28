@@ -204,7 +204,7 @@ namespace CoreAsync
         static void debugInfo(Text text, Paras &&...paras)
         {
 #ifdef  DEBUG_INFO_ON
-            std::printf(std::string_view{Text::data()}.data(), paras...);
+            std::printf(std::string_view{Text::data()}.data(), std::forward<Paras>(paras)...);
 #endif
         }
 

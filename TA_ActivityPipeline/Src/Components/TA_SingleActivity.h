@@ -60,7 +60,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
         {
-            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -128,7 +128,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
         {
-            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -196,7 +196,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
         {
-            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -265,7 +265,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
         {
-            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -334,7 +334,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
         {
-            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -403,7 +403,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
         {
-            m_funcActivity = std::bind(func,ins,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -472,7 +472,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
         {
-            m_funcActivity = std::bind(func,m_pObject,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),m_pObject,std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -545,7 +545,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
         {
-            m_funcActivity = std::bind(func,m_pObject,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),m_pObject,std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -619,7 +619,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : m_funcActivity(nullptr),m_funcPtr(func)
         {
-            m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -686,7 +686,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : m_funcActivity(nullptr),m_funcPtr(func)
         {
-            m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()
@@ -754,7 +754,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : m_funcActivity(nullptr),m_funcPtr(func)
         {
-            m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
+            m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
         }
 
         virtual ~TA_SingleActivity()

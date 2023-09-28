@@ -281,7 +281,7 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
         }
         else
         {
-            return std::invoke(target,paras...);
+            return std::invoke(target,std::forward<PARAS>(paras)...);
         }
     }
 

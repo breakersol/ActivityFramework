@@ -33,10 +33,9 @@ namespace CoreAsync {
         m_typeId = var.m_typeId;
     }
 
-    TA_Variant::TA_Variant(TA_Variant &&var)
+    TA_Variant::TA_Variant(TA_Variant &&var) : m_ptr(std::move(var.m_ptr)), m_typeId(std::move(var.m_typeId))
     {
-        m_ptr = var.m_ptr;
-        m_typeId = var.m_typeId;
+
     }
 
     TA_Variant & TA_Variant::operator = (const TA_Variant &var)
@@ -49,7 +48,7 @@ namespace CoreAsync {
         return *this;
     }
 
-    TA_Variant & TA_Variant::operator = (const TA_Variant &&var)
+    TA_Variant & TA_Variant::operator = (TA_Variant &&var)
     {
         if(this != &var)
         {
