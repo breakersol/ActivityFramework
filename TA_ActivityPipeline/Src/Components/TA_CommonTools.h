@@ -481,7 +481,7 @@ namespace CoreAsync
         }
 
         template <typename Key, typename T, typename Cmp = std::less<Key>, typename Allocator = std::allocator<std::pair<const Key, T>>, template <typename K, typename V, typename C, typename A> class MapType = std::map>
-        static std::pair<Key, T> last(const MapType<Key, T, Cmp, Allocator> &map)
+        static std::pair<Key, T> last(MapType<Key, T, Cmp, Allocator> &map)
         {
             return *(--map.end());
         }
