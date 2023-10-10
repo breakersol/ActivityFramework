@@ -30,52 +30,31 @@ namespace CoreAsync {
 
     TA_PipelineCreator::~TA_PipelineCreator()
     {
-        auto deleteVistor = [](auto &&value) {
-            if(value)
-            {
-                delete value;
-            }
-            value = nullptr;
-        };
 
-        for(auto &pHolder : m_holderList)
-        {
-            std::visit(deleteVistor, pHolder);
-        }
     }
 
-    TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> > * TA_PipelineCreator::createAutoChainPipeline()
+    std::unique_ptr<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> > > TA_PipelineCreator::createAutoChainPipeline()
     {
-        auto pHolder = new TA_PipelineHolder<TA_AutoChainPipeline>();
-        m_holderList.push_back(pHolder);
-        return pHolder;
+        return std::make_unique<TA_PipelineHolder<TA_AutoChainPipeline>>();
     }
 
-    TA_MainPipelineHolder<TA_PipelineHolder<TA_ParallelPipeline> > * TA_PipelineCreator::createParallelPipeline()
+    std::unique_ptr<TA_MainPipelineHolder<TA_PipelineHolder<TA_ParallelPipeline> > > TA_PipelineCreator::createParallelPipeline()
     {
-        auto pHolder = new TA_PipelineHolder<TA_ParallelPipeline>();
-        m_holderList.push_back(pHolder);
-        return pHolder;
+        return std::make_unique<TA_PipelineHolder<TA_ParallelPipeline>>();
     }
 
-    TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > * TA_PipelineCreator::createManaualChainPipeline()
+    std::unique_ptr<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > > TA_PipelineCreator::createManaualChainPipeline()
     {
-        auto pHolder = new TA_PipelineHolder<TA_ManualChainPipeline>();
-        m_holderList.push_back(pHolder);
-        return pHolder;
+        return std::make_unique<TA_PipelineHolder<TA_ManualChainPipeline>>();
     }
 
-    TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> > * TA_PipelineCreator::createManualStepsChainPipeline()
+    std::unique_ptr<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> > > TA_PipelineCreator::createManualStepsChainPipeline()
     {
-        auto pHolder = new TA_PipelineHolder<TA_ManualStepsChainPipeline>();
-        m_holderList.push_back(pHolder);
-        return pHolder;
+        return std::make_unique<TA_PipelineHolder<TA_ManualStepsChainPipeline>>();
     }
 
-    TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > * TA_PipelineCreator::createManualKeyActivityChainPipeline()
+    std::unique_ptr<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > > TA_PipelineCreator::createManualKeyActivityChainPipeline()
     {
-        auto pHolder = new TA_PipelineHolder<TA_ManualKeyActivityChainPipeline>();
-        m_holderList.push_back(pHolder);
-        return pHolder;
+        return std::make_unique<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline>>();
     }
 }
