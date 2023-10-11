@@ -76,7 +76,7 @@ namespace CoreAsync {
 
         void receivePipelineState(TA_BasicPipeline::State st)
         {
-            //printf("Receive pipeline state %d\n",st);
+            TA_CommonTools::debugInfo(META_STRING("Receive pipeline state %d\n"),st);
             TA_Connection::active(this, &TA_MainPipelineHolder::pipelineStateChanged, st);
             if(st == TA_BasicPipeline::State::Ready)
             {

@@ -23,11 +23,12 @@
 namespace CoreAsync {
     TA_ParallelPipeline::TA_ParallelPipeline() : TA_BasicPipeline(), m_waitingCount(0)
     {
-        TA_Connection::connect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
+        
     }
 
     void TA_ParallelPipeline::run()
     {
+        TA_Connection::connect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
         std::size_t sIndex(std::move(startIndex()));
         std::size_t activitySize = m_pActivityList.size();
         if(activitySize > 0)
@@ -39,7 +40,7 @@ namespace CoreAsync {
                 auto [ft, id] = TA_ThreadHolder::get().postActivity(TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i));
                 m_activityIds[i] = id;
             }
-        }
+        }  
     }
 
     void TA_ParallelPipeline::taskCompleted(std::size_t id, TA_Variant var)
@@ -56,6 +57,7 @@ namespace CoreAsync {
         if(--m_waitingCount == 0)
         {
             setState(State::Ready);
+            //TA_Connection::disconnect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
         }
     }
 }

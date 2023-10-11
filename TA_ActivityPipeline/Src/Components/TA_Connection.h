@@ -48,7 +48,9 @@ namespace CoreAsync {
             std::string_view receiverFuncName {Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<ReceiverFunc>(rFunc))};
             if(senderFuncName.empty() || receiverFuncName.empty() || !pSender || !pReceiver)
                 return false;
-            return dynamic_cast<TA_MetaObject *>(pSender)->insert(typeid(std::decay_t<Sender>).name(), std::forward<TA_ConnectionUnit>({pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc), type}));
+            if (!pReceiver->recordSender(pSender))
+                return false;
+            return dynamic_cast<TA_MetaObject *>(pSender)->registConnection(typeid(std::decay_t<Sender>).name(), std::forward<TA_ConnectionUnit>({pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc), type}));
         }
 
         template<EnableConnectObjectType Sender, typename SenderFunc, EnableConnectObjectType Receiver, typename ReceiverFunc>
@@ -62,7 +64,9 @@ namespace CoreAsync {
             std::string_view receiverFuncName {Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<ReceiverFunc>(rFunc))};
             if(!pSender || !pReceiver || senderFuncName.empty() || receiverFuncName.empty())
                 return false;
-            return dynamic_cast<TA_MetaObject *>(pSender)->remove(typeid(std::decay_t<Sender>).name(), std::forward<TA_ConnectionUnit>({pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc)}));
+            if (!pReceiver->removeSender(pSender))
+                return false;
+            return dynamic_cast<TA_MetaObject *>(pSender)->removeConnection(typeid(std::decay_t<Sender>).name(), std::forward<TA_ConnectionUnit>({pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc)}));
         }
 
         template <EnableConnectObjectType Sender, typename SenderFunc, typename ...FuncPara>
@@ -73,7 +77,7 @@ namespace CoreAsync {
                 return false;
             }
 
-            auto receiverList = pSender->m_pRegister->findReceivers(pSender, std::forward<SenderFunc>(sFunc));
+            auto receiverList = pSender->m_pRegister->findReceiverWrappers(pSender, std::forward<SenderFunc>(sFunc));
 
             if(!receiverList.empty())
             {

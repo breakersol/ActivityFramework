@@ -23,23 +23,27 @@
 
 namespace CoreAsync
 {
-    class TA_ConnectionsRegister;
     class TA_ConnectionUnit;
 
     class ASYNC_PIPELINE_EXPORT TA_MetaObject
     {
         friend class TA_Connection;
+        friend class TA_ConnectionsRegister;
+        friend class TA_ConnectionsRecorder;
     public:
         TA_MetaObject();
         virtual ~TA_MetaObject();
 
     private:
-        bool insert(std::string_view &&object, TA_ConnectionUnit &&unit);
-        bool remove(std::string_view &&object, TA_ConnectionUnit &&unit);
-        void clear();
+        bool registConnection(std::string_view &&object, TA_ConnectionUnit &&unit);
+        bool removeConnection(std::string_view &&object, TA_ConnectionUnit &&unit);
+
+        bool recordSender(TA_MetaObject *pSender);
+        bool removeSender(TA_MetaObject *pSender);
 
     private:
         TA_ConnectionsRegister *m_pRegister;
+        TA_ConnectionsRecorder *m_pRecorder;
 
     };
 }
