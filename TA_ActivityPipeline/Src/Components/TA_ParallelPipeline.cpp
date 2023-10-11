@@ -57,7 +57,7 @@ namespace CoreAsync {
         if(--m_waitingCount == 0)
         {
             setState(State::Ready);
-            //TA_Connection::disconnect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
+            TA_Connection::disconnect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
         }
     }
 }

@@ -81,10 +81,9 @@ namespace CoreAsync {
 
             if(!receiverList.empty())
             {
-                void **pArgs = new void * [sizeof...(para)] {static_cast<void *>(new std::decay_t<FuncPara>(para))...};
-
                 for(auto &rObj : receiverList)
                 {
+                    void **pArgs = new void *[sizeof...(para)] {static_cast<void *>(new std::decay_t<FuncPara>(para))...};
                     CoreAsync::TA_BasicActivity *pActivity = std::get<0>(rObj)->active(std::get<1>(rObj), std::forward<std::string_view>(std::get<2>(rObj)), pArgs);
                     TA_ConnectionResponder::GetIns().response(pActivity, std::get<3>(rObj));
                 }
