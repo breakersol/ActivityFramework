@@ -28,10 +28,10 @@ namespace CoreAsync
 
     TA_ConnectionsRegister::~TA_ConnectionsRegister()
     {
-
+        clear();
     }
 
-    bool TA_ConnectionsRegister::insert(std::string_view &&object, TA_ConnectionUnit &&unit)
+    bool TA_ConnectionsRegister::registConnection(std::string_view &&object, TA_ConnectionUnit &&unit)
     {
         if(!m_connections.contains(std::forward<std::string_view>(object)))
         {
@@ -52,7 +52,7 @@ namespace CoreAsync
         }
     }
 
-    bool TA_ConnectionsRegister::remove(std::string_view &&object, TA_ConnectionUnit &&unit)
+    bool TA_ConnectionsRegister::removeConnection(std::string_view &&object, TA_ConnectionUnit &&unit)
     {
         auto && [start, end] = m_connections.equal_range(std::forward<std::string_view>(object));
         if(start == m_connections.end() && end == m_connections.end())
@@ -71,8 +71,21 @@ namespace CoreAsync
         return false;
     }
 
+    void TA_ConnectionsRegister::removeConnection(void *pReceiver)
+    {
+        std::erase_if(m_connections, [&pReceiver](const auto &item)
+        {
+            auto const &[k, v] = item;
+            return v.m_pReceiver == pReceiver;
+        });
+    }
+
     void TA_ConnectionsRegister::clear()
     {
+        for (auto &[k, v] : m_connections)
+        {
+            reinterpret_cast<TA_MetaObject *>(v.m_pReceiver)->m_pRecorder->remove(v.m_pSender);
+        }
         m_connections.clear();
     }
 
@@ -130,7 +143,7 @@ namespace CoreAsync
             }
             else
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
             if(pActivity)
             {
@@ -139,4 +152,44 @@ namespace CoreAsync
             }
         }
     }
+
+    TA_ConnectionsRecorder::TA_ConnectionsRecorder(void *pReceiver) : m_pReceiver(pReceiver)
+    {
+
+    }
+
+    TA_ConnectionsRecorder::~TA_ConnectionsRecorder()
+    {
+        clear();
+    }
+
+    bool TA_ConnectionsRecorder::record(void *pObject)
+    {
+        if (!pObject)
+            return false;
+        m_recordSet.emplace(pObject);
+        return true;
+    }
+
+    bool TA_ConnectionsRecorder::remove(void *pObject)
+    {
+        if (!pObject)
+            return false;
+        if (m_recordSet.count(pObject) != 0)
+        {
+            m_recordSet.erase(pObject);
+            return true;
+        } 
+        return false;
+    }
+
+    void TA_ConnectionsRecorder::clear()
+    {
+        for (auto &item : m_recordSet)
+        {
+            reinterpret_cast<TA_MetaObject *>(item)->m_pRegister->removeConnection(m_pReceiver);
+        }
+        m_recordSet.clear();
+    }
 }
+

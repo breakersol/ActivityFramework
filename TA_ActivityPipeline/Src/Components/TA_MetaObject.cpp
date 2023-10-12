@@ -19,34 +19,43 @@
 
 namespace CoreAsync
 {
-    TA_MetaObject::TA_MetaObject() : m_pRegister(new TA_ConnectionsRegister())
+    TA_MetaObject::TA_MetaObject() : m_pRegister(new TA_ConnectionsRegister()), m_pRecorder(new TA_ConnectionsRecorder(this))
     {
 
     }
 
     TA_MetaObject::~TA_MetaObject()
     {
-        if(m_pRegister)
+        if (m_pRegister)
         {
-            clear();
             delete m_pRegister;
             m_pRegister = nullptr;
         }
+        if(m_pRecorder)
+        {
+            delete m_pRecorder;
+            m_pRecorder = nullptr;
+        }
     }
 
-    bool TA_MetaObject::insert(std::string_view &&object, TA_ConnectionUnit &&unit)
+    bool TA_MetaObject::registConnection(std::string_view &&object, TA_ConnectionUnit &&unit)
     {
-        return m_pRegister->insert(std::forward<std::string_view>(object), std::forward<TA_ConnectionUnit>(unit));
+        return m_pRegister->registConnection(std::forward<std::string_view>(object), std::forward<TA_ConnectionUnit>(unit));
     }
 
-    bool TA_MetaObject::remove(std::string_view &&object, TA_ConnectionUnit &&unit)
+    bool TA_MetaObject::removeConnection(std::string_view &&object, TA_ConnectionUnit &&unit)
     {
-        return m_pRegister->remove(std::forward<std::string_view>(object), std::forward<TA_ConnectionUnit>(unit));
+        return m_pRegister->removeConnection(std::forward<std::string_view>(object), std::forward<TA_ConnectionUnit>(unit));
     }
 
-    void TA_MetaObject::clear()
+    bool TA_MetaObject::recordSender(TA_MetaObject *pSender)
     {
-        m_pRegister->clear();
+        return m_pRecorder->record(pSender);
+    }
+
+    bool TA_MetaObject::removeSender(TA_MetaObject *pSender)
+    {
+        return m_pRecorder->remove(pSender);
     }
 }
 

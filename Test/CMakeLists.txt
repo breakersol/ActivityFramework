@@ -75,7 +75,7 @@ if(MSVC)
             "$<IF:$<CONFIG:Release>,${GTEST_DIR}/Release/gtest.dll,${GTEST_DIR}/Debug/gtest.dll>"
             "$<IF:$<CONFIG:Release>,${DLL_TARGET_DIR}/Release,${DLL_TARGET_DIR}/Debug>"
     )
-else()
+elseif(UNIX)
     message(STATUS "Configuring for GCC")
     target_link_libraries(PipelineTest PRIVATE
         $<$<CONFIG:Debug>:AsyncPipeline>
