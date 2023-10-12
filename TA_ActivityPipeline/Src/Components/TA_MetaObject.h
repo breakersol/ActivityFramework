@@ -24,6 +24,8 @@
 namespace CoreAsync
 {
     class TA_ConnectionUnit;
+    class TA_ConnectionsRegister;
+    class TA_ConnectionsRecorder;
 
     class ASYNC_PIPELINE_EXPORT TA_MetaObject
     {
