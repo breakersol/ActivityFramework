@@ -3,7 +3,7 @@ The framework focuses on providing a multi-functional pipeline supporting asynch
 ## Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 ### Prerequisites
-- CMake: Not less than 3.5
+- CMake: Not less than 3.20
 - Windows: MSVC 17.5.33530.505 or higher
 - Linux: GCC11 or higher
 ### Installing
@@ -17,6 +17,7 @@ Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the proje
 - [v0.1.1](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.1)
 - [v0.1.2](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.2)
 - [v0.1.3](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.3)
+- [v0.1.4](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.4)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
