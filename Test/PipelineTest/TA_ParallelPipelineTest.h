@@ -13,6 +13,8 @@ public:
     void SetUp() override;
     void TearDown() override;
 
+    bool testFunc();
+
     MetaTest *m_pTest;
 
 };

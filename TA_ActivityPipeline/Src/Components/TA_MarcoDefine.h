@@ -1,6 +1,6 @@
 #ifndef TA_MARCODEFINE_H
 #define TA_MARCODEFINE_H
 
-//#define DEBUG_INFO_ON
+#define DEBUG_INFO_ON
 
 #endif // TA_MARCODEFINE_H

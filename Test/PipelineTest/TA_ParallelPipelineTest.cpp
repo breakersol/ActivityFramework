@@ -24,7 +24,7 @@ void TA_ParallelPipelineTest::TearDown()
     m_pTest = nullptr;
 }
 
-TEST_F(TA_ParallelPipelineTest, executeTest)
+bool TA_ParallelPipelineTest::testFunc()
 {
     auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
     auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
@@ -43,4 +43,18 @@ TEST_F(TA_ParallelPipelineTest, executeTest)
     EXPECT_EQ(-1,res_0);
     EXPECT_EQ(0,res_1);
     EXPECT_EQ(9,res_2);
+
+    return true;
 }
+
+TEST_F(TA_ParallelPipelineTest, executeTest)
+{
+    testFunc();
+}
+
+TEST_F(TA_ParallelPipelineTest, continuousExecuteTest)
+{
+    testFunc();
+    testFunc();
+}
+
