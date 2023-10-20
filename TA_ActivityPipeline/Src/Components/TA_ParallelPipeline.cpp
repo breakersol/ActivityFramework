@@ -49,15 +49,15 @@ namespace CoreAsync {
         {
             if(m_activityIds[idx] == id)
             {
-                TA_CommonTools::replace(m_resultList, idx, std::forward<TA_Variant>(var));
-                TA_Connection::active(this, &TA_ParallelPipeline::activityCompleted, idx, var);
+                m_resultList[idx] = var;
+                TA_Connection::active(this, &TA_ParallelPipeline::activityCompleted, idx, std::forward<TA_Variant>(m_resultList[idx]));
+                if (--m_waitingCount == 0)
+                {
+                    setState(State::Ready);
+                    TA_Connection::disconnect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
+                }
                 break;
             }
-        }
-        if(--m_waitingCount == 0)
-        {
-            setState(State::Ready);
-            TA_Connection::disconnect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
         }
     }
 }
