@@ -81,14 +81,15 @@ namespace CoreAsync {
                 }
                 return var;
             }, std::move(pr));
-            std::size_t idx = wrapperActivity->id() % m_threads.size();
+            auto activityId {wrapperActivity->id()};
+            std::size_t idx = activityId % m_threads.size();
             if(!m_activityQueues[idx].push(wrapperActivity))
                 return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
             if(!m_states[idx].m_isBusy.load(std::memory_order_acquire))
             {
                 m_states[idx].resource.release();
             }
-            return std::make_pair(std::move(ft), wrapperActivity->id());
+            return std::make_pair(std::move(ft), activityId);
         }
 
         std::size_t size() const
