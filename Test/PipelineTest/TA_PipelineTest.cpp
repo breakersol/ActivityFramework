@@ -294,10 +294,9 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
     EXPECT_EQ(-1,res_0);
     EXPECT_EQ(0,res_1);
     EXPECT_EQ(9,res_2);
-}
 
-TEST_F(TA_PipelineTest, parallelPipeline_continuousExecuteTest)
-{
+    line->reset();
+
     std::function<bool()> testFunc = [&]()->bool {
         auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
         auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
@@ -320,31 +319,9 @@ TEST_F(TA_PipelineTest, parallelPipeline_continuousExecuteTest)
 
     EXPECT_EQ(testFunc(), true);
     EXPECT_EQ(testFunc(), true);
-}
 
-TEST_F(TA_PipelineTest, parallelPipeline_nestedExecuteTest)
-{
-    std::function<bool()> testFunc = [&]()->bool {
-        auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-        auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-        auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    line->clear();
 
-        auto line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
-        line->add(activity_1,activity_2,activity_3);
-        line->execute();
-        int res_0, res_1, res_2;
-        if(line->waitingComplete())
-        {
-            line->result(0,res_0);
-            line->result(1,res_1);
-            line->result(2,res_2);
-        }
-        if(res_0 != -1 || res_1 != 0 || res_2 != 9)
-            return false;
-        return true;
-    };
-
-    auto line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
     auto a1 = CoreAsync::ITA_ActivityCreator::create<bool>(testFunc);
     line->add(a1);
     line->execute();
@@ -354,5 +331,4 @@ TEST_F(TA_PipelineTest, parallelPipeline_nestedExecuteTest)
         line->result(0, res);
         EXPECT_EQ(true,res);
     }
-    SUCCEED();
 }
