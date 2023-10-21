@@ -14,22 +14,12 @@ include_directories(./ThirdParty/googletest/googletest/include)
 add_executable(PipelineTest PipelineTest/main.cpp
     PipelineTest/TA_ActivityTest.cpp
     PipelineTest/TA_ActivityTest.h
-    PipelineTest/TA_AutoChainPipelineTest.cpp
-    PipelineTest/TA_AutoChainPipelineTest.h
-    PipelineTest/TA_BasePipelineTest.cpp
-    PipelineTest/TA_BasePipelineTest.h
+    PipelineTest/TA_PipelineTest.cpp
+    PipelineTest/TA_PipelineTest.h
     PipelineTest/TA_ConnectionTest.cpp
     PipelineTest/TA_ConnectionTest.h
-    PipelineTest/TA_ManualChainPipelineTest.cpp
-    PipelineTest/TA_ManualChainPipelineTest.h
-    PipelineTest/TA_ManualKeyActivityChainPipelineTest.cpp
-    PipelineTest/TA_ManualKeyActivityChainPipelineTest.h
-    PipelineTest/TA_ManualStepsChainPipelineTest.cpp
-    PipelineTest/TA_ManualStepsChainPipelineTest.h
     PipelineTest/TA_MetaReflexTest.cpp
     PipelineTest/TA_MetaReflexTest.h
-    PipelineTest/TA_ParallelPipelineTest.cpp
-    PipelineTest/TA_ParallelPipelineTest.h
     PipelineTest/main.cpp
     PipelineTest/MetaTest.cpp
     PipelineTest/MetaTest.h

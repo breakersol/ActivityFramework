@@ -33,9 +33,9 @@ namespace CoreAsync {
             return TA_PipelineCreator::GetInstance().createAutoChainPipeline();
         }
 
-        static TA_PipelineCreator::ManualChainHolder * createManaualChainPipeline()
+        static TA_PipelineCreator::ManualChainHolder * createManualChainPipeline()
         {
-            return TA_PipelineCreator::GetInstance().createManaualChainPipeline();
+            return TA_PipelineCreator::GetInstance().createManualChainPipeline();
         }
 
         static TA_PipelineCreator::ManualStepsChainHolder * createManualStepsChainPipeline()

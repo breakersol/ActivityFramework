@@ -42,7 +42,7 @@ namespace CoreAsync {
         TA_PipelineCreator & operator = (const TA_PipelineCreator &creator) = delete;
 
         AutoChainHolder * createAutoChainPipeline();
-        ManualChainHolder * createManaualChainPipeline();
+        ManualChainHolder * createManualChainPipeline();
         ParallelHolder * createParallelPipeline();
         ManualStepsChainHolder * createManualStepsChainPipeline();
         ManualKeyActivityChainHolder * createManualKeyActivityChainPipeline();

@@ -58,7 +58,7 @@ namespace CoreAsync {
         return pHolder;
     }
 
-    TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > * TA_PipelineCreator::createManaualChainPipeline()
+    TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > * TA_PipelineCreator::createManualChainPipeline()
     {
         auto pHolder = new TA_PipelineHolder<TA_ManualChainPipeline>();
         m_holderList.push_back(pHolder);
