@@ -58,3 +58,16 @@ TEST_F(TA_ParallelPipelineTest, continuousExecuteTest)
     testFunc();
 }
 
+TEST_F(TA_ParallelPipelineTest, nestedExecuteTest)
+{
+    auto line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
+    auto a1 = CoreAsync::ITA_ActivityCreator::create<bool>([this]()->bool {return testFunc();});
+    line->add(a1);
+    line->execute();
+    if(line->waitingComplete())
+    {
+        bool res {false};
+        line->result(0, res);
+        EXPECT_EQ(true,res);
+    }
+}
