@@ -34,6 +34,9 @@ namespace CoreAsync {
 
         void taskCompleted(std::size_t id, TA_Variant var);
 
+        void clear() override final;
+        void reset() override final;
+
     protected:
         void run() override final;
 

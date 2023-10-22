@@ -63,4 +63,48 @@ namespace CoreAsync {
         }
         m_postSemaphore.release();
     }
+
+    void TA_ParallelPipeline::clear()
+    {
+        if(State::Busy == state())
+        {
+            assert(State::Busy != state());
+            TA_CommonTools::debugInfo(META_STRING("Clear pipeline failed!"));
+            return;
+        }
+        m_mutex.lock();
+        for(auto &pActivity : m_pActivityList)
+        {
+            if(pActivity)
+            {
+                delete pActivity;
+                pActivity = nullptr;
+            }
+        }
+        m_pActivityList.clear();
+        m_resultList.clear();
+        m_activityIds.clear();
+        m_waitingCount = 0;
+        m_postSemaphore.try_acquire();
+        m_mutex.unlock();
+        setState(State::Waiting);
+    }
+
+    void TA_ParallelPipeline::reset()
+    {
+        if(State::Ready != state())
+        {
+            assert(State::Ready == state());
+            TA_CommonTools::debugInfo(META_STRING("Reset pipeline failed!"));
+            return;
+        }
+        m_mutex.lock();
+        m_resultList.clear();
+        m_resultList.resize(m_pActivityList.size());
+        m_activityIds.clear();
+        m_waitingCount = 0;
+        m_postSemaphore.try_acquire();
+        m_mutex.unlock();
+        setState(State::Waiting);
+    }
 }
