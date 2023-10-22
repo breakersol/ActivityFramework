@@ -322,6 +322,7 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
 
     line->clear();
 
+    line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
     auto a1 = CoreAsync::ITA_ActivityCreator::create<bool>(testFunc);
     line->add(a1);
     line->execute();
