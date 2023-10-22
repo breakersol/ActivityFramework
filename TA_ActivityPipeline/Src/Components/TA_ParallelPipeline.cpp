@@ -40,11 +40,13 @@ namespace CoreAsync {
                 auto [ft, id] = TA_ThreadHolder::get().postActivity(TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i));
                 m_activityIds[i] = id;
             }
+            m_postSemaphore.release();
         }  
     }
 
     void TA_ParallelPipeline::taskCompleted(std::size_t id, TA_Variant var)
-    {  
+    {
+        m_postSemaphore.acquire();
         for(std::size_t idx = 0;idx < m_activityIds.size();++idx)
         {
             if(m_activityIds[idx] == id)
@@ -59,5 +61,6 @@ namespace CoreAsync {
                 break;
             }
         }
+        m_postSemaphore.release();
     }
 }

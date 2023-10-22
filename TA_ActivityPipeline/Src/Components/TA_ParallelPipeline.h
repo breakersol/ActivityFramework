@@ -19,6 +19,8 @@
 
 #include "TA_BasicPipeline.h"
 
+#include <semaphore>
+
 namespace CoreAsync {
     class ASYNC_PIPELINE_EXPORT TA_ParallelPipeline : public TA_BasicPipeline
     {
@@ -38,6 +40,7 @@ namespace CoreAsync {
     private:
         std::vector<std::size_t> m_activityIds;
         std::size_t m_waitingCount;
+        std::binary_semaphore m_postSemaphore {0};
 
     };
 
