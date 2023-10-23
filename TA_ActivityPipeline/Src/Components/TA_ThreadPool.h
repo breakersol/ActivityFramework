@@ -118,7 +118,7 @@ namespace CoreAsync {
                                     pActivity = nullptr;
                                 }
                             }
-                            if(trySteal(pActivity) && pActivity)
+                            if(trySteal(pActivity, idx) && pActivity)
                             {
                                 TA_Variant var = (*pActivity)();
                                 TA_Connection::active(this, &TA_ThreadPool::taskCompleted, pActivity->id(), var);
@@ -133,12 +133,14 @@ namespace CoreAsync {
             }
         }
 
-        bool trySteal(TA_BasicActivity *&stolenActivity)
+        bool trySteal(TA_BasicActivity *&stolenActivity, std::size_t excludedIdx)
         {
             std::uniform_int_distribution<std::size_t> distribution(0, m_states.size() - 1);
             for (std::size_t i = 0; i < m_states.size(); ++i)
             {
                 std::size_t targetIndex = distribution(m_randomGenerator) % m_states.size();
+                if (targetIndex == excludedIdx)
+                    continue;
                 if (!m_activityQueues[targetIndex].isEmpty())
                 {
                     if(m_activityQueues[targetIndex].pop(stolenActivity))

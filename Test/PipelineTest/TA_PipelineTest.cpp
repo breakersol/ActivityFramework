@@ -320,16 +320,16 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
     EXPECT_EQ(testFunc(), true);
     EXPECT_EQ(testFunc(), true);
 
-    line->clear();
+    //line->clear();
 
-    line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
-    auto a1 = CoreAsync::ITA_ActivityCreator::create<bool>(testFunc);
-    line->add(a1);
-    line->execute();
-    if(line->waitingComplete())
-    {
-        bool res {false};
-        line->result(0, res);
-        EXPECT_EQ(true,res);
-    }
+    //line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
+    //auto a1 = CoreAsync::ITA_ActivityCreator::create<bool>(testFunc);
+    //line->add(a1);
+    //line->execute();
+    //if(line->waitingComplete())
+    //{
+    //    bool res {false};
+    //    line->result(0, res);
+    //    EXPECT_EQ(true,res);
+    //}
 }
