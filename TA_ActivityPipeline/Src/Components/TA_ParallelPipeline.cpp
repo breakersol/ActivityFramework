@@ -61,7 +61,8 @@ namespace CoreAsync {
                 break;
             }
         }
-        m_postSemaphore.release();
+        if(m_waitingCount != 0)
+            m_postSemaphore.release();
     }
 
     void TA_ParallelPipeline::clear()
@@ -85,7 +86,6 @@ namespace CoreAsync {
         m_resultList.clear();
         m_activityIds.clear();
         m_waitingCount = 0;
-        m_postSemaphore.try_acquire();
         m_mutex.unlock();
         setState(State::Waiting);
     }
@@ -103,7 +103,6 @@ namespace CoreAsync {
         m_resultList.resize(m_pActivityList.size());
         m_activityIds.clear();
         m_waitingCount = 0;
-        m_postSemaphore.try_acquire();
         m_mutex.unlock();
         setState(State::Waiting);
     }
