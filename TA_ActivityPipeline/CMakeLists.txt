@@ -30,8 +30,8 @@ add_library(AsyncPipeline SHARED
     Src/Components/TA_BasicPipeline.cpp
     Src/Components/TA_BasicPipeline.h
     Src/Components/TA_CommonTools.h
-    Src/Components/TA_ParallelPipeline.cpp
-    Src/Components/TA_ParallelPipeline.h
+    Src/Components/TA_ConcurrentPipeline.cpp
+    Src/Components/TA_ConcurrentPipeline.h
     Src/Components/TA_PipelineCreator.cpp
     Src/Components/TA_PipelineCreator.h
     Src/Components/TA_PipelineHolder.h

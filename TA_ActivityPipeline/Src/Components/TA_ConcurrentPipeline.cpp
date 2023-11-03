@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-#include "Components/TA_ParallelPipeline.h"
+#include "Components/TA_ConcurrentPipeline.h"
 #include "Components/TA_CommonTools.h"
 #include "Components/TA_ThreadPool.h"
 
 #include <future>
 
 namespace CoreAsync {
-    TA_ParallelPipeline::TA_ParallelPipeline() : TA_BasicPipeline(), m_waitingCount(0)
+    TA_ConcurrentPipeline::TA_ConcurrentPipeline() : TA_BasicPipeline(), m_waitingCount(0)
     {
         
     }
 
-    void TA_ParallelPipeline::run()
+    void TA_ConcurrentPipeline::run()
     {
-        TA_Connection::connect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
+        TA_Connection::connect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ConcurrentPipeline::taskCompleted);
         std::size_t sIndex(std::move(startIndex()));
         std::size_t activitySize = m_pActivityList.size();
         if(activitySize > 0)
@@ -44,7 +44,7 @@ namespace CoreAsync {
         }  
     }
 
-    void TA_ParallelPipeline::taskCompleted(std::size_t id, TA_Variant var)
+    void TA_ConcurrentPipeline::taskCompleted(std::size_t id, TA_Variant var)
     {
         m_postSemaphore.acquire();
         for(std::size_t idx = 0;idx < m_activityIds.size();++idx)
@@ -52,11 +52,11 @@ namespace CoreAsync {
             if(m_activityIds[idx] == id)
             {
                 m_resultList[idx] = var;
-                TA_Connection::active(this, &TA_ParallelPipeline::activityCompleted, idx, std::forward<TA_Variant>(m_resultList[idx]));
+                TA_Connection::active(this, &TA_ConcurrentPipeline::activityCompleted, idx, std::forward<TA_Variant>(m_resultList[idx]));
                 if (--m_waitingCount == 0)
                 {
                     setState(State::Ready);
-                    TA_Connection::disconnect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ParallelPipeline::taskCompleted);
+                    TA_Connection::disconnect(&TA_ThreadHolder::get(), &TA_ThreadPool::taskCompleted, this, &TA_ConcurrentPipeline::taskCompleted);
                 }
                 break;
             }
@@ -65,7 +65,7 @@ namespace CoreAsync {
             m_postSemaphore.release();
     }
 
-    void TA_ParallelPipeline::clear()
+    void TA_ConcurrentPipeline::clear()
     {
         if(State::Busy == state())
         {
@@ -90,7 +90,7 @@ namespace CoreAsync {
         setState(State::Waiting);
     }
 
-    void TA_ParallelPipeline::reset()
+    void TA_ConcurrentPipeline::reset()
     {
         if(State::Ready != state())
         {

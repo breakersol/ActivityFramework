@@ -23,9 +23,9 @@ namespace CoreAsync {
     class ITA_PipelineCreator
     {
     public:
-        static TA_PipelineCreator::ParallelHolder * createParallelPipeline()
+        static TA_PipelineCreator::ConcurrentHolder * createConcurrentPipeline()
         {
-            return TA_PipelineCreator::GetInstance().createParallelPipeline();
+            return TA_PipelineCreator::GetInstance().createConcurrentPipeline();
         }
 
         static TA_PipelineCreator::AutoChainHolder * createAutoChainPipeline()

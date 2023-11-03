@@ -281,7 +281,7 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
     auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
     auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
 
-    auto line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
+    auto line = CoreAsync::ITA_PipelineCreator::createConcurrentPipeline();
     line->add(activity_1,activity_2,activity_3);
     line->execute();
     int res_0, res_1, res_2;
@@ -302,7 +302,7 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
         auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
         auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
 
-        auto line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
+        auto line = CoreAsync::ITA_PipelineCreator::createConcurrentPipeline();
         line->add(activity_1,activity_2,activity_3);
         line->execute();
         int res_0, res_1, res_2;
@@ -322,7 +322,7 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
 
     //line->clear();
 
-    //line = CoreAsync::ITA_PipelineCreator::createParallelPipeline();
+    //line = CoreAsync::ITA_PipelineCreator::createConcurrentPipeline();
     //auto a1 = CoreAsync::ITA_ActivityCreator::create<bool>(testFunc);
     //line->add(a1);
     //line->execute();

@@ -19,7 +19,7 @@
 
 #include "TA_AutoChainPipeline.h"
 #include "TA_ManualChainPipeline.h"
-#include "TA_ParallelPipeline.h"
+#include "TA_ConcurrentPipeline.h"
 #include "TA_ManualStepsChainPipeline.h"
 #include "TA_ManualKeyActivityChainPipeline.h"
 #include "TA_TypeList.h"
@@ -27,7 +27,7 @@
 
 namespace CoreAsync {
 
-    using Pipelines = TA_MetaTypelist<TA_AutoChainPipeline,TA_ManualChainPipeline,TA_ParallelPipeline,TA_ManualStepsChainPipeline,TA_ManualKeyActivityChainPipeline>;
+    using Pipelines = TA_MetaTypelist<TA_AutoChainPipeline,TA_ManualChainPipeline,TA_ConcurrentPipeline,TA_ManualStepsChainPipeline,TA_ManualKeyActivityChainPipeline>;
 
     template <typename Holder>
     class ASYNC_PIPELINE_EXPORT TA_MainPipelineHolder : public TA_MetaObject
@@ -237,7 +237,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ParallelPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ParallelPipeline> >>
+        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
@@ -257,7 +257,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ParallelPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ParallelPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ParallelPipeline> > >
+        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ConcurrentPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ConcurrentPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> > >
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
