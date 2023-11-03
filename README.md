@@ -18,6 +18,7 @@ Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the proje
 - [v0.1.2](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.2)
 - [v0.1.3](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.3)
 - [v0.1.4](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.4)
+- [v0.1.5](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.5)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
@@ -252,7 +253,7 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
 ```
 <br/>When the execution of activity_1 is finished, activity_2 will be executed automatically, and the result of activity_2 will be returned.
 
-<br/>2. Make two activities execute in parallel.
+<br/>2. Make two activities execute in concurrency.
 ```cpp
     std::function<int()> func_1 = [&]()->int {return m_pTest->sub(5,5);};
     auto activity_1 = CoreAsync::ITA_ActivityCreator::create(func_1);
@@ -262,7 +263,7 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
     auto var = (*activity_1)();
     auto res = var.get<int>();
 ```
-<br/>The execution of activity_1 will execute actvity_2 in parallel and finally return the result of activtiy_2.
+<br/>The execution of activity_1 will execute actvity_2 in concurrency and finally return the result of activtiy_2.
 
 <br/>3. Create branches on selected activity.
 ```cpp
@@ -287,9 +288,9 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
 <br/>The above code indicates that we first create two branches activity_4 and activity_5 on activity_3. At this layer, activity_3 represents branch index 0, while activity_4 and activity_5 represent 1 and 2, respectively. Similarly, we created the branch on activity_1 activity_2 and activity_3. **selectBranch({2,2})** means that when activity_1 is executed(**(*activity_1)()**), it will be executed in the order from activity_3 to activity_5 and return the result of activity_5. And activity_1 itself will not be executed.
 
 #### Pipelines
-Activity Pipeline currently offers five types of pipelines to use: **Auto Chain Pipeline, Parallel Pipeline, Manual Chain Pipeline, Manual Steps Chain Pipeline, and Manual Key Activity Chain Pipeline**, and all types of pipelines can be created through **ITA_PipelineCreator**.
+Activity Pipeline currently offers five types of pipelines to use: **Auto Chain Pipeline, Concurrent Pipeline, Manual Chain Pipeline, Manual Steps Chain Pipeline, and Manual Key Activity Chain Pipeline**, and all types of pipelines can be created through **ITA_PipelineCreator**.
 1. _Auto Chain Pipeline_: The pipeline will automatically execute all activites in order.
-2. _Parallel Pipeline_: All the activities in this pipeline will be executed in parallel.
+2. _Concurrent Pipeline_: All the activities in this pipeline will be executed in concurrency.
 3. _Manual Chain Pipeline_: Calling the execute function will only execute the next activity in order.
 4. _Manual Steps Chain Pipeline_: This pipeline inherits from _Manual Chain Pipeline_. The difference with _Manual Chain Pipeline_ is that the user can set the step value so that the pipeline executes as many activites as the step value each time.
 5. _Manual Key Activity Chain Pipeline_: This pipeline inherits from _Manual Chain Pipeline_. The difference with _Manual Chain Pipeline_ is that the user can set the key activity to make the pipeline repeat selected activity.
