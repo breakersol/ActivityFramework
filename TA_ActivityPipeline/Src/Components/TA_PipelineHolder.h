@@ -337,7 +337,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::state, META_STRING("state")},
                 TA_MetaField {&Raw::receivePipelineState, META_STRING("receivePipelineState")},
                 TA_MetaField {&Raw::setKeyActivityIndex, META_STRING("setKeyActivityIndex")},
-                TA_MetaField {&Raw::skipKeyActivity, META_STRING("skipKeyAcitivty")},
+                TA_MetaField {&Raw::skipKeyActivity, META_STRING("skipKeyActivity")},
                 TA_MetaField {&Raw::pipelineStateChanged, META_STRING("pipelineStateChanged")},
                 TA_MetaField {&Raw::pipelineReady, META_STRING("pipelineReady")},
                 TA_MetaField {&Raw::activityCompleted, META_STRING("activityCompleted")}
