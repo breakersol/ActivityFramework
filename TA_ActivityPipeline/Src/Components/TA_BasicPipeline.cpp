@@ -63,6 +63,22 @@ namespace CoreAsync {
         setState(State::Waiting);
     }
 
+    void TA_BasicPipeline::destroy()
+    {
+        m_mutex.lock();
+        for(auto &pActivity : m_pActivityList)
+        {
+            if(pActivity)
+            {
+                delete pActivity;
+                pActivity = nullptr;
+            }
+        }
+        m_pActivityList.clear();
+        m_resultList.clear();
+        m_mutex.unlock();
+    }
+
     void TA_BasicPipeline::reset()
     {
         if(State::Ready != m_state.load(std::memory_order_consume))

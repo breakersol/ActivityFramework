@@ -64,7 +64,7 @@ namespace CoreAsync {
 
         virtual ~TA_BasicPipeline()
         {
-            clear();
+            destroy();
         }
 
         virtual bool waitingComplete();
@@ -138,6 +138,8 @@ namespace CoreAsync {
                 activity = nullptr;
             }
         }
+
+        void destroy();
 
     protected:
         std::list<TA_BasicActivity *> m_pActivityList;
