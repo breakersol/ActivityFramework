@@ -19,6 +19,7 @@ Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the proje
 - [v0.1.3](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.3)
 - [v0.1.4](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.4)
 - [v0.1.5](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.5)
+- [v0.1.6](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.6)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
