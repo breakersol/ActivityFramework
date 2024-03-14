@@ -46,7 +46,7 @@ namespace CoreAsync
         TA_ActivityQueue & operator = (const TA_ActivityQueue &queue) = delete;
         TA_ActivityQueue & operator = (TA_ActivityQueue &&queue) = delete;
 
-        constexpr std::size_t size() const
+        static constexpr std::size_t size()
         {
             return N;
         }

@@ -35,8 +35,7 @@ namespace CoreAsync {
 
         struct ThreadState
         {
-            std::atomic_bool m_isBusy {false};
-            std::binary_semaphore resource {0};
+            std::counting_semaphore<ActivityQueue::size()> resource {0};
         };
 
     public:
@@ -85,10 +84,7 @@ namespace CoreAsync {
             std::size_t idx = activityId % m_threads.size();
             if(!m_activityQueues[idx].push(wrapperActivity))
                 return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
-            if(!m_states[idx].m_isBusy.load(std::memory_order_acquire))
-            {
-                m_states[idx].resource.release();
-            }
+            m_states[idx].resource.release();
             return std::make_pair(std::move(ft), activityId);
         }
 
@@ -107,7 +103,6 @@ namespace CoreAsync {
                         TA_BasicActivity *pActivity {nullptr};
                         while (!st.stop_requested()) {
                             m_states[idx].resource.acquire();
-                            m_states[idx].m_isBusy.store(true, std::memory_order_release);
                             while (!m_activityQueues[idx].isEmpty())
                             {
                                 if(m_activityQueues[idx].pop(pActivity) && pActivity)
@@ -125,7 +120,6 @@ namespace CoreAsync {
                                 delete pActivity;
                                 pActivity = nullptr;
                             }
-                            m_states[idx].m_isBusy.store(false, std::memory_order_release);
                         }
                         TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
                     }
