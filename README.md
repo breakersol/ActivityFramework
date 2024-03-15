@@ -1,5 +1,5 @@
-# Activity Framework     ![Build Status](https://img.shields.io/github/actions/workflow/status/breakersol/ActivityPipeline/cmake.yml)
-The framework focuses on providing a multi-functional pipeline supporting asynchronous processes with functions as the basic task unit. In addition to pipeline function, compile-time reflection, thread pool, a simple Qt-like signal and slot mechanism, and some other related features have been implemented. The Activity Pipeline is currently supported on Windows and Linux.
+# Activity Framework     ![Build Status](https://img.shields.io/github/actions/workflow/status/breakersol/ActivityFramework/cmake.yml)
+The framework focuses on providing a multi-functional pipeline supporting asynchronous processes with functions as the basic task unit. In addition to pipeline function, compile-time reflection, thread pool, a simple Qt-like signal and slot mechanism, and some other related features have been implemented. The Activity Framework is currently supported on Windows and Linux.
 ## Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 ### Prerequisites
