@@ -68,16 +68,17 @@ namespace CoreAsync {
         auto postActivity(TA_BasicActivity *pActivity, bool autoDelete = false)
         {
             if(!pActivity)
-                return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
+                return std::make_pair(std::future<TA_Variant> {}, std::size_t {});           
             SharedPromise pr {std::make_shared<std::promise<TA_Variant>>()};
-            std::future<TA_Variant> ft {pr->get_future()}; 
+            std::future<TA_Variant> ft {pr->get_future()};
             auto wrapperActivity = new TA_LinkedActivity<LambdaType<TA_Variant,SharedPromise>,INVALID_INS,TA_Variant,SharedPromise>([pActivity, autoDelete](SharedPromise pr)->TA_Variant {
-                TA_Variant var = (*pActivity)();
-                pr->set_value(var);
+                std::unique_ptr<TA_BasicActivity> pSmartActivity {};
                 if(autoDelete)
                 {
-                    delete pActivity;
+                    pSmartActivity.reset(pActivity);
                 }
+                TA_Variant var = (*pActivity)();
+                pr->set_value(var);
                 return var;
             }, std::move(pr));
             auto activityId {wrapperActivity->id()};
