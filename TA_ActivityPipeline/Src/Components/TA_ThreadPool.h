@@ -26,7 +26,6 @@
 #include <vector>
 #include <semaphore>
 #include <future>
-#include <random>
 
 namespace CoreAsync {
     class TA_ThreadPool : public TA_MetaObject
@@ -39,7 +38,7 @@ namespace CoreAsync {
         };
 
     public:
-        explicit TA_ThreadPool(std::size_t size = std::thread::hardware_concurrency()) : m_states(size), m_activityQueues(size)
+        explicit TA_ThreadPool(std::size_t size = std::thread::hardware_concurrency()) : m_states(size), m_activityQueues(size), m_stealIdxs(size)
         {
             init();
         }
@@ -99,6 +98,7 @@ namespace CoreAsync {
         {  
             for(std::size_t idx = 0; idx < m_states.size();++idx)
             {
+                m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
                 m_threads.emplace_back(
                     [&, idx](const std::stop_token &st) {
                         TA_BasicActivity *pActivity {nullptr};
@@ -130,17 +130,18 @@ namespace CoreAsync {
 
         bool trySteal(TA_BasicActivity *&stolenActivity, std::size_t excludedIdx)
         {
-            std::uniform_int_distribution<std::size_t> distribution(0, m_states.size() - 1);
-            for (std::size_t i = 0; i < m_states.size(); ++i)
+            std::size_t startIdx {m_stealIdxs[excludedIdx]};
+            std::size_t idx {(startIdx + 1) % m_threads.size()};
+            while(idx != startIdx)
             {
-                std::size_t targetIndex = distribution(m_randomGenerator) % m_states.size();
-                if (targetIndex == excludedIdx)
-                    continue;
-                if (!m_activityQueues[targetIndex].isEmpty())
+                if(idx != excludedIdx && !m_activityQueues[idx].isEmpty())
                 {
-                    if(m_activityQueues[targetIndex].pop(stolenActivity))
+                    if(m_activityQueues[idx].pop(stolenActivity))
+                    {
                         return true;
+                    }
                 }
+                idx = (idx + 1) % m_threads.size();
             }
             return false;
         }
@@ -152,7 +153,7 @@ namespace CoreAsync {
         std::vector<ThreadState> m_states;;
         std::vector<std::jthread> m_threads;
         std::vector<ActivityQueue> m_activityQueues;
-        std::mt19937 m_randomGenerator;
+        std::vector<std::size_t> m_stealIdxs;
     };
 
     struct TA_ThreadHolder
