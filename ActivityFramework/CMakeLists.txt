@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(AsyncPipeline LANGUAGES CXX)
+project(ActivityFramework LANGUAGES CXX)
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fms-extensions")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -17,8 +17,8 @@ endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/Src)
 
-add_library(AsyncPipeline SHARED
-    Src/TA_ActivityPipeline_global.h
+add_library(ActivityFramework SHARED
+    Src/TA_ActivityFramework_global.h
     Src/ITA_PipelineCreator.h
     Src/ITA_Connection.h
     Src/ITA_ActivityCreator.h
@@ -60,5 +60,5 @@ add_library(AsyncPipeline SHARED
     Src/Components/TA_CommonTools.cpp
 )
 
-target_compile_definitions(AsyncPipeline PRIVATE ASYNCPIPELINE_LIBRARY)
+target_compile_definitions(ActivityFramework PRIVATE ACTIVITY_FRAMEWORK_LIBRARY)
 

@@ -23,7 +23,7 @@ namespace CoreAsync {
     class TA_AutoChainPipeline : public TA_BasicPipeline
     { 
     public:
-        ASYNC_PIPELINE_EXPORT TA_AutoChainPipeline();
+        ACTIVITY_FRAMEWORK_EXPORT TA_AutoChainPipeline();
         virtual ~TA_AutoChainPipeline(){}
 
         TA_AutoChainPipeline(const TA_AutoChainPipeline &activity) = delete;
@@ -38,7 +38,7 @@ namespace CoreAsync {
     namespace Reflex
     {
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_AutoChainPipeline> : TA_MetaTypeInfo<TA_AutoChainPipeline,TA_BasicPipeline>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_AutoChainPipeline> : TA_MetaTypeInfo<TA_AutoChainPipeline,TA_BasicPipeline>
         {
             static constexpr TA_MetaFieldList fields = {};
         };

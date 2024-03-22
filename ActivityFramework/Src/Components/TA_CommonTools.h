@@ -26,7 +26,7 @@
 #include <sstream>
 
 #include "TA_MarcoDefine.h"
-#include "TA_ActivityPipeline_global.h"
+#include "TA_ActivityFramework_global.h"
 
 namespace CoreAsync
 {
@@ -589,7 +589,7 @@ namespace CoreAsync
     class StringUtils
     {
     public:
-        static ASYNC_PIPELINE_EXPORT std::vector<std::string> split(const std::string &source, char delimiter);
+        static ACTIVITY_FRAMEWORK_EXPORT std::vector<std::string> split(const std::string &source, char delimiter);
     };
 }
 

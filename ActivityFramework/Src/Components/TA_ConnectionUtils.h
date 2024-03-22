@@ -139,9 +139,9 @@ namespace CoreAsync
     class TA_ConnectionResponder
     {
     public:
-        ASYNC_PIPELINE_EXPORT static TA_ConnectionResponder & GetIns();
+        ACTIVITY_FRAMEWORK_EXPORT static TA_ConnectionResponder & GetIns();
 
-        ASYNC_PIPELINE_EXPORT bool response(TA_BasicActivity *&pActivity, TA_ConnectionType type);
+        ACTIVITY_FRAMEWORK_EXPORT bool response(TA_BasicActivity *&pActivity, TA_ConnectionType type);
 
     private:
         TA_ConnectionResponder();

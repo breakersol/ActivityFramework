@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(PipelineTest LANGUAGES CXX)
+project(ActivityFrameworkTest LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,76 +8,76 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE_DEBUG "Debug")
 set(CMAKE_BUILD_TYPE_RELEASE "Release")
 
-include_directories(../TA_ActivityPipeline/Src)
+include_directories(../ActivityFramework/Src)
 include_directories(./ThirdParty/googletest/googletest/include)
 
-add_executable(PipelineTest PipelineTest/main.cpp
-    PipelineTest/TA_ActivityTest.cpp
-    PipelineTest/TA_ActivityTest.h
-    PipelineTest/TA_PipelineTest.cpp
-    PipelineTest/TA_PipelineTest.h
-    PipelineTest/TA_ConnectionTest.cpp
-    PipelineTest/TA_ConnectionTest.h
-    PipelineTest/TA_MetaReflexTest.cpp
-    PipelineTest/TA_MetaReflexTest.h
-    PipelineTest/main.cpp
-    PipelineTest/MetaTest.cpp
-    PipelineTest/MetaTest.h
-    PipelineTest/TA_ActivityQueueTest.cpp
-    PipelineTest/TA_ActivityQueueTest.h
-    PipelineTest/TA_ThreadPoolTest.h
-    PipelineTest/TA_ThreadPoolTest.cpp
-    PipelineTest/TA_CommonToolsTest.h
-    PipelineTest/TA_CommonToolsTest.cpp
+add_executable(ActivityFrameworkTest ActivityFrameworkTest/main.cpp
+    ActivityFrameworkTest/TA_ActivityTest.cpp
+    ActivityFrameworkTest/TA_ActivityTest.h
+    ActivityFrameworkTest/TA_PipelineTest.cpp
+    ActivityFrameworkTest/TA_PipelineTest.h
+    ActivityFrameworkTest/TA_ConnectionTest.cpp
+    ActivityFrameworkTest/TA_ConnectionTest.h
+    ActivityFrameworkTest/TA_MetaReflexTest.cpp
+    ActivityFrameworkTest/TA_MetaReflexTest.h
+    ActivityFrameworkTest/main.cpp
+    ActivityFrameworkTest/MetaTest.cpp
+    ActivityFrameworkTest/MetaTest.h
+    ActivityFrameworkTest/TA_ActivityQueueTest.cpp
+    ActivityFrameworkTest/TA_ActivityQueueTest.h
+    ActivityFrameworkTest/TA_ThreadPoolTest.h
+    ActivityFrameworkTest/TA_ThreadPoolTest.cpp
+    ActivityFrameworkTest/TA_CommonToolsTest.h
+    ActivityFrameworkTest/TA_CommonToolsTest.cpp
 )
 
 if(MSVC)
     message(STATUS "Configuring for MSVC")
-    target_link_libraries(PipelineTest PRIVATE
-        $<$<CONFIG:Debug>:AsyncPipeline_d>
-        $<$<CONFIG:Release>:AsyncPipeline>
+    target_link_libraries(ActivityFrameworkTest PRIVATE
+        $<$<CONFIG:Debug>:ActivityFramework_d>
+        $<$<CONFIG:Release>:ActivityFramework>
     )
-    target_link_libraries(PipelineTest PRIVATE
+    target_link_libraries(ActivityFrameworkTest PRIVATE
         $<$<CONFIG:Debug>:gtest>
         $<$<CONFIG:Release>:gtest>
     )
     if(CMAKE_BUILD_TYPE STREQUAL ${CMAKE_BUILD_TYPE_DEBUG})
-        target_link_directories(PipelineTest PRIVATE ThirdParty/googletest/output/win32/Debug)
+        target_link_directories(ActivityFrameworkTest PRIVATE ThirdParty/googletest/output/win32/Debug)
     else()
-        target_link_directories(PipelineTest PRIVATE ThirdParty/googletest/output/win32/Release)
+        target_link_directories(ActivityFrameworkTest PRIVATE ThirdParty/googletest/output/win32/Release)
     endif()
-    target_link_directories(PipelineTest PRIVATE ../build/TA_ActivityPipeline/output)
+    target_link_directories(ActivityFrameworkTest PRIVATE ../build/ActivityFramework/output)
 
     set(DLL_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
-    set(ASYNC_PIPELINE_DIR ../TA_ActivityPipeline/output)
+    set(ACTIVITY_FRAMEWORK_DIR ../ActivityFramework/output)
     set(GTEST_DIR ../../Test/ThirdParty/googletest/output/win32)
 
     add_custom_command(
-        TARGET PipelineTest POST_BUILD
+        TARGET ActivityFrameworkTest POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-            "$<IF:$<CONFIG:Release>,${ASYNC_PIPELINE_DIR}/Release/AsyncPipeline.dll,${ASYNC_PIPELINE_DIR}/Debug/AsyncPipeline_d.dll>"
+            "$<IF:$<CONFIG:Release>,${ACTIVITY_FRAMEWORK_DIR}/Release/ActivityFramework.dll,${ACTIVITY_FRAMEWORK_DIR}/Debug/ActivityFramework_d.dll>"
             "$<IF:$<CONFIG:Release>,${DLL_TARGET_DIR}/Release,${DLL_TARGET_DIR}/Debug>"
     )
 
     add_custom_command(
-        TARGET PipelineTest POST_BUILD
+        TARGET ActivityFrameworkTest POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
             "$<IF:$<CONFIG:Release>,${GTEST_DIR}/Release/gtest.dll,${GTEST_DIR}/Debug/gtest.dll>"
             "$<IF:$<CONFIG:Release>,${DLL_TARGET_DIR}/Release,${DLL_TARGET_DIR}/Debug>"
     )
 elseif(UNIX)
     message(STATUS "Configuring for GCC")
-    target_link_libraries(PipelineTest PRIVATE
-        $<$<CONFIG:Debug>:AsyncPipeline>
-        $<$<CONFIG:Release>:AsyncPipeline>
+    target_link_libraries(ActivityFrameworkTest PRIVATE
+        $<$<CONFIG:Debug>:ActivityFramework>
+        $<$<CONFIG:Release>:ActivityFramework>
     )
-    target_link_libraries(PipelineTest PRIVATE
+    target_link_libraries(ActivityFrameworkTest PRIVATE
         $<$<CONFIG:Debug>:gtest>
         $<$<CONFIG:Release>:gtest>
     )
-    target_link_directories(PipelineTest PRIVATE ThirdParty/googletest/output)
-    target_link_directories(PipelineTest PRIVATE ../build/TA_ActivityPipeline/output)
+    target_link_directories(ActivityFrameworkTest PRIVATE ThirdParty/googletest/output)
+    target_link_directories(ActivityFrameworkTest PRIVATE ../build/ActivityFramework/output)
 endif()
 
-install(TARGETS PipelineTest
+install(TARGETS ActivityFrameworkTest
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

@@ -22,7 +22,7 @@
 #include <semaphore>
 
 namespace CoreAsync {
-    class ASYNC_PIPELINE_EXPORT TA_ConcurrentPipeline : public TA_BasicPipeline
+    class ACTIVITY_FRAMEWORK_EXPORT TA_ConcurrentPipeline : public TA_BasicPipeline
     {
     public:
         TA_ConcurrentPipeline();
@@ -50,7 +50,7 @@ namespace CoreAsync {
     namespace Reflex
     {
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_ConcurrentPipeline> : TA_MetaTypeInfo<TA_ConcurrentPipeline,TA_BasicPipeline>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ConcurrentPipeline> : TA_MetaTypeInfo<TA_ConcurrentPipeline,TA_BasicPipeline>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::taskCompleted, META_STRING("taskCompleted")},

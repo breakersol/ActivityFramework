@@ -23,15 +23,15 @@ namespace CoreAsync {
     class TA_ManualKeyActivityChainPipeline : public TA_ManualChainPipeline
     {
     public:
-        ASYNC_PIPELINE_EXPORT TA_ManualKeyActivityChainPipeline();
+        ACTIVITY_FRAMEWORK_EXPORT TA_ManualKeyActivityChainPipeline();
         virtual ~TA_ManualKeyActivityChainPipeline(){}
 
         TA_ManualKeyActivityChainPipeline(const TA_ManualKeyActivityChainPipeline &activity) = delete;
         TA_ManualKeyActivityChainPipeline(TA_ManualKeyActivityChainPipeline &&activity) = delete;
         TA_ManualKeyActivityChainPipeline & operator = (const TA_ManualKeyActivityChainPipeline &) = delete;
 
-        void ASYNC_PIPELINE_EXPORT setKeyActivity(int index);
-        void ASYNC_PIPELINE_EXPORT skipKeyActivity();
+        void ACTIVITY_FRAMEWORK_EXPORT setKeyActivity(int index);
+        void ACTIVITY_FRAMEWORK_EXPORT skipKeyActivity();
         void clear() override final;
         void reset() override final;
 
@@ -46,7 +46,7 @@ namespace CoreAsync {
     namespace Reflex
     {
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_ManualKeyActivityChainPipeline> : TA_MetaTypeInfo<TA_ManualKeyActivityChainPipeline,TA_BasicPipeline>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ManualKeyActivityChainPipeline> : TA_MetaTypeInfo<TA_ManualKeyActivityChainPipeline,TA_BasicPipeline>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::setKeyActivity, META_STRING("setKeyActivity")},

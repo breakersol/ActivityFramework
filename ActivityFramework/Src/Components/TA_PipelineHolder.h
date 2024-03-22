@@ -30,7 +30,7 @@ namespace CoreAsync {
     using Pipelines = TA_MetaTypelist<TA_AutoChainPipeline,TA_ManualChainPipeline,TA_ConcurrentPipeline,TA_ManualStepsChainPipeline,TA_ManualKeyActivityChainPipeline>;
 
     template <typename Holder>
-    class ASYNC_PIPELINE_EXPORT TA_MainPipelineHolder : public TA_MetaObject
+    class ACTIVITY_FRAMEWORK_EXPORT TA_MainPipelineHolder : public TA_MetaObject
     {
         friend class TA_PipelineCreator;
     public:
@@ -167,7 +167,7 @@ namespace CoreAsync {
     };
 
     template <EnableHolderType Pip>
-    class ASYNC_PIPELINE_EXPORT TA_PipelineHolder : public TA_MainPipelineHolder<TA_PipelineHolder<Pip> >
+    class ACTIVITY_FRAMEWORK_EXPORT TA_PipelineHolder : public TA_MainPipelineHolder<TA_PipelineHolder<Pip> >
     {
     public:
         TA_PipelineHolder() : TA_MainPipelineHolder<TA_PipelineHolder<Pip> >(new std::decay_t<Pip>()), m_pPipeline(TA_MainPipelineHolder<TA_PipelineHolder<Pip> >::template raw<std::decay_t<Pip> >())
@@ -209,7 +209,7 @@ namespace CoreAsync {
     namespace Reflex
     {
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> >>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
@@ -229,7 +229,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_AutoChainPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_AutoChainPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> > >
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_AutoChainPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_AutoChainPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> > >
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
@@ -237,7 +237,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> >>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
@@ -257,7 +257,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ConcurrentPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ConcurrentPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> > >
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ConcurrentPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ConcurrentPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> > >
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
@@ -265,7 +265,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> >>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
@@ -285,7 +285,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ManualChainPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ManualChainPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > >
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ManualChainPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ManualChainPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > >
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
@@ -293,7 +293,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> >>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
@@ -314,7 +314,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ManualStepsChainPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ManualStepsChainPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> > >
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ManualStepsChainPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ManualStepsChainPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> > >
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
@@ -323,7 +323,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> >>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
@@ -345,7 +345,7 @@ namespace CoreAsync {
         };
 
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > >
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > : TA_MetaTypeInfo<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline>, TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > >
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
