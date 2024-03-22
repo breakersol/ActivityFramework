@@ -20,19 +20,19 @@
 #include <typeinfo>
 #include <memory>
 
-#include "../TA_ActivityPipeline_global.h"
+#include "../TA_ActivityFramework_global.h"
 
 namespace CoreAsync {
     class TA_Variant
     {
     public:
-        ASYNC_PIPELINE_EXPORT TA_Variant();
-        ASYNC_PIPELINE_EXPORT ~TA_Variant();
+        ACTIVITY_FRAMEWORK_EXPORT TA_Variant();
+        ACTIVITY_FRAMEWORK_EXPORT ~TA_Variant();
 
-        ASYNC_PIPELINE_EXPORT TA_Variant(const TA_Variant &var);
-        ASYNC_PIPELINE_EXPORT TA_Variant(TA_Variant &&var);
-        ASYNC_PIPELINE_EXPORT TA_Variant & operator = (const TA_Variant &);
-        ASYNC_PIPELINE_EXPORT TA_Variant & operator = (TA_Variant &&);
+        ACTIVITY_FRAMEWORK_EXPORT TA_Variant(const TA_Variant &var);
+        ACTIVITY_FRAMEWORK_EXPORT TA_Variant(TA_Variant &&var);
+        ACTIVITY_FRAMEWORK_EXPORT TA_Variant & operator = (const TA_Variant &);
+        ACTIVITY_FRAMEWORK_EXPORT TA_Variant & operator = (TA_Variant &&);
 
         template<typename VAR>
         void set(VAR v)

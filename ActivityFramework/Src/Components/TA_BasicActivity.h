@@ -21,7 +21,7 @@
 #include <atomic>
 
 #include "TA_Variant.h"
-#include "TA_ActivityPipeline_global.h"
+#include "TA_ActivityFramework_global.h"
 
 namespace CoreAsync {
     class TA_BasicActivity
@@ -48,7 +48,7 @@ namespace CoreAsync {
         }
 
     private:
-        static std::atomic_size_t ASYNC_PIPELINE_EXPORT m_count;
+        static std::atomic_size_t ACTIVITY_FRAMEWORK_EXPORT m_count;
         const std::size_t m_id;
 
     };

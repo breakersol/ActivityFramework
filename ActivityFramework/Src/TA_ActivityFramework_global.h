@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-#ifndef TA_ACTIVITYPIPELINE_GLOBAL_H
-#define TA_ACTIVITYPIPELINE_GLOBAL_H
+#ifndef TA_ACTIVITYFRAMEWORK_GLOBAL_H
+#define TA_ACTIVITYFRAMEWORK_GLOBAL_H
 
 #pragma warning(disable: 4251)
 
 #if defined( _WIN32 )
-#if defined( ASYNCPIPELINE_LIBRARY )
-#define ASYNC_PIPELINE_EXPORT __declspec(dllexport)
+#if defined( ACTIVITY_FRAMEWORK_LIBRARY )
+#define ACTIVITY_FRAMEWORK_EXPORT __declspec(dllexport)
 #else
-#define ASYNC_PIPELINE_EXPORT __declspec(dllimport)
+#define ACTIVITY_FRAMEWORK_EXPORT __declspec(dllimport)
 #endif
 #else
-#define ASYNC_PIPELINE_EXPORT
+#define ACTIVITY_FRAMEWORK_EXPORT
 #endif
 
-#endif // TA_ACTIVITYPIPELINE_GLOBAL_H
+#endif // TA_ACTIVITYFRAMEWORK_GLOBAL_H

@@ -23,7 +23,7 @@ namespace CoreAsync {
     class TA_ManualChainPipeline : public TA_BasicPipeline
     {
     public:
-        ASYNC_PIPELINE_EXPORT TA_ManualChainPipeline();
+        ACTIVITY_FRAMEWORK_EXPORT TA_ManualChainPipeline();
         virtual ~TA_ManualChainPipeline(){}
 
         TA_ManualChainPipeline(const TA_ManualChainPipeline &activity) = delete;
@@ -51,7 +51,7 @@ namespace CoreAsync {
     namespace Reflex
     {
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_ManualChainPipeline> : TA_MetaTypeInfo<TA_ManualChainPipeline,TA_BasicPipeline>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ManualChainPipeline> : TA_MetaTypeInfo<TA_ManualChainPipeline,TA_BasicPipeline>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::currentIndex, META_STRING("currentIndex")},

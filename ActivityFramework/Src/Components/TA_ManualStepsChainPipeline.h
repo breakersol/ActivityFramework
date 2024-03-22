@@ -23,14 +23,14 @@ namespace CoreAsync {
     class TA_ManualStepsChainPipeline : public TA_ManualChainPipeline
     {
     public:
-        ASYNC_PIPELINE_EXPORT TA_ManualStepsChainPipeline();
+        ACTIVITY_FRAMEWORK_EXPORT TA_ManualStepsChainPipeline();
         virtual ~TA_ManualStepsChainPipeline(){}
 
         TA_ManualStepsChainPipeline(const TA_ManualStepsChainPipeline &activity) = delete;
         TA_ManualStepsChainPipeline(TA_ManualStepsChainPipeline &&activity) = delete;
         TA_ManualStepsChainPipeline & operator = (const TA_ManualStepsChainPipeline &) = delete;
 
-        void ASYNC_PIPELINE_EXPORT setSteps(unsigned int steps);
+        void ACTIVITY_FRAMEWORK_EXPORT setSteps(unsigned int steps);
 
         void clear() override final;
         void reset() override final;
@@ -46,7 +46,7 @@ namespace CoreAsync {
     namespace Reflex
     {
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_ManualStepsChainPipeline> : TA_MetaTypeInfo<TA_ManualStepsChainPipeline,TA_BasicPipeline>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ManualStepsChainPipeline> : TA_MetaTypeInfo<TA_ManualStepsChainPipeline,TA_BasicPipeline>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::setSteps, META_STRING("setSteps")},

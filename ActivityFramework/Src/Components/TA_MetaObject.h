@@ -17,7 +17,7 @@
 #ifndef TA_METAOBJECT_H
 #define TA_METAOBJECT_H
 
-#include "TA_ActivityPipeline_global.h"
+#include "TA_ActivityFramework_global.h"
 
 #include <string_view>
 
@@ -27,7 +27,7 @@ namespace CoreAsync
     class TA_ConnectionsRegister;
     class TA_ConnectionsRecorder;
 
-    class ASYNC_PIPELINE_EXPORT TA_MetaObject
+    class ACTIVITY_FRAMEWORK_EXPORT TA_MetaObject
     {
         friend class TA_Connection;
         friend class TA_ConnectionsRegister;

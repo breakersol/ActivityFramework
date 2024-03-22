@@ -34,7 +34,7 @@ namespace CoreAsync {
         {x}->std::convertible_to<TA_BasicActivity *>;
     };
 
-    class ASYNC_PIPELINE_EXPORT TA_BasicPipeline : public TA_MetaObject
+    class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject
     {  
     protected:
         using Milliseconds = std::chrono::duration<int,std::milli>;
@@ -159,7 +159,7 @@ namespace CoreAsync {
     namespace Reflex
     {
         template <>
-        struct ASYNC_PIPELINE_EXPORT TA_TypeInfo<TA_BasicPipeline> : TA_MetaTypeInfo<TA_BasicPipeline>
+        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_BasicPipeline> : TA_MetaTypeInfo<TA_BasicPipeline>
         {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {Raw::State::Busy, META_STRING("Busy")},
