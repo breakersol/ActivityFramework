@@ -113,6 +113,42 @@ struct TA_MemberTypeTrait
     static constexpr bool noneStaticMemberFuncFlag = IsNonStaticMemberFunc<T>::value;
 };
 
+template <typename READ, typename WRITE>
+struct TA_MetaPropertyOperation
+{
+    constexpr TA_MetaPropertyOperation(READ = {}, WRITE = {})
+    {
+
+    }
+
+    static constexpr auto readOperation {READ::data()};
+    static constexpr auto writeOperation {WRITE::data()};
+};
+
+template <typename ...OPERATIONS>
+struct TA_MetaPropertyOperations
+{
+    constexpr TA_MetaPropertyOperations(OPERATIONS ...ops) : m_operations(ops...)
+    {
+
+    }
+
+    constexpr std::size_t size() const
+    {
+        return sizeof...(OPERATIONS);
+    }
+
+    template <std::size_t IDX>
+    constexpr auto getOperation() const
+    {
+        return std::get<IDX>(m_operations);
+    }
+
+private:
+     std::tuple<OPERATIONS...> m_operations;
+
+};
+
 template <typename T, typename NAME>
 struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>
 {
@@ -283,6 +319,18 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
         {
             return std::invoke(target,std::forward<PARAS>(paras)...);
         }
+    }
+
+    static constexpr std::size_t operationSize()
+    {
+        return TA_TypeInfo<T>::operations.size();
+    }
+
+    template <std::size_t IDX>
+    static constexpr decltype(auto) findMethods()
+    {
+        using OpType = decltype(TA_TypeInfo<T>::operations.template getOperation<IDX>());
+        return std::tuple{findType(META_STRING(OpType::readOperation)), findType(META_STRING(OpType::writeOperation))};
     }
 
     template <typename VALUE>

@@ -226,6 +226,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::pipelineReady, META_STRING("pipelineReady")},
                 TA_MetaField {&Raw::activityCompleted, META_STRING("activityCompleted")}
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -234,6 +235,7 @@ namespace CoreAsync {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -254,6 +256,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::pipelineReady, META_STRING("pipelineReady")},
                 TA_MetaField {&Raw::activityCompleted, META_STRING("activityCompleted")}
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -262,6 +265,7 @@ namespace CoreAsync {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -282,6 +286,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::pipelineReady, META_STRING("pipelineReady")},
                 TA_MetaField {&Raw::activityCompleted, META_STRING("activityCompleted")}
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -290,6 +295,7 @@ namespace CoreAsync {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -311,6 +317,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::pipelineReady, META_STRING("pipelineReady")},
                 TA_MetaField {&Raw::activityCompleted, META_STRING("activityCompleted")}
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -320,6 +327,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::destroy, META_STRING("destroy")},
                 TA_MetaField {&Raw::setSteps, META_STRING("setSteps")}
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -342,6 +350,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::pipelineReady, META_STRING("pipelineReady")},
                 TA_MetaField {&Raw::activityCompleted, META_STRING("activityCompleted")}
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
 
         template <>
@@ -352,6 +361,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::setKeyActivityIndex, META_STRING("setKeyActivityIndex")},
                 TA_MetaField {&Raw::skipKeyActivity, META_STRING("skipKeyActivity")}
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
     }
 }

@@ -61,6 +61,7 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
             };
+            static constexpr TA_MetaPropertyOperations operations = {};
         };
     }
 }

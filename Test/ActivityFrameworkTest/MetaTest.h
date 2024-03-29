@@ -41,6 +41,9 @@ public:
 class M2Test : public CoreAsync::TA_MetaObject
 {
 public:
+    void setMx(int x) {mx = x;}
+    int getMx() const {return mx;}
+
     int mx {5};
 
 };
@@ -100,6 +103,7 @@ struct TA_TypeInfo<TestA> : TA_MetaTypeInfo<TestA>
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::print, META_STRING("print")},
     };
+    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -108,6 +112,7 @@ struct TA_TypeInfo<TestB> : TA_MetaTypeInfo<TestB>
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::deduct, META_STRING("deduct")},
     };
+    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -116,6 +121,7 @@ struct TA_TypeInfo<BaseTest> : TA_MetaTypeInfo<BaseTest,TestA>
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::sub, META_STRING("sub")},
     };
+    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -124,6 +130,7 @@ struct TA_TypeInfo<OtherTest> : TA_MetaTypeInfo<OtherTest,TestB>
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::product, META_STRING("product")},
     };
+    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -143,6 +150,7 @@ struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest,BaseTest,OtherTest>
         TA_MetaField {&Raw::startTest, META_STRING("startTest")},
         TA_MetaField {&Raw::printTest, META_STRING("printTest")}
     };
+    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -150,6 +158,11 @@ struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
 {
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::mx, META_STRING("mx")},
+        TA_MetaField {&Raw::setMx, META_STRING("setMx")},
+        TA_MetaField {&Raw::getMx, META_STRING("getMx")},
+    };
+    static constexpr TA_MetaPropertyOperations operations = {
+        TA_MetaPropertyOperation {META_STRING("getMx"), META_STRING("setMx")}
     };
 };
 
