@@ -327,10 +327,14 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
     }
 
     template <std::size_t IDX>
-    static constexpr decltype(auto) findMethods()
+    static constexpr decltype(auto) findPropertyOperation()
     {
         using OpType = decltype(TA_TypeInfo<T>::operations.template getOperation<IDX>());
-        return std::tuple{findType(META_STRING(OpType::readOperation)), findType(META_STRING(OpType::writeOperation))};
+        constexpr auto read {findType(META_STRING(OpType::readOperation))};
+        constexpr auto write {findType(META_STRING(OpType::writeOperation))};
+        static_assert(!std::is_function_v<decltype(read)>, "The read operation found is wrong.");
+        static_assert(!std::is_function_v<decltype(write)>, "The write operation found is wrong.");
+        return std::tuple {read, write};
     }
 
     template <typename VALUE>

@@ -90,7 +90,7 @@ TEST_F(TA_MetaReflexTest, findEnum)
 TEST_F(TA_MetaReflexTest, findMethodsTest)
 {
     EXPECT_EQ(CoreAsync::Reflex::TA_TypeInfo<M2Test>::operations.size() == 1, true);
-    auto op = CoreAsync::Reflex::TA_TypeInfo<M2Test>::findMethods<0>();
+    auto op = CoreAsync::Reflex::TA_TypeInfo<M2Test>::findPropertyOperation<0>();
     M2Test m2;
     (m2.*std::get<1>(op))(10);
     auto res = (m2.*std::get<0>(op))();
