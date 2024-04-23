@@ -157,6 +157,32 @@ concept Iterator = requires (T t)
     {++std::declval<std::decay_t<T> &>()};
 };
 
+template <typename CType>
+concept StdContainerType = requires(CType ct)
+{
+    {std::decay_t<CType>::size_type};
+};
+
+template <typename CSType>
+concept ValidCST = !std::is_fundamental<CSType>::value &&
+                   !std::is_enum<CSType>::value &&
+                   !std::is_union<CSType>::value &&
+                   !std::is_array<CSType>::value &&
+                   !std::is_pointer<CSType>::value &&
+                   !std::is_null_pointer<CSType>::value &&
+                   !StdContainerType<CSType> &&
+                   std::is_class<CSType>::value;
+
+template <typename CSType>
+concept CustomType = requires(CSType ct)
+{
+    {ct} -> ValidCST;
+};
+
+template <typename NCSType>
+concept NonCustomType = !CustomType<NCSType>;
+
+
 }
 
 #endif // TA_TYPEFILTER_H
