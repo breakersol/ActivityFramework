@@ -8,7 +8,7 @@ namespace CoreAsync
     using EndianConversionTypes = TA_MetaTypelist<
         uint8_t, uint16_t, uint32_t, uint64_t,
         int8_t, int16_t, int32_t, int64_t,
-        float, double, long double,
+        float, double, /*long double,*/
         char, signed char, unsigned char, wchar_t,
         char16_t, char32_t, bool
         >;
