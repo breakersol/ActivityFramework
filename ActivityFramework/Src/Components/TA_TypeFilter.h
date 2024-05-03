@@ -160,7 +160,7 @@ concept Iterator = requires (T t)
 template <typename CType>
 concept StdContainerType = requires(CType ct)
 {
-    {std::decay_t<CType>::size_type};
+    {typename std::decay_t<CType>::size_type {}};
 };
 
 template <typename CSType>

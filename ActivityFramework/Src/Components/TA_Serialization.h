@@ -30,7 +30,7 @@ namespace CoreAsync
         Output
     };
 
-    template <SerializationType SType = SerializationType::BinaryFile, OperationType OType = OperationType::Output>
+    template <OperationType OType = OperationType::Output, SerializationType SType = SerializationType::BinaryFile>
     class TA_Serialization
     {
         template <typename P>
@@ -87,7 +87,7 @@ namespace CoreAsync
             static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
             if(TA_EndianConversion::isSystemLittleEndian())
                 t = TA_EndianConversion::swapEndian(t);
-            m_fileSream.write(reinterpret_cast<const char*>(&t), sizeof(t));
+            m_fileSream.write(reinterpret_cast<const char *>(&t), sizeof(t));
             return *this;
         }
 
@@ -95,7 +95,7 @@ namespace CoreAsync
         TA_Serialization & operator >> (T &t)
         {
             static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
-            m_fileSream.read(reinterpret_cast<char*>(&t), sizeof(t));
+            m_fileSream.read(reinterpret_cast<char *>(&t), sizeof(t));
             if(TA_EndianConversion::isSystemLittleEndian())
                 t = TA_EndianConversion::swapEndian(t);
             return *this;
@@ -158,7 +158,7 @@ namespace CoreAsync
         {
             static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
             std::size_t size;
-            m_fileSream.read(reinterpret_cast<char*>(&size), sizeof(size));
+            *this >> size;
             for(auto &v : array)
             {
                 *this >> v;
@@ -167,11 +167,11 @@ namespace CoreAsync
         }
 
         template <StdContainerType T>
-        TA_Serialization & operator >> (const T &t)
+        TA_Serialization & operator >> (T &t)
         {
             static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
-            std::size_t size;
-            m_fileSream.read(reinterpret_cast<char*>(&size), sizeof(size));
+            std::size_t size {};
+            *this >> size;
             if constexpr(std::is_same_v<std::vector<typename T::value_type>, T> ||
                           std::is_same_v<std::list<typename T::value_type>, T> ||
                           std::is_same_v<std::forward_list<typename T::value_type>, T> ||
@@ -229,7 +229,7 @@ namespace CoreAsync
         }
 
         template <typename K, typename V>
-        TA_Serialization & operator >> (const std::pair<K, V> &pair)
+        TA_Serialization & operator >> (std::pair<K, V> &pair)
         {
             static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
             return *this >> pair.first >> pair.second;
@@ -243,7 +243,7 @@ namespace CoreAsync
         }
 
         template <typename T>
-        TA_Serialization & operator >> (const NormalPtr<T> &t)
+        TA_Serialization & operator >> (NormalPtr<T> &t)
         {
             using Rt = std::decay_t<T>;
             static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
@@ -253,7 +253,7 @@ namespace CoreAsync
         }
 
         template<typename T, int N>
-        TA_Serialization & operator << (T (&a)[N])
+        TA_Serialization & operator << (const T (&a)[N])
         {
             static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
             for(int i = 0;i < N;++i)
