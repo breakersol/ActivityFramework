@@ -106,38 +106,7 @@ namespace CoreAsync
         {
             static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
             *this << t.size();
-            if constexpr(std::is_same_v<std::vector<typename T::value_type>, T> ||
-                         std::is_same_v<std::list<typename T::value_type>, T> ||
-                         std::is_same_v<std::forward_list<typename T::value_type>, T> ||
-                         std::is_same_v<std::deque<typename T::value_type>, T> ||
-                         N >= 0)
-            {
-                for(auto &element : t)
-                {
-                    *this << element;
-                }
-            }
-            else if constexpr(std::is_same_v<std::map<typename T::key_type, typename T::mapped_type>, T> ||
-                              std::is_same_v<std::unordered_map<typename T::key_type, typename T::mapped_type>, T> ||
-                              std::is_same_v<std::multimap<typename T::key_type, typename T::mapped_type>, T> ||
-                              std::is_same_v<std::unordered_multimap<typename T::key_type, typename T::mapped_type>, T>)
-            {
-                for(auto &p : t)
-                {
-                    *this << p;
-                }
-            }
-            else if constexpr(std::is_same_v<std::set<typename T::key_type>, T> ||
-                             std::is_same_v<std::unordered_set<typename T::key_type>, T> ||
-                             std::is_same_v<std::multiset<typename T::key_type>, T> ||
-                             std::is_same_v<std::unordered_multiset<typename T::key_type>, T>)
-            {
-                for(auto &p : t)
-                {
-                    *this << p;
-                }
-            }
-            else if constexpr(std::is_same_v<std::stack<typename T::value_type>, T>)
+            if constexpr(std::is_same_v<std::stack<typename T::value_type>, T>)
             {
                 std::vector<typename T::value_type> cache;
                 while(!t.empty())
@@ -174,6 +143,14 @@ namespace CoreAsync
                 }
                 cache.swap(t);
             }
+            else
+            {
+                for(auto &element : t)
+                {
+                    *this << element;
+                }
+            }
+            return *this;
         }
 
         template <typename T, std::size_t N>
@@ -241,6 +218,7 @@ namespace CoreAsync
                     t.emplace(std::move(val));
                 }
             }
+            return *this;
         }
 
         template <typename K, typename V>
