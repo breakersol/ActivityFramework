@@ -95,6 +95,24 @@ TA_Signals:
 
 };
 
+class M3Test
+{
+public:
+    void setVec(const std::vector<int> &v)
+    {
+        vec = v;
+    }
+
+    const std::vector<int> & getVec() const
+    {
+        return vec;
+    }
+
+private:
+    std::vector<int> vec {1, 2, 3, 4};
+
+};
+
 namespace CoreAsync::Reflex {
 
 template <>
@@ -163,6 +181,19 @@ struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
     };
     static constexpr TA_MetaPropertyOperations operations = {
         TA_MetaPropertyOperation {META_STRING("getMx"), META_STRING("setMx")}
+    };
+};
+
+template <>
+struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
+{
+    static constexpr TA_MetaFieldList fields = {
+        TA_MetaField {&Raw::setVec, META_STRING("setVec")},
+        TA_MetaField {&Raw::getVec, META_STRING("getVec")},
+    };
+
+    static constexpr TA_MetaPropertyOperations operations = {
+        TA_MetaPropertyOperation {META_STRING("getVec"), META_STRING("setVec")}
     };
 };
 

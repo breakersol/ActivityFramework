@@ -164,14 +164,14 @@ concept StdContainerType = requires(CType ct)
 };
 
 template <typename CSType>
-concept ValidCST = !std::is_fundamental<CSType>::value &&
-                   !std::is_enum<CSType>::value &&
-                   !std::is_union<CSType>::value &&
-                   !std::is_array<CSType>::value &&
-                   !std::is_pointer<CSType>::value &&
-                   !std::is_null_pointer<CSType>::value &&
+concept ValidCST = !std::is_fundamental<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_enum<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_union<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_array<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_pointer<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_null_pointer<std::remove_cvref_t<CSType>>::value &&
                    !StdContainerType<CSType> &&
-                   std::is_class<CSType>::value;
+                   std::is_class<std::remove_cvref_t<CSType>>::value;
 
 template <typename CSType>
 concept CustomType = requires(CSType ct)

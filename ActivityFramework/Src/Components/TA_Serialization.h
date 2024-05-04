@@ -314,17 +314,18 @@ namespace CoreAsync
         template <typename T, std::size_t IDX0, std::size_t ...IDXS>
         constexpr void callOperations (T &t, std::index_sequence<IDX0, IDXS...> = {})
         {
+            using Rt = std::remove_cvref_t<T>;
             if constexpr(OType == OperationType::Output)
             {
-                *this << std::invoke(std::get<0>(Reflex::TA_TypeInfo<T>::template findPropertyOperation<IDX0>()), t);
+                *this << std::invoke(std::get<0>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>()), t);
                 callOperations(t, std::index_sequence<IDXS...> {});
             }
             else
             {
-                using ParaType = FunctionTypeInfo<decltype(std::get<0>(Reflex::TA_TypeInfo<T>::template findPropertyOperation<IDX0>()))>::RetType;
+                using ParaType =  std::remove_cvref_t<typename FunctionTypeInfo<decltype(std::get<0>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>()))>::RetType>;
                 ParaType para;
                 *this >> para;
-                t.*std::get<1>(Reflex::TA_TypeInfo<T>::template findPropertyOperation<IDX0>())(para);
+                t.*std::get<1>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>())(para);
                 callOperations(t, std::index_sequence<IDXS...> {});
             }
         }

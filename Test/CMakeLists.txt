@@ -31,6 +31,8 @@ add_executable(ActivityFrameworkTest ActivityFrameworkTest/main.cpp
     ActivityFrameworkTest/TA_CommonToolsTest.cpp
     ActivityFrameworkTest/TA_EndianSwapTest.h
     ActivityFrameworkTest/TA_EndianSwapTest.cpp
+    ActivityFrameworkTest/TA_SerializationTest.h
+    ActivityFrameworkTest/TA_SerializationTest.cpp
 )
 
 if(MSVC)
