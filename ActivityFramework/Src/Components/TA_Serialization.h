@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <stack>
 #include <queue>
+#include <vector>
 
 #include "TA_CommonTools.h"
 #include "TA_EndianConversion.h"
@@ -322,10 +323,10 @@ namespace CoreAsync
             }
             else
             {
-                using ParaType =  std::remove_cvref_t<typename FunctionTypeInfo<decltype(std::get<0>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>()))>::RetType>;
-                ParaType para;
+                using ParaType =  typename FunctionTypeInfo<decltype(std::get<0>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>()))>::RetType;
+                std::remove_cvref_t<ParaType> para;
                 *this >> para;
-                t.*std::get<1>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>())(para);
+                (t.*std::get<1>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>()))(para);
                 callOperations(t, std::index_sequence<IDXS...> {});
             }
         }

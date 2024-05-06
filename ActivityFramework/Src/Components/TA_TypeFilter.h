@@ -125,7 +125,25 @@ template <typename Func>
 struct FunctionTypeInfo;
 
 template <typename C, typename R, typename ...PARA>
+struct FunctionTypeInfo<R(C::* &&)(PARA...)>
+{
+    using RetType = R;
+    using ParentClass = C;
+    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
+    static constexpr std::size_t paraSize = sizeof...(PARA);
+};
+
+template <typename C, typename R, typename ...PARA>
 struct FunctionTypeInfo<R(C::*)(PARA...)>
+{
+    using RetType = R;
+    using ParentClass = C;
+    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
+    static constexpr std::size_t paraSize = sizeof...(PARA);
+};
+
+template <typename C, typename R, typename ...PARA>
+struct FunctionTypeInfo<R(C::* &&)(PARA...) const>
 {
     using RetType = R;
     using ParentClass = C;
@@ -138,6 +156,14 @@ struct FunctionTypeInfo<R(C::*)(PARA...) const>
 {
     using RetType = R;
     using ParentClass = C;
+    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
+    static constexpr std::size_t paraSize = sizeof...(PARA);
+};
+
+template <typename R, typename ...PARA>
+struct FunctionTypeInfo<R(* &&)(PARA...)>
+{
+    using RetType = R;
     using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
     static constexpr std::size_t paraSize = sizeof...(PARA);
 };
