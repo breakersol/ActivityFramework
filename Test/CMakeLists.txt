@@ -47,27 +47,28 @@ if(MSVC)
     )
     if(CMAKE_BUILD_TYPE STREQUAL ${CMAKE_BUILD_TYPE_DEBUG})
         target_link_directories(ActivityFrameworkTest PRIVATE ThirdParty/googletest/output/win32/Debug)
+        target_link_directories(ActivityFrameworkTest PRIVATE ../build/Debug/ActivityFramework/output)
     else()
         target_link_directories(ActivityFrameworkTest PRIVATE ThirdParty/googletest/output/win32/Release)
+        target_link_directories(ActivityFrameworkTest PRIVATE ../build/Release/ActivityFramework/output)
     endif()
-    target_link_directories(ActivityFrameworkTest PRIVATE ../build/ActivityFramework/output)
 
     set(DLL_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
     set(ACTIVITY_FRAMEWORK_DIR ../ActivityFramework/output)
-    set(GTEST_DIR ../../Test/ThirdParty/googletest/output/win32)
+    set(GTEST_DIR ../../../Test/ThirdParty/googletest/output/win32)
 
     add_custom_command(
         TARGET ActivityFrameworkTest POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-            "$<IF:$<CONFIG:Release>,${ACTIVITY_FRAMEWORK_DIR}/Release/ActivityFramework.dll,${ACTIVITY_FRAMEWORK_DIR}/Debug/ActivityFramework_d.dll>"
-            "$<IF:$<CONFIG:Release>,${DLL_TARGET_DIR}/Release,${DLL_TARGET_DIR}/Debug>"
+            "$<IF:$<CONFIG:Release>,${ACTIVITY_FRAMEWORK_DIR}/ActivityFramework.dll,${ACTIVITY_FRAMEWORK_DIR}/ActivityFramework_d.dll>"
+            "$<IF:$<CONFIG:Release>,${DLL_TARGET_DIR},${DLL_TARGET_DIR}>"
     )
 
     add_custom_command(
         TARGET ActivityFrameworkTest POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
             "$<IF:$<CONFIG:Release>,${GTEST_DIR}/Release/gtest.dll,${GTEST_DIR}/Debug/gtest.dll>"
-            "$<IF:$<CONFIG:Release>,${DLL_TARGET_DIR}/Release,${DLL_TARGET_DIR}/Debug>"
+            "$<IF:$<CONFIG:Release>,${DLL_TARGET_DIR},${DLL_TARGET_DIR}>"
     )
 elseif(UNIX)
     message(STATUS "Configuring for GCC")
