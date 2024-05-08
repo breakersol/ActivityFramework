@@ -24,10 +24,12 @@ void TA_SerializationTest::TearDown()
 
 TEST_F(TA_SerializationTest, CustomTypeTest)
 {
+    float *ptr = new float(5.3);
     M3Test t, p;
     {
         CoreAsync::TA_Serialization output("./test.afw");
         t.setVec({2,3,4,5});
+        t.setRawPtr(ptr);
         output << t;
     }
     {
@@ -35,4 +37,6 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         input >> p;
     }
     EXPECT_EQ(t.getVec(), p.getVec());
+    EXPECT_EQ(*t.getRawPtr(), *p.getRawPtr());
+    delete ptr;
 }

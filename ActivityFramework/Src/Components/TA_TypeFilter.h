@@ -208,6 +208,24 @@ concept CustomType = requires(CSType ct)
 template <typename NCSType>
 concept NonCustomType = !CustomType<NCSType>;
 
+template <typename T>
+concept IsRawPtr = std::is_pointer_v<std::decay_t<T>>;
+
+template <typename T>
+concept RawPtr = requires(T t)
+{
+    {t} -> IsRawPtr;
+};
+
+template <typename T>
+concept IsEnumType = std::is_enum_v<std::decay_t<T>>;
+
+template <typename T>
+concept EnumType = requires(T t)
+{
+    {t} -> IsEnumType;
+};
+
 
 }
 

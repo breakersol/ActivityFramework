@@ -34,11 +34,6 @@ namespace CoreAsync
     template <OperationType OType = OperationType::Output, SerializationType SType = SerializationType::BinaryFile>
     class TA_Serialization
     {
-        template <typename P>
-        using NormalPtr = std::enable_if_t<std::is_pointer_v<std::decay_t<P>>, std::decay_t<P>>;
-
-        template <typename E>
-        using EnumType = std::enable_if_t<std::is_enum_v<std::decay_t<E>>, E>;
     public:
         TA_Serialization()
         {
@@ -236,20 +231,30 @@ namespace CoreAsync
             return *this >> pair.first >> pair.second;
         }
 
-        template <typename T>
-        TA_Serialization & operator << (const NormalPtr<T> &t)
+        template <RawPtr T>
+        TA_Serialization & operator << (const T &t)
         {
             static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
             return *this << *t;
         }
 
-        template <typename T>
-        TA_Serialization & operator >> (NormalPtr<T> &t)
+        template <RawPtr T>
+        TA_Serialization & operator << (T &&t)
         {
-            using Rt = std::decay_t<T>;
+            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            if(t)
+            {
+                return *this << *t;
+            }
+            return *this;;
+        }
+
+        template <RawPtr T>
+        TA_Serialization & operator >> (T &t)
+        {
             static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
             if(!t)
-                t = new Rt();
+                return *this;
             return *this >> *t;
         }
 
@@ -275,21 +280,21 @@ namespace CoreAsync
             return *this;
         }
 
-        template <typename T>
-        TA_Serialization & operator << (EnumType<T> &t)
+        template <EnumType T>
+        TA_Serialization & operator << (T t)
         {
             static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
             *this << static_cast<uint8_t>(t);
             return *this;
         }
 
-        template <typename T>
-        TA_Serialization & operator >> (EnumType<T> &t)
+        template <EnumType T>
+        TA_Serialization & operator >> (T &t)
         {
             static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
             uint8_t val {};
             *this >> val;
-            t = static_cast<EnumType<T>>(val);
+            t = static_cast<T>(val);
             return *this;
         }
 
@@ -324,7 +329,12 @@ namespace CoreAsync
             else
             {
                 using ParaType =  typename FunctionTypeInfo<decltype(std::get<0>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>()))>::RetType;
-                std::remove_cvref_t<ParaType> para;
+                using RPara = std::remove_cvref_t<ParaType>;
+                RPara para {};
+                if constexpr(std::is_pointer_v<decltype(para)>)
+                {
+                    para = new std::remove_cvref_t<decltype(*para)>();
+                }
                 *this >> para;
                 (t.*std::get<1>(Reflex::TA_TypeInfo<Rt>::template findPropertyOperation<IDX0>()))(para);
                 callOperations(t, std::index_sequence<IDXS...> {});
