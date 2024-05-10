@@ -30,6 +30,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         CoreAsync::TA_Serialization output("./test.afw");
         t.setVec({2,3,4,5});
         t.setRawPtr(ptr);
+        t.setArray({2,3,4,5,6});
         output << t;
     }
     {
@@ -38,5 +39,6 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
     }
     EXPECT_EQ(t.getVec(), p.getVec());
     EXPECT_EQ(*t.getRawPtr(), *p.getRawPtr());
+    EXPECT_EQ(t.getArray(), p.getArray());
     delete ptr;
 }
