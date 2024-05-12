@@ -121,20 +121,31 @@ public:
     }
 
     template <std::size_t N = 5>
-    void setArray(const std::array<int, N> &array)
+    void setArray(const std::array<uint32_t, N> &array)
     {
         m_array = array;
     }
 
-    const std::array<int, 5> & getArray() const
+    const std::array<uint32_t, 5> & getArray() const
     {
         return m_array;
+    }
+
+    void setList(const std::list<uint16_t> &list)
+    {
+        m_list = list;
+    }
+
+    const std::list<uint16_t> & getList() const
+    {
+        return m_list;
     }
 
 private:
     std::vector<int> vec {1, 2, 3, 4};
     float *pFloatPtr = new float(1.5);
-    std::array<int, 5> m_array {1, 2, 3, 4, 5};
+    std::array<uint32_t, 5> m_array {1, 2, 3, 4, 5};
+    std::list<uint16_t> m_list {8,8,8,8,8,8};
 
 };
 
@@ -219,12 +230,15 @@ struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
         TA_MetaField {&Raw::getRawPtr, META_STRING("getRawPtr")},
         TA_MetaField {&Raw::setArray<5>, META_STRING("setArray")},
         TA_MetaField {&Raw::getArray, META_STRING("getArray")},
+        TA_MetaField {&Raw::setList, META_STRING("setList")},
+        TA_MetaField {&Raw::getList, META_STRING("getList")},
     };
 
     static constexpr TA_MetaPropertyOperations operations = {
         TA_MetaPropertyOperation {META_STRING("getVec"), META_STRING("setVec")},
         TA_MetaPropertyOperation {META_STRING("getRawPtr"), META_STRING("setRawPtr")},
-        TA_MetaPropertyOperation {META_STRING("getArray"), META_STRING("setArray")}
+        TA_MetaPropertyOperation {META_STRING("getArray"), META_STRING("setArray")},
+        TA_MetaPropertyOperation {META_STRING("getList"), META_STRING("setList")}
     };
 };
 
