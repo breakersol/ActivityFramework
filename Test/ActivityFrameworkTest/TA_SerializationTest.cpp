@@ -32,6 +32,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         t.setRawPtr(ptr);
         t.setArray({2,3,4,5,6});
         t.setList({9,9,9});
+        t.setForwardList({9,9,9});
         output << t;
     }
     {
@@ -42,5 +43,6 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
     EXPECT_EQ(*t.getRawPtr(), *p.getRawPtr());
     EXPECT_EQ(t.getArray(), p.getArray());
     EXPECT_EQ(t.getList(), p.getList());
+    EXPECT_EQ(t.getForwardList(), p.getForwardList());
     delete ptr;
 }

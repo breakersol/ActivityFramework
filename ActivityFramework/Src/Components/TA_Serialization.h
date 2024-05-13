@@ -101,7 +101,7 @@ namespace CoreAsync
         TA_Serialization & operator << (const T &t)
         {
             static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
-            *this << t.size();
+            *this << std::ranges::distance(t);
             if constexpr(std::is_same_v<std::stack<typename T::value_type>, T>)
             {
                 std::vector<typename T::value_type> cache;
@@ -170,7 +170,6 @@ namespace CoreAsync
             *this >> size;
             if constexpr(std::is_same_v<std::vector<typename T::value_type>, T> ||
                           std::is_same_v<std::list<typename T::value_type>, T> ||
-                          std::is_same_v<std::forward_list<typename T::value_type>, T> ||
                           std::is_same_v<std::deque<typename T::value_type>, T> ||
                           std::is_same_v<std::stack<typename T::value_type>, T>)
             {
@@ -179,6 +178,16 @@ namespace CoreAsync
                     typename T::value_type val;
                     *this >> val;
                     t.emplace_back(std::move(val));
+                }
+            }
+            else if constexpr(std::is_same_v<std::forward_list<typename T::value_type>, T>)
+            {
+                typename std::forward_list<typename T::value_type>::iterator beginIter = t.before_begin();
+                for(auto i = 0;i < size;++i)
+                {
+                    typename T::value_type val;
+                    *this >> val;
+                    beginIter = t.emplace_after(beginIter, std::move(val));
                 }
             }
             else if constexpr(std::is_same_v<std::map<typename T::key_type, typename T::mapped_type>, T> ||
