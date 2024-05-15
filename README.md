@@ -7,11 +7,11 @@ These instructions will get you a copy of the project up and running on your loc
 - Windows: MSVC 17.5.33530.505 or higher
 - Linux: GCC11 or higher
 ### Installing
-Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the project ActivityPipeline, and set the build dir as **/ActivityPipeline/build**.
+Using **/ActivityFramework/ActivityFramework/CMakeList.txt** to build the project ActivityPipeline, and set the build dir as **/ActivityFramework/build**.
 ### Running the tests
-1. Build the Google Test under **ActivityPipeline/Test/ThirdParty/googletest/**.
-2. Using **ActivityPipeline/Test/CMakeList.txt** to unit test project.
-3. Running PipelineTest.
+1. Build the Google Test under **ActivityFramework/Test/ThirdParty/googletest/**.
+2. Using **ActivityFramework/Test/CMakeList.txt** to unit test project.
+3. Running ActivityFrameworkTest.
 ### Versioning
 - [v0.1.0-beta](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.0-beta)
 - [v0.1.1](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.1)
@@ -20,6 +20,7 @@ Using **/ActivityPipeline/TA_ActivityPipeline/CMakeList.txt** to build the proje
 - [v0.1.4](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.4)
 - [v0.1.5](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.5)
 - [v0.1.6](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.6)
+- [v0.2.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.0)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License

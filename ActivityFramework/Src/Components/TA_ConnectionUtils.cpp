@@ -1,5 +1,5 @@
 /*
- * Copyright [2023] [Shuang Zhu / Sol]
+ * Copyright [2024] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,6 +96,8 @@ namespace CoreAsync
 
     std::atomic<bool> TA_ConnectionResponder::m_enableConsume {true};
 
+    std::counting_semaphore<ActivityQueue::size()> TA_ConnectionResponder::m_resource {0};
+
     TA_ConnectionResponder & TA_ConnectionResponder::GetIns()
     {
         static TA_ConnectionResponder responder;
@@ -125,7 +127,9 @@ namespace CoreAsync
         }
         case TA_ConnectionType::Queued:
         {
-            return m_queue.push(pActivity);
+            auto res = m_queue.push(pActivity);
+            m_resource.release();
+            return res;
         }
         default:
             return false;
@@ -136,14 +140,11 @@ namespace CoreAsync
     {
         while(m_enableConsume.load(std::memory_order_acquire))
         {
+            m_resource.acquire();
             TA_BasicActivity *pActivity {nullptr};
             if(m_queue.front() && m_queue.pop(pActivity))
             {
                 (*pActivity)();
-            }
-            else
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
             if(pActivity)
             {

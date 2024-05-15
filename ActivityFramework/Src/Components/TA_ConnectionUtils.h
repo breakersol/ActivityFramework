@@ -1,5 +1,5 @@
 /*
- * Copyright [2023] [Shuang Zhu / Sol]
+ * Copyright [2024] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include <tuple>
 #include <memory>
+#include <semaphore>
 
 #include "TA_ReceiverObject.h"
 #include "TA_MetaObject.h"
@@ -152,6 +153,7 @@ namespace CoreAsync
     private:
         ActivityQueue m_queue {};
         static std::atomic<bool> m_enableConsume;
+        static std::counting_semaphore<ActivityQueue::size()> m_resource;
 
     };
 
