@@ -17,8 +17,6 @@
 #include "Components/TA_ConnectionUtils.h"
 #include "Components/TA_ThreadPool.h"
 
-#include <thread>
-
 namespace CoreAsync
 {
     TA_ConnectionsRegister::TA_ConnectionsRegister()
@@ -104,15 +102,20 @@ namespace CoreAsync
         return responder;
     }
 
-    TA_ConnectionResponder::TA_ConnectionResponder()
+    TA_ConnectionResponder::TA_ConnectionResponder() : m_consumingThread([this]() {consume();})
     {
-        static std::jthread consumeThread {[this]() {consume();}};
+
     }
 
     TA_ConnectionResponder::~TA_ConnectionResponder()
     {
-       m_enableConsume.store(false,std::memory_order_release);
-       TA_CommonTools::debugInfo(META_STRING("Destroy Responder!\n"));
+        m_enableConsume.store(false,std::memory_order_release);
+        m_resource.release();
+        if(m_consumingThread.joinable())
+        {
+            m_consumingThread.join();
+        }
+        TA_CommonTools::debugInfo(META_STRING("Destroy Responder!\n"));
     }
 
     bool TA_ConnectionResponder::response(TA_BasicActivity *&pActivity, TA_ConnectionType type)
