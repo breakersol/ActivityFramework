@@ -23,6 +23,7 @@
 #include <tuple>
 #include <memory>
 #include <semaphore>
+#include <thread>
 
 #include "TA_ReceiverObject.h"
 #include "TA_MetaObject.h"
@@ -151,6 +152,7 @@ namespace CoreAsync
         void consume();
 
     private:
+        std::jthread m_consumingThread;
         ActivityQueue m_queue {};
         static std::atomic<bool> m_enableConsume;
         static std::counting_semaphore<ActivityQueue::size()> m_resource;
