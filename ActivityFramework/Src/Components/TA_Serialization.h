@@ -64,7 +64,7 @@ namespace CoreAsync
         template <CustomType T>
         TA_Serialization & operator << (const T &t)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             callOperations(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::operationSize()> {});
             return *this;
         }
@@ -72,7 +72,7 @@ namespace CoreAsync
         template <CustomType T>
         TA_Serialization & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
+            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
             callOperations(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::operationSize()> {});
             return *this;
         }
@@ -80,7 +80,7 @@ namespace CoreAsync
         template <EndianConvertedType T>
         TA_Serialization & operator << (T t)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             if(TA_EndianConversion::isSystemLittleEndian())
                 t = TA_EndianConversion::swapEndian(t);
             m_fileSream.write(reinterpret_cast<const char *>(&t), sizeof(t));
@@ -90,60 +90,52 @@ namespace CoreAsync
         template <EndianConvertedType T>
         TA_Serialization & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
+            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
             m_fileSream.read(reinterpret_cast<char *>(&t), sizeof(t));
             if(TA_EndianConversion::isSystemLittleEndian())
                 t = TA_EndianConversion::swapEndian(t);
             return *this;
         }
 
-        template <StdContainerType T, int64_t N = -1>
+        template <StdContainerType T>
         TA_Serialization & operator << (const T &t)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             *this << std::ranges::distance(t);
-            if constexpr(std::is_same_v<std::stack<typename T::value_type>, T>)
+            std::ranges::for_each(std::as_const(t), [this](const T::value_type &val) {
+                *this << val;
+            });
+            return *this;
+        }
+
+        template <StdAdaptorType T>
+        TA_Serialization & operator << (const T &t)
+        {
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            *this << std::ranges::size(t);
+            T copyAdaptor = t;
+            if constexpr(std::is_same_v<std::stack<typename T::value_type, typename T::container_type>, T>)
             {
-                std::vector<typename T::value_type> cache;
-                while(!t.empty())
+                while(!copyAdaptor.empty())
                 {
-                    cache.emplace_back(t.top());
-                    *this << t.top();
-                    t.pop();
-                }
-                while(!cache.empty())
-                {
-                    t.emplace(cache.back());
-                    cache.pop_back();
+                    *this << copyAdaptor.top();
+                    copyAdaptor.pop();
                 }
             }
-            else if constexpr(std::is_same_v<std::queue<typename T::value_type>, T>)
+            else if constexpr(std::is_same_v<std::queue<typename T::value_type, typename T::container_type>, T>)
             {
-                std::queue<typename T::value_type> cache;
-                while(!t.empty())
+                while(!copyAdaptor.empty())
                 {
-                    cache.emplace(t.front());
-                    *this << t.front();
-                    t.pop();
+                    *this << copyAdaptor.front();
+                    copyAdaptor.pop();
                 }
-                cache.swap(t);
             }
-            else if constexpr(std::is_same_v<std::priority_queue<typename T::value_type>, T>)
+            else if constexpr(std::is_same_v<std::priority_queue<typename T::value_type, typename T::container_type, typename T::value_compare>, T>)
             {
-                std::priority_queue<typename T::value_type> cache;
-                while(!t.empty())
+                while(!copyAdaptor.empty())
                 {
-                    cache.emplace(t.top());
-                    *this << t.top();
-                    t.pop();
-                }
-                cache.swap(t);
-            }
-            else
-            {
-                for(auto &element : t)
-                {
-                    *this << element;
+                    *this << copyAdaptor.top();
+                    copyAdaptor.pop();
                 }
             }
             return *this;
@@ -152,7 +144,7 @@ namespace CoreAsync
         template <typename T, std::size_t N>
         TA_Serialization & operator >> (std::array<T, N> &array)
         {
-            static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
+            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
             std::size_t size;
             *this >> size;
             for(auto &v : array)
@@ -165,13 +157,12 @@ namespace CoreAsync
         template <StdContainerType T>
         TA_Serialization & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
+            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
             std::size_t size {};
             *this >> size;
             if constexpr(std::is_same_v<std::vector<typename T::value_type>, T> ||
                           std::is_same_v<std::list<typename T::value_type>, T> ||
-                          std::is_same_v<std::deque<typename T::value_type>, T> ||
-                          std::is_same_v<std::stack<typename T::value_type>, T>)
+                          std::is_same_v<std::deque<typename T::value_type>, T>)
             {
                 for(auto i = 0;i < size;++i)
                 {
@@ -214,7 +205,36 @@ namespace CoreAsync
                     t.emplace(std::move(val));
                 }
             }
-            else if constexpr(std::is_same_v<std::queue<typename T::value_type>, T> || std::is_same_v<std::priority_queue<typename T::value_type>, T>)
+            return *this;
+        }
+
+        template <StdAdaptorType T>
+        TA_Serialization & operator >> (T &t)
+        {
+            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
+            std::size_t size {};
+            *this >> size;
+            if constexpr(std::is_same_v<std::queue<typename T::value_type, typename T::container_type>, T>)
+            {
+                for(auto i = 0;i < size;++i)
+                {
+                    typename T::value_type val;
+                    *this >> val;
+                    t.emplace(std::move(val));
+                }
+            }
+            else if constexpr(std::is_same_v<std::stack<typename T::value_type, typename T::container_type>, T>)
+            {
+                std::deque<typename T::value_type> temp;
+                for(auto i = 0;i < size;++i)
+                {
+                    typename T::value_type val;
+                    *this >> val;
+                    temp.push_front(std::move(val));
+                }
+                t.push_range(temp);
+            }
+            else if constexpr(std::is_same_v<std::priority_queue<typename T::value_type, typename T::container_type, typename T::value_compare>, T>)
             {
                 for(auto i = 0;i < size;++i)
                 {
@@ -229,28 +249,28 @@ namespace CoreAsync
         template <typename K, typename V>
         TA_Serialization & operator << (const std::pair<K, V> &pair)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             return *this << pair.first << pair.second;
         }
 
         template <typename K, typename V>
         TA_Serialization & operator >> (std::pair<K, V> &pair)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             return *this >> pair.first >> pair.second;
         }
 
         template <RawPtr T>
         TA_Serialization & operator << (const T &t)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             return *this << *t;
         }
 
         template <RawPtr T>
         TA_Serialization & operator << (T &&t)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             if(t)
             {
                 return *this << *t;
@@ -261,7 +281,7 @@ namespace CoreAsync
         template <RawPtr T>
         TA_Serialization & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
+            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
             if(!t)
                 return *this;
             return *this >> *t;
@@ -270,7 +290,7 @@ namespace CoreAsync
         template<typename T, int N>
         TA_Serialization & operator << (const T (&a)[N])
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             for(int i = 0;i < N;++i)
             {
                 *this << a[i];
@@ -281,7 +301,7 @@ namespace CoreAsync
         template<typename T, int N>
         TA_Serialization & operator >> (T (&a)[N])
         {
-            static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
+            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
             for(int i = 0;i < N;++i)
             {
                 *this >> a[i];
@@ -292,7 +312,7 @@ namespace CoreAsync
         template <EnumType T>
         TA_Serialization & operator << (T t)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             *this << static_cast<uint8_t>(t);
             return *this;
         }
@@ -300,7 +320,7 @@ namespace CoreAsync
         template <EnumType T>
         TA_Serialization & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The serilization type isn't INPUT");
+            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
             uint8_t val {};
             *this >> val;
             t = static_cast<T>(val);
@@ -309,13 +329,13 @@ namespace CoreAsync
 
         TA_Serialization & operator << (std::nullptr_t)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             return *this;
         }
 
         TA_Serialization & operator >> (std::nullptr_t)
         {
-            static_assert(OType == OperationType::Output, "The serilization type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
             return *this;
         }
 

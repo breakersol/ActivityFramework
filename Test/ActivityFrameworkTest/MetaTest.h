@@ -20,6 +20,7 @@
 #include <iostream>
 #include <string>
 #include <forward_list>
+#include <stack>
 
 #include "Components/TA_MetaReflex.h"
 #include "Components/TA_MetaObject.h"
@@ -168,12 +169,34 @@ public:
         return m_forwardList;
     }
 
+    void setDeque(const std::deque<int16_t> &deque)
+    {
+        m_deque = deque;
+    }
+
+    const std::deque<int16_t> & getDeque() const
+    {
+        return m_deque;
+    }
+
+    void setStack(const std::stack<int32_t> &stack)
+    {
+        m_stack = stack;
+    }
+
+    const std::stack<int32_t> & getStack() const
+    {
+        return m_stack;
+    }
+
 private:
     std::vector<int> vec {1, 2, 3, 4};
     float *pFloatPtr = new float(1.5);
     std::array<uint32_t, 5> m_array {1, 2, 3, 4, 5};
     std::list<uint16_t> m_list {8,8,8,8,8,8};
     std::forward_list<uint64_t> m_forwardList {100000, 10000};
+    std::deque<int16_t> m_deque {1,2,3,4,5};
+    std::stack<int32_t> m_stack;
 
 };
 
@@ -262,6 +285,10 @@ struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
         TA_MetaField {&Raw::getList, META_STRING("getList")},
         TA_MetaField {&Raw::setForwardList, META_STRING("setForwardList")},
         TA_MetaField {&Raw::getForwardList, META_STRING("getForwardList")},
+        TA_MetaField {&Raw::setDeque, META_STRING("setDeque")},
+        TA_MetaField {&Raw::getDeque, META_STRING("getDeque")},
+        TA_MetaField {&Raw::setStack, META_STRING("setStack")},
+        TA_MetaField {&Raw::getStack, META_STRING("getStack")},
     };
 
     static constexpr TA_MetaPropertyOperations operations = {
@@ -270,6 +297,8 @@ struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
         TA_MetaPropertyOperation {META_STRING("getArray"), META_STRING("setArray")},
         TA_MetaPropertyOperation {META_STRING("getList"), META_STRING("setList")},
         TA_MetaPropertyOperation {META_STRING("getForwardList"), META_STRING("setForwardList")},
+        TA_MetaPropertyOperation {META_STRING("getDeque"), META_STRING("setDeque")},
+        TA_MetaPropertyOperation {META_STRING("getStack"), META_STRING("setStack")},
     };
 };
 

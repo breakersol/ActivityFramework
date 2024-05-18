@@ -183,10 +183,20 @@ concept Iterator = requires (T t)
     {++std::declval<std::decay_t<T> &>()};
 };
 
+template <typename AType>
+concept StdAdaptorType = requires(AType at)
+{
+    typename std::decay_t<AType>::size_type;
+    typename std::decay_t<AType>::container_type;
+};
+
 template <typename CType>
 concept StdContainerType = requires(CType ct)
 {
-    {typename std::decay_t<CType>::size_type {}};
+    typename std::decay_t<CType>::value_type;
+    typename std::decay_t<CType>::iterator;
+    typename std::decay_t<CType>::const_iterator;
+    typename std::decay_t<CType>::size_type;
 };
 
 template <typename CSType>
@@ -197,6 +207,7 @@ concept ValidCST = !std::is_fundamental<std::remove_cvref_t<CSType>>::value &&
                    !std::is_pointer<std::remove_cvref_t<CSType>>::value &&
                    !std::is_null_pointer<std::remove_cvref_t<CSType>>::value &&
                    !StdContainerType<CSType> &&
+                   !StdAdaptorType<CSType> &&
                    std::is_class<std::remove_cvref_t<CSType>>::value;
 
 template <typename CSType>

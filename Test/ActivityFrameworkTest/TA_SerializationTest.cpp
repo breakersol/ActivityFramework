@@ -33,6 +33,8 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         t.setArray({2,3,4,5,6});
         t.setList({9,9,9});
         t.setForwardList({9,9,9});
+        t.setDeque({8,7,6,5,4});
+        t.setStack({t.getDeque().begin(), t.getDeque().end()});
         output << t;
     }
     {
@@ -44,5 +46,8 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
     EXPECT_EQ(t.getArray(), p.getArray());
     EXPECT_EQ(t.getList(), p.getList());
     EXPECT_EQ(t.getForwardList(), p.getForwardList());
+    EXPECT_EQ(t.getDeque(), p.getDeque());
+    EXPECT_EQ(t.getStack(), p.getStack());
+
     delete ptr;
 }
