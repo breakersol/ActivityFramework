@@ -21,6 +21,7 @@
 #include <string>
 #include <forward_list>
 #include <stack>
+#include <queue>
 
 #include "Components/TA_MetaReflex.h"
 #include "Components/TA_MetaObject.h"
@@ -189,6 +190,26 @@ public:
         return m_stack;
     }
 
+    void setQueue(const std::queue<int64_t> &queue)
+    {
+        m_queue = queue;
+    }
+
+    const std::queue<int64_t> & getQueue() const
+    {
+        return m_queue;
+    }
+
+    void setPrioritQueue(const std::priority_queue<double> &queue)
+    {
+        m_prioritQueue = queue;
+    }
+
+    const std::priority_queue<double> & getPriorityQueue() const
+    {
+        return m_prioritQueue;
+    }
+
 private:
     std::vector<int> vec {1, 2, 3, 4};
     float *pFloatPtr = new float(1.5);
@@ -197,6 +218,8 @@ private:
     std::forward_list<uint64_t> m_forwardList {100000, 10000};
     std::deque<int16_t> m_deque {1,2,3,4,5};
     std::stack<int32_t> m_stack;
+    std::queue<int64_t> m_queue;
+    std::priority_queue<double> m_prioritQueue;
 
 };
 
@@ -289,6 +312,10 @@ struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
         TA_MetaField {&Raw::getDeque, META_STRING("getDeque")},
         TA_MetaField {&Raw::setStack, META_STRING("setStack")},
         TA_MetaField {&Raw::getStack, META_STRING("getStack")},
+        TA_MetaField {&Raw::setQueue, META_STRING("setQueue")},
+        TA_MetaField {&Raw::getQueue, META_STRING("getQueue")},
+        TA_MetaField {&Raw::setPrioritQueue, META_STRING("setPrioritQueue")},
+        TA_MetaField {&Raw::getPriorityQueue, META_STRING("getPriorityQueue")},
     };
 
     static constexpr TA_MetaPropertyOperations operations = {
@@ -299,6 +326,8 @@ struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
         TA_MetaPropertyOperation {META_STRING("getForwardList"), META_STRING("setForwardList")},
         TA_MetaPropertyOperation {META_STRING("getDeque"), META_STRING("setDeque")},
         TA_MetaPropertyOperation {META_STRING("getStack"), META_STRING("setStack")},
+        TA_MetaPropertyOperation {META_STRING("getQueue"), META_STRING("setQueue")},
+        TA_MetaPropertyOperation {META_STRING("getPriorityQueue"), META_STRING("setPrioritQueue")},
     };
 };
 
