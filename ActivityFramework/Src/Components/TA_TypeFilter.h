@@ -140,6 +140,7 @@ struct FunctionTypeInfo<R(C::*)(PARA...)>
     using ParentClass = C;
     using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
     static constexpr std::size_t paraSize = sizeof...(PARA);
+    static constexpr bool isMemberFunction {true};
 };
 
 template <typename C, typename R, typename ...PARA>
@@ -158,6 +159,7 @@ struct FunctionTypeInfo<R(C::*)(PARA...) const>
     using ParentClass = C;
     using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
     static constexpr std::size_t paraSize = sizeof...(PARA);
+    static constexpr bool isMemberFunction {true};
 };
 
 template <typename R, typename ...PARA>
@@ -174,6 +176,7 @@ struct FunctionTypeInfo<R(*)(PARA...)>
     using RetType = R;
     using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
     static constexpr std::size_t paraSize = sizeof...(PARA);
+    static constexpr bool isMemberFunction {false};
 };
 
 template <typename T>

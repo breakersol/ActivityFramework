@@ -26,9 +26,7 @@ namespace CoreAsync
     {
         static bool isSystemLittleEndian()
         {
-            uint16_t x = 1;
-            auto ptr = reinterpret_cast<char *>(&x);
-            return ptr[0] == 1;
+            return std::endian::native == std::endian::little;
         }
 
         template <EndianConvertedType T>
