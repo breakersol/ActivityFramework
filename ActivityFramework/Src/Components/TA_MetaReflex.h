@@ -319,6 +319,14 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
         }
     }
 
+    template <typename NAME>
+    static constexpr auto offset(NAME = {})
+    {
+        using TargetType = std::remove_cvref_t<decltype(findType(NAME {}))>;
+        static_assert(std::is_standard_layout_v<TargetType>, "The type is not stand layout type.");
+        return offsetof(T, TargetType);
+    }
+
     static constexpr std::size_t operationSize()
     {
         return TA_TypeInfo<T>::operations.size();
