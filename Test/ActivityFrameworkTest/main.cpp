@@ -15,6 +15,7 @@
  */
 
 #include "gtest/gtest.h"
+#include "MetaTest.h"
 
 int main(int argc, char *argv[])
 {

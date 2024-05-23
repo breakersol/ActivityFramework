@@ -50,13 +50,13 @@ struct IsSmartPointer<std::weak_ptr<Ins> >
 };
 
 template <typename T>
-struct IsNonStaticMemberVariable
+struct IsNonStaticMemberObjectPointer
 {
    static constexpr bool value = false;
 };
 
 template <typename CL, typename T>
-struct IsNonStaticMemberVariable<T CL::*>
+struct IsNonStaticMemberObjectPointer<T CL::*>
 {
      static constexpr bool value =!std::is_function_v<T> && std::is_member_pointer_v<T CL::*>;
 };

@@ -56,8 +56,19 @@ public:
 
 class M2Test : public CoreAsync::TA_MetaObject
 {
+    ENABLE_REFLEX
 public:
+    ~M2Test()
+    {
+        delete px;
+        px = nullptr;
+    }
+
     int mx {5};
+    int *px = new int(10);
+
+private:
+    int my {10};
 
 };
 
@@ -166,6 +177,8 @@ struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
 {
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::mx, META_STRING("mx")},
+        TA_MetaField {&Raw::my, META_STRING("my")},
+        TA_MetaField {&Raw::px, META_STRING("px")},
     };
 };
 

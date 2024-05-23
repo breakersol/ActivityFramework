@@ -109,7 +109,7 @@ struct TA_MemberTypeTrait
 {
     static constexpr bool enumFlag = std::is_enum<T>::value;
     static constexpr bool funcFlag = std::is_function_v<T>;
-    static constexpr bool noneStaticMemberVariableFlag = IsNonStaticMemberVariable<T>::value;
+    static constexpr bool noneStaticMemberPointerFlag = IsNonStaticMemberObjectPointer<T>::value;
     static constexpr bool noneStaticMemberFuncFlag = IsNonStaticMemberFunc<T>::value;
 };
 
@@ -273,15 +273,34 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
         using CF = decltype(target);
         if constexpr(std::is_enum_v<decltype(target)>)
         {
+            std::cout << 1 << std::endl;
             return target;
         }
         else if constexpr(!std::is_function_v<std::remove_pointer_t<CF> > && !std::is_member_object_pointer_v<CF> && !std::is_member_function_pointer_v<CF>)
         {
+            std::cout << 2 << std::endl;
             return *target;
         }
         else
         {
+            std::cout << 3<< std::endl;
             return std::invoke(target,std::forward<PARAS>(paras)...);
+        }
+    }
+
+    template <typename NAME, typename OBJ, typename Para>
+    static constexpr auto setVariable(OBJ &obj, Para &&para, NAME = {})
+    {
+        constexpr auto target = findType(NAME {});
+        using CF = decltype(target);
+        static_assert(IsNonStaticMemberObjectPointer<CF>::value, "The target type is not supported to set.");
+        if constexpr(std::is_pointer_v<std::remove_cv_t<OBJ>>)
+        {
+            (obj->*target) = para;
+        }
+        else
+        {
+            (obj.*target) = para;
         }
     }
 
@@ -489,4 +508,8 @@ private:
 };
 
 }
+
+#define ENABLE_REFLEX \
+template <typename T> friend struct CoreAsync::Reflex::TA_TypeInfo;
+
 #endif // TA_METAREFLEX_H
