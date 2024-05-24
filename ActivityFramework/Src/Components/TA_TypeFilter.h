@@ -58,7 +58,7 @@ struct IsNonStaticMemberObjectPointer
 template <typename CL, typename T>
 struct IsNonStaticMemberObjectPointer<T CL::*>
 {
-     static constexpr bool value =!std::is_function_v<T> && std::is_member_pointer_v<T CL::*>;
+    static constexpr bool value =!std::is_function_v<T CL::*> && std::is_member_pointer_v<T CL::*>;
 };
 
 template <typename T>

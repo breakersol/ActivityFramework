@@ -273,17 +273,14 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
         using CF = decltype(target);
         if constexpr(std::is_enum_v<decltype(target)>)
         {
-            std::cout << 1 << std::endl;
             return target;
         }
         else if constexpr(!std::is_function_v<std::remove_pointer_t<CF> > && !std::is_member_object_pointer_v<CF> && !std::is_member_function_pointer_v<CF>)
         {
-            std::cout << 2 << std::endl;
             return *target;
         }
         else
         {
-            std::cout << 3<< std::endl;
             return std::invoke(target,std::forward<PARAS>(paras)...);
         }
     }
@@ -292,7 +289,7 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
     static constexpr auto setVariable(OBJ &obj, Para &&para, NAME = {})
     {
         constexpr auto target = findType(NAME {});
-        using CF = decltype(target);
+        using CF = decltype(findType(NAME {}));
         static_assert(IsNonStaticMemberObjectPointer<CF>::value, "The target type is not supported to set.");
         if constexpr(std::is_pointer_v<std::remove_cv_t<OBJ>>)
         {
