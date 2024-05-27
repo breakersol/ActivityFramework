@@ -103,14 +103,10 @@ TEST_F(TA_MetaReflexTest, findEnum)
     EXPECT_EQ(res == MetaTest::META_RED, true);
 }
 
-TEST_F(TA_MetaReflexTest, setVariable)
+TEST_F(TA_MetaReflexTest, update)
 {
-    M2Test m2;
-    CoreAsync::Reflex::TA_TypeInfo<M2Test>::setVariable(m2, 10, META_STRING("px"));
-    auto res = CoreAsync::Reflex::TA_TypeInfo<M2Test>::invoke(META_STRING("mx"),m2);
-    EXPECT_EQ(res == 10, true);
-    // using CT = decltype(CoreAsync::Reflex::TA_TypeInfo<M2Test>::findType(META_STRING("mx")));
-    // auto r1 = CoreAsync::IsNonStaticMemberObjectPointer<CT>::value;
-    // EXPECT_EQ(*res == 10, true);
-    // std::cout << typeid(CT).name() << std::endl;
+    M2Test m2;;
+    CoreAsync::Reflex::TA_TypeInfo<M2Test>::update(m2, 111, META_STRING("px"));
+    auto res = CoreAsync::Reflex::TA_TypeInfo<M2Test>::invoke(META_STRING("px"),m2);
+    EXPECT_EQ(*res == 111, true);
 }

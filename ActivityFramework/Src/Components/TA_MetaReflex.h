@@ -286,18 +286,29 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
     }
 
     template <typename NAME, typename OBJ, typename Para>
-    static constexpr auto setVariable(OBJ &obj, Para &&para, NAME = {})
+    static constexpr auto update(OBJ &obj, Para &&para, NAME = {})
     {
         constexpr auto target = findType(NAME {});
-        using CF = decltype(findType(NAME {}));
+        using CF = decltype(findType(NAME {}));   
         static_assert(IsNonStaticMemberObjectPointer<CF>::value, "The target type is not supported to set.");
+        using RT = VariableTypeInfo<CF>::RetType;
         if constexpr(std::is_pointer_v<std::remove_cv_t<OBJ>>)
         {
-            (obj->*target) = para;
+            if constexpr(std::is_pointer_v<RT>)
+            {
+                *(obj->*target) = para;
+            }
+            else
+                (obj->*target) = para;
         }
         else
         {
-            (obj.*target) = para;
+            if constexpr(std::is_pointer_v<RT>)
+            {
+                *(obj.*target) = para;
+            }
+            else
+                (obj.*target) = para;
         }
     }
 

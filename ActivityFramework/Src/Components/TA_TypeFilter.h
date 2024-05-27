@@ -70,7 +70,7 @@ struct IsNonStaticMemberFunc
 template <typename CL, typename T>
 struct IsNonStaticMemberFunc<T CL::*>
 {
-   static constexpr bool value = std::is_function_v<T> && std::is_member_pointer_v<T CL::*>;
+   static constexpr bool value = std::is_function_v<T CL::*> && std::is_member_pointer_v<T CL::*>;
 };
 
 template <typename ST, typename FUNC, template <typename S, typename D> class FILTER>
@@ -148,6 +148,22 @@ struct FunctionTypeInfo<R(*)(PARA...)>
     using RetType = R;
     using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
     static constexpr std::size_t paraSize = sizeof...(PARA);
+};
+
+template <typename Var>
+struct VariableTypeInfo;
+
+template <typename C, typename R>
+struct VariableTypeInfo<R C::*>
+{
+    using RetType = R;
+    using ParentClass = C;
+};
+
+template <typename R>
+struct VariableTypeInfo<R *>
+{
+    using RetType = R;
 };
 
 template <typename T>
