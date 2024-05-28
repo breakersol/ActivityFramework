@@ -93,8 +93,8 @@ TEST_F(TA_MetaReflexTest, findNonMemberVariable)
 TEST_F(TA_MetaReflexTest, findMemberVariable)
 {
     M2Test m2;
-    auto res = CoreAsync::Reflex::TA_TypeInfo<M2Test>::invoke(META_STRING("mx"),m2);
-    EXPECT_EQ(res == 5, true);
+    auto res = CoreAsync::Reflex::TA_TypeInfo<M2Test>::invoke(META_STRING("px"),m2);
+    EXPECT_EQ(*res == 10, true);
 }
 
 TEST_F(TA_MetaReflexTest, findEnum)
@@ -111,4 +111,12 @@ TEST_F(TA_MetaReflexTest, findMethodsTest)
     (m2.*std::get<1>(op))(10);
     auto res = (m2.*std::get<0>(op))();
     EXPECT_EQ(res == 10, true);
+}
+
+TEST_F(TA_MetaReflexTest, updatePrivateMember)
+{
+    M2Test m2;;
+    CoreAsync::Reflex::TA_TypeInfo<M2Test>::update(m2, 111, META_STRING("px"));
+    auto res = CoreAsync::Reflex::TA_TypeInfo<M2Test>::invoke(META_STRING("px"),m2);
+    EXPECT_EQ(*res == 111, true);
 }
