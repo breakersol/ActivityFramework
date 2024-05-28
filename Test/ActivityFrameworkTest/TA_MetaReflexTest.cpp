@@ -103,7 +103,7 @@ TEST_F(TA_MetaReflexTest, findEnum)
     EXPECT_EQ(res == MetaTest::META_RED, true);
 }
 
-TEST_F(TA_MetaReflexTest, update)
+TEST_F(TA_MetaReflexTest, updatePrivateMember)
 {
     M2Test m2;;
     CoreAsync::Reflex::TA_TypeInfo<M2Test>::update(m2, 111, META_STRING("px"));

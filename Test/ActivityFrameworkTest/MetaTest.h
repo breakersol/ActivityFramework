@@ -65,10 +65,10 @@ public:
     }
 
     int mx {5};
-    int *px = new int(10);
 
 private:
     int my {10};
+    int *px = new int(10);
 
 };
 

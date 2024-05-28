@@ -67,10 +67,10 @@ struct IsNonStaticMemberFunc
    static constexpr bool value = false;
 };
 
-template <typename CL, typename T>
-struct IsNonStaticMemberFunc<T CL::*>
+template <typename CL, typename T, typename ...PARAS>
+struct IsNonStaticMemberFunc<T(CL:: *)(PARAS...)>
 {
-   static constexpr bool value = std::is_function_v<T CL::*> && std::is_member_pointer_v<T CL::*>;
+   static constexpr bool value = std::is_member_function_pointer_v<T(CL::*)(PARAS...)>;
 };
 
 template <typename ST, typename FUNC, template <typename S, typename D> class FILTER>
