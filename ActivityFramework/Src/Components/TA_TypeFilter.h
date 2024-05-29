@@ -50,28 +50,34 @@ struct IsSmartPointer<std::weak_ptr<Ins> >
 };
 
 template <typename T>
-struct IsNonStaticMemberObjectPointer
+struct IsInstanceVariable
 {
    static constexpr bool value = false;
 };
 
 template <typename CL, typename T>
-struct IsNonStaticMemberObjectPointer<T CL::*>
+struct IsInstanceVariable<T CL::*>
 {
     static constexpr bool value =!std::is_function_v<T CL::*> && std::is_member_pointer_v<T CL::*>;
 };
 
 template <typename T>
-struct IsNonStaticMemberFunc
+struct IsInstanceMethod
 {
    static constexpr bool value = false;
 };
 
 template <typename CL, typename T, typename ...PARAS>
-struct IsNonStaticMemberFunc<T(CL:: *)(PARAS...)>
+struct IsInstanceMethod<T(CL:: *)(PARAS...)>
 {
    static constexpr bool value = std::is_member_function_pointer_v<T(CL::*)(PARAS...)>;
 };
+
+template <typename T>
+struct IsStaticVariable : std::integral_constant<bool, !std::is_member_object_pointer_v<T> && !std::is_member_function_pointer_v<T>> {};
+
+template <typename T>
+struct IsStaticMethod : std::integral_constant<bool, !std::is_member_function_pointer_v<T> && !std::is_member_object_pointer_v<T> && std::is_function_v<T>> {};
 
 template <typename ST, typename FUNC, template <typename S, typename D> class FILTER>
 struct IsReturnTypeEqual;
