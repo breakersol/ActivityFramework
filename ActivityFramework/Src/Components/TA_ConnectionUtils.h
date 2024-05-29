@@ -100,7 +100,7 @@ namespace CoreAsync
             using ParentType = typename FunctionTypeInfo<SenderFunc>::ParentClass;
             if constexpr(!std::is_convertible_v<std::decay_t<Sender> *, ParentType *>)
                 return list;
-            if constexpr(!Reflex::TA_MemberTypeTrait<SenderFunc>::noneStaticMemberFuncFlag || !IsReturnTypeEqual<void, std::decay_t<SenderFunc>, std::is_same>::value)
+            if constexpr(!Reflex::TA_MemberTypeTrait<SenderFunc>::instanceMethodFlag || !IsReturnTypeEqual<void, std::decay_t<SenderFunc>, std::is_same>::value)
             {
                 return list;
             }

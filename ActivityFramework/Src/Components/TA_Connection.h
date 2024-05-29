@@ -26,7 +26,7 @@ namespace CoreAsync {
         template <TA_ConnectionType type = TA_ConnectionType::Queued, EnableConnectObjectType Sender, typename SenderFunc, EnableConnectObjectType Receiver, typename ReceiverFunc>
         static constexpr bool connect(Sender *pSender, SenderFunc &&sFunc, Receiver *pReceiver, ReceiverFunc &&rFunc)
         {
-            if constexpr(!Reflex::TA_MemberTypeTrait<SenderFunc>::noneStaticMemberFuncFlag || !Reflex::TA_MemberTypeTrait<ReceiverFunc>::noneStaticMemberFuncFlag || !IsReturnTypeEqual<void,SenderFunc,std::is_same>::value)
+            if constexpr(!Reflex::TA_MemberTypeTrait<SenderFunc>::instanceMethodFlag || !Reflex::TA_MemberTypeTrait<ReceiverFunc>::instanceMethodFlag || !IsReturnTypeEqual<void,SenderFunc,std::is_same>::value)
             {
                 return false;
             }
@@ -56,7 +56,7 @@ namespace CoreAsync {
         template<EnableConnectObjectType Sender, typename SenderFunc, EnableConnectObjectType Receiver, typename ReceiverFunc>
         static constexpr bool disconnect(Sender *pSender, SenderFunc &&sFunc, Receiver *pReceiver, ReceiverFunc &&rFunc)
         {
-            if constexpr(!Reflex::TA_MemberTypeTrait<SenderFunc>::noneStaticMemberFuncFlag || !Reflex::TA_MemberTypeTrait<ReceiverFunc>::noneStaticMemberFuncFlag || !IsReturnTypeEqual<void,SenderFunc,std::is_same>::value)
+            if constexpr(!Reflex::TA_MemberTypeTrait<SenderFunc>::instanceMethodFlag || !Reflex::TA_MemberTypeTrait<ReceiverFunc>::instanceMethodFlag || !IsReturnTypeEqual<void,SenderFunc,std::is_same>::value)
             {
                 return false;
             }

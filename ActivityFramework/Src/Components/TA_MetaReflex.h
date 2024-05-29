@@ -107,8 +107,10 @@ struct TA_MemberTypeTrait
 {
     static constexpr bool enumFlag = std::is_enum<T>::value;
     static constexpr bool funcFlag = std::is_function_v<T>;
-    static constexpr bool noneStaticMemberPointerFlag = IsNonStaticMemberObjectPointer<T>::value;
-    static constexpr bool noneStaticMemberFuncFlag = IsNonStaticMemberFunc<T>::value;
+    static constexpr bool instanceVariableFlag = IsInstanceVariable<T>::value;
+    static constexpr bool staticVariableFlag = IsStaticVariable<T>::value;
+    static constexpr bool instanceMethodFlag = IsInstanceMethod<T>::value;
+    static constexpr bool staticMethodFlag = IsStaticMethod<T>::value;
 };
 
 // template <typename READ, typename WRITE>
@@ -147,7 +149,13 @@ struct TA_MemberTypeTrait
 
 // };
 
-template <typename T, typename NAME>
+enum class Role
+{
+    Property,
+    NonProperty
+};
+
+template <typename T, typename NAME, Role role = Role::NonProperty>
 struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>
 {
     constexpr TA_MetaField(T t, NAME) : TA_MetaTypeName<T,NAME>{t}
@@ -159,6 +167,8 @@ struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>
     {
 
     }
+
+    static constexpr Role m_fieldRole {role};
 };
 
 template <typename ...FIELDS>
@@ -324,7 +334,7 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
     {
         constexpr auto target = findType(NAME {});
         using CF = decltype(findType(NAME {}));   
-        static_assert(IsNonStaticMemberObjectPointer<CF>::value, "The target type is not supported to set.");
+        static_assert(IsInstanceVariable<CF>::value, "The target type is not supported to set.");
         using RT = VariableTypeInfo<CF>::RetType;
         if constexpr(std::is_pointer_v<std::remove_cv_t<OBJ>>)
         {
