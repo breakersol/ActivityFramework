@@ -242,7 +242,6 @@ struct TA_TypeInfo<TestA> : TA_MetaTypeInfo<TestA>
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::print, META_STRING("print")},
     };
-    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -251,7 +250,6 @@ struct TA_TypeInfo<TestB> : TA_MetaTypeInfo<TestB>
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::deduct, META_STRING("deduct")},
     };
-    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -260,7 +258,6 @@ struct TA_TypeInfo<BaseTest> : TA_MetaTypeInfo<BaseTest,TestA>
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::sub, META_STRING("sub")},
     };
-    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -269,7 +266,6 @@ struct TA_TypeInfo<OtherTest> : TA_MetaTypeInfo<OtherTest,TestB>
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::product, META_STRING("product")},
     };
-    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -289,7 +285,6 @@ struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest,BaseTest,OtherTest>
         TA_MetaField {&Raw::startTest, META_STRING("startTest")},
         TA_MetaField {&Raw::printTest, META_STRING("printTest")}
     };
-    static constexpr TA_MetaPropertyOperations operations = {};
 };
 
 template <>
@@ -301,10 +296,6 @@ struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
         TA_MetaField {&Raw::getMx, META_STRING("getMx")},
         TA_MetaField {&Raw::my, META_STRING("my")},
         TA_MetaField {&Raw::px, META_STRING("px")},
-    };
-    
-    static constexpr TA_MetaPropertyOperations operations = {
-        TA_MetaPropertyOperation {META_STRING("getMx"), META_STRING("setMx")}
     };
 };
 
@@ -330,18 +321,6 @@ struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
         TA_MetaField {&Raw::getQueue, META_STRING("getQueue")},
         TA_MetaField {&Raw::setPrioritQueue, META_STRING("setPrioritQueue")},
         TA_MetaField {&Raw::getPriorityQueue, META_STRING("getPriorityQueue")},
-    };
-
-    static constexpr TA_MetaPropertyOperations operations = {
-        TA_MetaPropertyOperation {META_STRING("getVec"), META_STRING("setVec")},
-        TA_MetaPropertyOperation {META_STRING("getRawPtr"), META_STRING("setRawPtr")},
-        TA_MetaPropertyOperation {META_STRING("getArray"), META_STRING("setArray")},
-        TA_MetaPropertyOperation {META_STRING("getList"), META_STRING("setList")},
-        TA_MetaPropertyOperation {META_STRING("getForwardList"), META_STRING("setForwardList")},
-        TA_MetaPropertyOperation {META_STRING("getDeque"), META_STRING("setDeque")},
-        TA_MetaPropertyOperation {META_STRING("getStack"), META_STRING("setStack")},
-        TA_MetaPropertyOperation {META_STRING("getQueue"), META_STRING("setQueue")},
-        TA_MetaPropertyOperation {META_STRING("getPriorityQueue"), META_STRING("setPrioritQueue")},
     };
 };
 

@@ -41,7 +41,6 @@ namespace CoreAsync {
         struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_AutoChainPipeline> : TA_MetaTypeInfo<TA_AutoChainPipeline,TA_BasicPipeline>
         {
             static constexpr TA_MetaFieldList fields = {};
-            static constexpr TA_MetaPropertyOperations operations = {};
         };
     }
 }

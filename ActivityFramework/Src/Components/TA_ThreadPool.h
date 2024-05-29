@@ -173,7 +173,6 @@ namespace CoreAsync {
         static constexpr TA_MetaFieldList fields = {
             TA_MetaField {&Raw::taskCompleted, META_STRING("taskCompleted")},
         };
-        static constexpr TA_MetaPropertyOperations operations {};
     };
 }
 

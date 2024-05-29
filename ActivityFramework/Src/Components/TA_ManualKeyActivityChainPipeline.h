@@ -54,7 +54,6 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
                 TA_MetaField {&Raw::reset, META_STRING("reset")},
             };
-            static constexpr TA_MetaPropertyOperations operations = {};
         };
     }
 }

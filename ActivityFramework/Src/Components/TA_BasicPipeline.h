@@ -179,8 +179,6 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::stateChanged, META_STRING("stateChanged")},
                 TA_MetaField {&Raw::activityCompleted, META_STRING("activityCompleted")}
             };
-
-            static constexpr TA_MetaPropertyOperations operations = {};
         };
     }
 }
