@@ -21,6 +21,7 @@ Using **/ActivityFramework/ActivityFramework/CMakeList.txt** to build the projec
 - [v0.1.5](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.5)
 - [v0.1.6](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.6)
 - [v0.2.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.0)
+- [v0.2.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.1)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
