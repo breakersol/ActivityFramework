@@ -127,6 +127,7 @@ TA_Signals:
 
 class M3Test
 {
+    ENABLE_REFLEX
 public:
     void setVec(const std::vector<int> &v)
     {
@@ -321,6 +322,7 @@ struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
         TA_MetaField {&Raw::getQueue, META_STRING("getQueue")},
         TA_MetaField {&Raw::setPrioritQueue, META_STRING("setPrioritQueue")},
         TA_MetaField {&Raw::getPriorityQueue, META_STRING("getPriorityQueue")},
+        TA_MetaField {&Raw::m_array, META_STRING("m_array")},
     };
 };
 

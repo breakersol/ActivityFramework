@@ -149,16 +149,16 @@ struct TA_MemberTypeTrait
 
 // };
 
-enum class Role
+template <typename ROLE>
+struct TA_MetaRole
 {
-    Property,
-    NonProperty
+    static constexpr std::string_view m_role {ROLE::data()};
 };
 
-template <typename T, typename NAME, Role role = Role::NonProperty>
-struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>
+template <typename T, typename NAME, typename ROLE = decltype(META_STRING(""))>
+struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>, TA_MetaRole<ROLE>
 {
-    constexpr TA_MetaField(T t, NAME) : TA_MetaTypeName<T,NAME>{t}
+    constexpr TA_MetaField(T t, NAME, ROLE = {}) : TA_MetaTypeName<T,NAME>{t}
     {
 
     }
@@ -167,8 +167,6 @@ struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>
     {
 
     }
-
-    static constexpr Role m_fieldRole {role};
 };
 
 template <typename ...FIELDS>
@@ -285,7 +283,7 @@ private:
 
 
 private:
-    std::tuple<FIELDS...> m_fields;
+    const std::tuple<FIELDS...> m_fields;
 
 };
 
