@@ -67,12 +67,7 @@ public:
         px = nullptr;
     }
 
-    void setMx(int x) {mx = x;}
-    int getMx() const {return mx;}
-
     int mx {5};
-
-private:
     int my {10};
     int *px = new int(10);
 
@@ -292,11 +287,9 @@ template <>
 struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
 {
     static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::mx, META_STRING("mx")},
-        TA_MetaField {&Raw::setMx, META_STRING("setMx")},
-        TA_MetaField {&Raw::getMx, META_STRING("getMx")},
-        TA_MetaField {&Raw::my, META_STRING("my")},
-        TA_MetaField {&Raw::px, META_STRING("px")},
+        TA_MetaField {&Raw::mx, META_STRING("mx"), META_STRING("Property")},
+        TA_MetaField {&Raw::my, META_STRING("my"), META_STRING("Property")},
+        TA_MetaField {&Raw::px, META_STRING("px"), META_STRING("Property")},
     };
 };
 

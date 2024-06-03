@@ -153,6 +153,7 @@ template <typename ROLE>
 struct TA_MetaRole
 {
     static constexpr std::string_view m_role {ROLE::data()};
+    static constexpr bool m_isProperty {ROLE::data() == std::string_view("Property")};
 };
 
 template <typename T, typename NAME, typename ROLE = decltype(META_STRING(""))>
