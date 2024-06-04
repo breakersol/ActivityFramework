@@ -51,7 +51,8 @@ public:
 
 class MetaTest
 {
-public:
+    ENABLE_REFLEX
+
     enum MetaColor
     {
         META_RED,
@@ -290,6 +291,30 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
 ```
 <br/>The above code indicates that we first create two branches activity_4 and activity_5 on activity_3. At this layer, activity_3 represents branch index 0, while activity_4 and activity_5 represent 1 and 2, respectively. Similarly, we created the branch on activity_1 activity_2 and activity_3. **selectBranch({2,2})** means that when activity_1 is executed(**(*activity_1)()**), it will be executed in the order from activity_3 to activity_5 and return the result of activity_5. And activity_1 itself will not be executed.
 
+#### Thread Pool
+A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
+- **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
+```cpp
+    CoreAsync::TA_ThreadPool threadPool;
+    std::vector<std::future<CoreAsync::TA_Variant>> testVec;
+    std::vector<int> validVec(1024);
+    for(int i = 0;i < activities.size();++i)
+    {
+        testVec.emplace_back(threadPool.postActivity(activities[i]).first);
+        validVec[i] = i;
+    }
+    for(int i = 0;i < testVec.size();++i)
+    {
+        EXPECT_EQ(testVec[i].get().get<int>(), validVec[i]);
+    }
+```
+- **size**: Return the number of threads.
+- **shutDown**: Request to shut down and clear all of threads.
+---
+##### Signals:
+- **taskCompleted(std::size_t id, TA_Variant var)**
+    <br/>This signal will be activated when an activity is completed. _id_ is the unique id of the activity, and _var_ is the result of execution.
+
 #### Pipelines
 Activity Pipeline currently offers five types of pipelines to use: **Auto Chain Pipeline, Concurrent Pipeline, Manual Chain Pipeline, Manual Steps Chain Pipeline, and Manual Key Activity Chain Pipeline**, and all types of pipelines can be created through **ITA_PipelineCreator**.
 1. _Auto Chain Pipeline_: The pipeline will automatically execute all activites in order.
@@ -326,27 +351,3 @@ Pipeline status description:
 - **Ready**: Pipeline execution completed.
 ---
 ***Note: Pipeline Creator has ownership of all pipeline objects. And once an activity is added into a pipeline, its ownership would be transferred to the pipeline and the original activity pointer will be set as nullptr.***
-
-#### Thread Pool
-A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
-- **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
-```cpp
-    CoreAsync::TA_ThreadPool threadPool;
-    std::vector<std::future<CoreAsync::TA_Variant>> testVec;
-    std::vector<int> validVec(1024);
-    for(int i = 0;i < activities.size();++i)
-    {
-        testVec.emplace_back(threadPool.postActivity(activities[i]).first);
-        validVec[i] = i;
-    }
-    for(int i = 0;i < testVec.size();++i)
-    {
-        EXPECT_EQ(testVec[i].get().get<int>(), validVec[i]);
-    }
-```
-- **size**: Return the number of threads.
-- **shutDown**: Request to shut down and clear all of threads.
----
-##### Signals:
-- **taskCompleted(std::size_t id, TA_Variant var)**
-    <br/>This signal will be activated when an activity is completed. _id_ is the unique id of the activity, and _var_ is the result of execution.
