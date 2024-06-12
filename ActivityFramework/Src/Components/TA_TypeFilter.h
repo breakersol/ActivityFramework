@@ -58,7 +58,7 @@ struct IsInstanceVariable
 template <typename CL, typename T>
 struct IsInstanceVariable<T CL::*>
 {
-    static constexpr bool value =!std::is_function_v<T CL::*> && std::is_member_pointer_v<T CL::*>;
+    static constexpr bool value = !std::is_function_v<T CL::*> && std::is_member_pointer_v<T CL::*>;
 };
 
 template <typename T>

@@ -65,7 +65,7 @@ namespace CoreAsync
         TA_Serialization & operator << (const T &t)
         {
             static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
-            // callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::operationSize()> {});
+            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::size()> {});
             return *this;
         }
 
@@ -73,7 +73,7 @@ namespace CoreAsync
         TA_Serialization & operator >> (T &t)
         {
             static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
-            // callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::operationSize()> {});
+            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::size()> {});
             return *this;
         }
 
@@ -347,28 +347,26 @@ namespace CoreAsync
         }
 
         template <typename T, std::size_t IDX0, std::size_t ...IDXS>
-        constexpr void callProperty (T &t, std::index_sequence<IDX0, IDXS...> = {})
+        constexpr void callProperty (T &t, std::index_sequence<IDX0, IDXS...> = std::make_index_sequence<Reflex::TA_TypeInfo<std::remove_cvref_t<T>>::TA_PropertyNames::size> {})
         {
             using Rt = std::remove_cvref_t<T>;
-            using FieldType = std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::fields.template getField<IDX0>())>;
-            if constexpr(FieldType::m_isProperty)
+            using Properties = Reflex::TA_TypeInfo<Rt>::TA_PropertyNames::List;
+            if constexpr(OType == OperationType::Output)
             {
-                if constexpr(OType == OperationType::Output)
-                {
 
-                    *this << std::invoke(CoreAsync::Reflex::TA_TypeInfo<Rt>::fields.template getField<IDX0>().value(), t);
-                }
-                else
+                *this << Reflex::TA_TypeInfo<Rt>::invoke(typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {}, t);
+            }
+            else
+            {
+                using ValType = VariableTypeInfo<std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::findType(typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {}))>>::RetType;
+                ValType val {};
+                if constexpr(std::is_pointer_v<decltype(val)>)
                 {
-                    using ValType = std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::fields.template getField<IDX0>().value())>;
-                    ValType val {};
-                    if constexpr(std::is_pointer_v<decltype(val)>)
-                    {
-                        val = new std::remove_cvref_t<decltype(*val)>();
-                    }
-                    *this >> val;
-                    Reflex::TA_TypeInfo<Rt>::update(t, val, typename FieldType::TName {});
+                    val = new std::remove_cvref_t<decltype(*val)>();
                 }
+                std::cout << typeid(ValType).name() << std::endl;
+                *this >> val;
+                Reflex::TA_TypeInfo<Rt>::update(t, val, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {});
             }
             callProperty(t, std::index_sequence<IDXS...> {});
         }

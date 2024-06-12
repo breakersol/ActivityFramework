@@ -275,7 +275,7 @@ struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest,BaseTest,OtherTest>
         TA_MetaField {static_cast<float(Raw::*)(float)const>(&Raw::Sum),META_STRING("sum_1")},
         TA_MetaField {static_cast<bool(Raw::*)(int)const>(&Raw::contains), META_STRING("contains_0")},
         TA_MetaField {static_cast<bool(Raw::*)(std::string)const>(&Raw::contains),META_STRING("contains_1")},
-        TA_MetaField {&Raw::productMM, META_STRING("productMM")},
+        TA_MetaField {&Raw::productMM, META_STRING("productMM"), TA_PROPERTY},
         TA_MetaField {&Raw::str, META_STRING("str")},
         TA_MetaField {&Raw::getStr, META_STRING("getStr")},
         TA_MetaField {&Raw::startTest, META_STRING("startTest")},
@@ -287,9 +287,9 @@ template <>
 struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
 {
     static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::mx, META_STRING("mx"), META_STRING("Property")},
-        TA_MetaField {&Raw::my, META_STRING("my"), META_STRING("Property")},
-        TA_MetaField {&Raw::px, META_STRING("px"), META_STRING("Property")},
+        TA_MetaField {&Raw::mx, META_STRING("mx"), TA_PROPERTY},
+        TA_MetaField {&Raw::my, META_STRING("my"), TA_PROPERTY},
+        TA_MetaField {&Raw::px, META_STRING("px"), TA_PROPERTY},
     };
 };
 
@@ -297,25 +297,8 @@ template <>
 struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
 {
     static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::setVec, META_STRING("setVec")},
-        TA_MetaField {&Raw::getVec, META_STRING("getVec")},
-        TA_MetaField {&Raw::setRawPtr, META_STRING("setRawPtr")},
-        TA_MetaField {&Raw::getRawPtr, META_STRING("getRawPtr")},
-        TA_MetaField {&Raw::setArray<5>, META_STRING("setArray")},
-        TA_MetaField {&Raw::getArray, META_STRING("getArray")},
-        TA_MetaField {&Raw::setList, META_STRING("setList")},
-        TA_MetaField {&Raw::getList, META_STRING("getList")},
-        TA_MetaField {&Raw::setForwardList, META_STRING("setForwardList")},
-        TA_MetaField {&Raw::getForwardList, META_STRING("getForwardList")},
-        TA_MetaField {&Raw::setDeque, META_STRING("setDeque")},
-        TA_MetaField {&Raw::getDeque, META_STRING("getDeque")},
-        TA_MetaField {&Raw::setStack, META_STRING("setStack")},
-        TA_MetaField {&Raw::getStack, META_STRING("getStack")},
-        TA_MetaField {&Raw::setQueue, META_STRING("setQueue")},
-        TA_MetaField {&Raw::getQueue, META_STRING("getQueue")},
-        TA_MetaField {&Raw::setPrioritQueue, META_STRING("setPrioritQueue")},
-        TA_MetaField {&Raw::getPriorityQueue, META_STRING("getPriorityQueue")},
-        TA_MetaField {&Raw::m_array, META_STRING("m_array")},
+        TA_MetaField {&Raw::vec, META_STRING("vec"), TA_PROPERTY},
+        TA_MetaField {&Raw::m_array, META_STRING("m_array"), TA_PROPERTY},
     };
 };
 

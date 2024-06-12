@@ -57,10 +57,10 @@ namespace CoreAsync {
     class MetaPushBack<TA_MetaTypelist<Source...>, NewEle>
     {
     public:
-        using type = TA_MetaTypelist<Source...,NewEle>;
+        using type = TA_MetaTypelist<Source..., NewEle>;
     };
 
-    template <typename Source, typename NewEle>
+    template <typename Source, typename NewEle = TA_MetaTypelist<>>
     class MetaAppend;
 
     template <typename ...Source, typename ...NewEle>
@@ -70,11 +70,11 @@ namespace CoreAsync {
         using type = TA_MetaTypelist<Source...,NewEle...>;
     };
 
-    template <typename ...Source>
-    class MetaAppend<TA_MetaTypelist<Source...>, TA_MetaTypelist<> >
+    template <>
+    class MetaAppend<TA_MetaTypelist<>, TA_MetaTypelist<> >
     {
     public:
-        using type = TA_MetaTypelist<Source...>;
+        using type = TA_MetaTypelist<>;
     };
 
     template <typename Se, typename ...Rm>
@@ -183,6 +183,18 @@ namespace CoreAsync {
     struct MetaFilter<TA_MetaTypelist<Head, Source...>, FUNC>
     {
         using result = typename MetaAppend<typename MetaFilter<Head,FUNC>::result, typename MetaFilter<TA_MetaTypelist<Source...>,FUNC>::result>::type;
+    };
+
+    template <typename Source, template <typename T> class FilterFunc, template <typename M> class MapFunc, typename Dest = TA_MetaTypelist<> >
+    struct MetaFilterMap
+    {
+        using result = std::conditional_t<FilterFunc<Source>::value, typename MetaPushBack<Dest, typename MapFunc<Source>::type>::type, Dest>;
+    };
+
+    template <typename Head, typename ...Tails, template <typename T> class FilterFunc, template <typename M> class MapFunc>
+    struct MetaFilterMap<TA_MetaTypelist<Head, Tails...>, FilterFunc, MapFunc>
+    {
+        using result = typename MetaAppend<typename MetaFilterMap<Head, FilterFunc, MapFunc>::result, typename MetaFilterMap<Tails..., FilterFunc, MapFunc>::result>::type;
     };
 
     template <typename Source, template <typename T> class FUNC>

@@ -161,7 +161,10 @@ struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>, TA_MetaRol
 {
     constexpr TA_MetaField(T t, NAME, ROLE = {}) : TA_MetaTypeName<T,NAME>{t}
     {
-
+        if constexpr(TA_MetaRole<ROLE>::m_isProperty)
+        {
+            static_assert(IsInstanceVariable<T>::value, "Non instance variable can't be declared as property.");
+        }
     }
 
     constexpr TA_MetaField() : TA_MetaTypeName<T,NAME> {nullptr}
@@ -174,7 +177,7 @@ template <typename ...FIELDS>
 class TA_MetaFieldList
 {
 public:
-    using ValueTypes = TA_MetaTypelist<decltype(FIELDS {}.value())...>;
+    using ValueTypes = TA_MetaTypelist<decltype(FIELDS {}.value())...>; 
 
     constexpr TA_MetaFieldList(FIELDS ...fs) : m_fields(fs...)
     {
@@ -242,8 +245,24 @@ public:
         } ();
     }
 
-private:
+    template <typename P>
+    struct PropertyFilter
+    {
+        static constexpr bool value = P::m_isProperty;
+    };
 
+    template <typename M>
+    struct PropertyMapper
+    {
+        using type = M::TName;
+    };
+
+    struct PropertyNames
+    {
+        using Types = MetaFilterMap<TA_MetaTypelist<FIELDS...>, PropertyFilter, PropertyMapper>::result;
+    };
+
+private:
     template <typename VALUE>
     constexpr bool containsMatchedType(VALUE &&, std::index_sequence<>) const
     {
@@ -284,7 +303,7 @@ private:
 
 
 private:
-    const std::tuple<FIELDS...> m_fields;
+    std::tuple<FIELDS...> m_fields;
 
 };
 
@@ -460,6 +479,12 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
         using VariantTypes = typename MetaMerge<typename decltype(TA_TypeInfo<T>::fields)::ValueTypes, typename TA_TypeInfo<BASES>::TA_Values::VariantTypes...>::type;
     };
 
+    struct TA_PropertyNames
+    {
+        using List = MetaRemoveDuplicate<typename MetaAppend<typename std::remove_cv_t<decltype(TA_TypeInfo<T>::fields)>::PropertyNames::Types, typename std::remove_cv_t<decltype(TA_TypeInfo<BASES>::fields)>::PropertyNames::Types...>::type>::result;
+        static constexpr auto size = MetaSize<List>::value;
+    };
+
     template <typename BASE>
     struct TA_MetaInfoPack
     {
@@ -564,7 +589,6 @@ private:
         return findName(std::forward<VALUE>(v), std::index_sequence<IDXS...> {});
     }
 
-
     static constexpr decltype(auto) findValue(std::string_view &&str, std::index_sequence<> = {})
     {
         return typename MetaVariant<typename TA_Values::VariantTypes>::Var {};
@@ -586,5 +610,8 @@ private:
 
 #define ENABLE_REFLEX \
 template <typename T> friend struct CoreAsync::Reflex::TA_TypeInfo;
+
+#define TA_PROPERTY \
+META_STRING("Property")
 
 #endif // TA_METAREFLEX_H
