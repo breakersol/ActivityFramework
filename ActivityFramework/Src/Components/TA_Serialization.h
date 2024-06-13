@@ -358,12 +358,8 @@ namespace CoreAsync
             }
             else
             {
-                using ValType = VariableTypeInfo<std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::findType(typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {}))>>::RetType;
+                using ValType = std::remove_pointer_t<typename VariableTypeInfo<std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::findType(typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {}))>>::RetType>;
                 ValType val {};
-                if constexpr(std::is_pointer_v<decltype(val)>)
-                {
-                    val = new std::remove_cvref_t<decltype(*val)>();
-                }
                 std::cout << typeid(ValType).name() << std::endl;
                 *this >> val;
                 Reflex::TA_TypeInfo<Rt>::update(t, val, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {});

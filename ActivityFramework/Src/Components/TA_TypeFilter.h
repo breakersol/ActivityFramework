@@ -58,7 +58,7 @@ struct IsInstanceVariable
 template <typename CL, typename T>
 struct IsInstanceVariable<T CL::*>
 {
-    static constexpr bool value = !std::is_function_v<T CL::*> && std::is_member_pointer_v<T CL::*>;
+    static constexpr bool value = !std::is_function_v<T> && std::is_member_pointer_v<T CL::*>;
 };
 
 template <typename T>
@@ -262,6 +262,14 @@ concept EnumType = requires(T t)
     {t} -> IsEnumType;
 };
 
+template <typename FType>
+concept FieldType = requires(FType ct)
+{
+    { ct.m_isProperty } -> std::convertible_to<bool>;
+};
+
+template <typename FType>
+concept NonFieldType = !FieldType<FType>;
 
 }
 

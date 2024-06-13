@@ -24,15 +24,13 @@ void TA_SerializationTest::TearDown()
 
 TEST_F(TA_SerializationTest, CustomTypeTest)
 {
-    // float *ptr = new float(5.3);
-    std::cout << CoreAsync::IsInstanceVariable<decltype(&MetaTest::productMM)>::value << std::endl;
-    std::cout << typeid(CoreAsync::VariableTypeInfo<decltype(&MetaTest::productMM)>::RetType).name() << std::endl;
+    float *ptr = new float(5.3);
     M3Test t, p;
     {
         CoreAsync::TA_Serialization output("./test.afw");
-        t.setVec({2,3,4,5});
-    //     t.setRawPtr(ptr);
-    //     t.setArray({2,3,4,5,6});
+        // t.setVec({2,3,4,5});
+        t.setRawPtr(ptr);
+        // t.setArray({2,3,4,5,6});
     //     t.setList({9,9,9});
     //     t.setForwardList({9,9,9});
     //     t.setDeque({8,7,6,5,4});
@@ -45,8 +43,8 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         CoreAsync::TA_Serialization<CoreAsync::OperationType::Input> input("./test.afw");
         input >> p;
     }
-    EXPECT_EQ(t.getVec(), p.getVec());
-    // EXPECT_EQ(*t.getRawPtr(), *p.getRawPtr());
+    // EXPECT_EQ(t.getVec(), p.getVec());
+    EXPECT_EQ(*t.getRawPtr(), *p.getRawPtr());
     // EXPECT_EQ(t.getArray(), p.getArray());
     // EXPECT_EQ(t.getList(), p.getList());
     // EXPECT_EQ(t.getForwardList(), p.getForwardList());

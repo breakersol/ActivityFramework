@@ -245,7 +245,7 @@ public:
         } ();
     }
 
-    template <typename P>
+    template <FieldType P>
     struct PropertyFilter
     {
         static constexpr bool value = P::m_isProperty;
@@ -259,7 +259,7 @@ public:
 
     struct PropertyNames
     {
-        using Types = MetaFilterMap<TA_MetaTypelist<FIELDS...>, PropertyFilter, PropertyMapper>::result;
+        using Types = MetaFilterMapper<TA_MetaTypelist<FIELDS...>, PropertyFilter, PropertyMapper>::result;
     };
 
 private:
@@ -505,7 +505,7 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
 
     struct TA_MetaBaseTypesInfo
     {
-        using types = typename MetaMap<TA_MetaTypelist<BASES...>, TA_MetaInfoPack>::type;
+        using types = typename MetaMapper<TA_MetaTypelist<BASES...>, TA_MetaInfoPack>::type;
         static constexpr std::size_t size = types::size;
     };
 

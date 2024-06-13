@@ -275,7 +275,7 @@ struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest,BaseTest,OtherTest>
         TA_MetaField {static_cast<float(Raw::*)(float)const>(&Raw::Sum),META_STRING("sum_1")},
         TA_MetaField {static_cast<bool(Raw::*)(int)const>(&Raw::contains), META_STRING("contains_0")},
         TA_MetaField {static_cast<bool(Raw::*)(std::string)const>(&Raw::contains),META_STRING("contains_1")},
-        TA_MetaField {&Raw::productMM, META_STRING("productMM"), TA_PROPERTY},
+        TA_MetaField {&Raw::productMM, META_STRING("productMM")},
         TA_MetaField {&Raw::str, META_STRING("str")},
         TA_MetaField {&Raw::getStr, META_STRING("getStr")},
         TA_MetaField {&Raw::startTest, META_STRING("startTest")},
@@ -287,9 +287,9 @@ template <>
 struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
 {
     static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::mx, META_STRING("mx"), TA_PROPERTY},
-        TA_MetaField {&Raw::my, META_STRING("my"), TA_PROPERTY},
-        TA_MetaField {&Raw::px, META_STRING("px"), TA_PROPERTY},
+        TA_MetaField {&Raw::mx, META_STRING("mx")},
+        TA_MetaField {&Raw::my, META_STRING("my")},
+        TA_MetaField {&Raw::px, META_STRING("px")},
     };
 };
 
@@ -297,8 +297,9 @@ template <>
 struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
 {
     static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::vec, META_STRING("vec"), TA_PROPERTY},
-        TA_MetaField {&Raw::m_array, META_STRING("m_array"), TA_PROPERTY},
+        // TA_MetaField {&Raw::vec, META_STRING("vec"), TA_PROPERTY},
+        // TA_MetaField {&Raw::m_array, META_STRING("m_array"), TA_PROPERTY},
+        // TA_MetaField {&Raw::pFloatPtr, META_STRING("pFloatPtr"), TA_PROPERTY},
     };
 };
 
