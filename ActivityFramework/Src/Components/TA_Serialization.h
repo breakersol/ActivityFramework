@@ -65,7 +65,7 @@ namespace CoreAsync
         TA_Serialization & operator << (const T &t)
         {
             static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
-            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::size()> {});
+            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyNames::size> {});
             return *this;
         }
 
@@ -73,7 +73,7 @@ namespace CoreAsync
         TA_Serialization & operator >> (T &t)
         {
             static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
-            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::size()> {});
+            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyNames::size> {});
             return *this;
         }
 
@@ -335,7 +335,7 @@ namespace CoreAsync
 
         TA_Serialization & operator >> (std::nullptr_t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Output, "The operation type isn't INPUT");
             return *this;
         }
 
@@ -353,7 +353,6 @@ namespace CoreAsync
             using Properties = Reflex::TA_TypeInfo<Rt>::TA_PropertyNames::List;
             if constexpr(OType == OperationType::Output)
             {
-
                 *this << Reflex::TA_TypeInfo<Rt>::invoke(typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {}, t);
             }
             else

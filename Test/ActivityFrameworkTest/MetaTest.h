@@ -59,13 +59,14 @@ public:
 
 class M2Test : public CoreAsync::TA_MetaObject
 {
-    ENABLE_REFLEX
 public:
     ~M2Test()
     {
         delete px;
         px = nullptr;
     }
+
+    std::vector<int> m_vec {0,0,0,0};
 
     int mx {5};
     int my {10};
@@ -120,7 +121,7 @@ TA_Signals:
 
 };
 
-class M3Test
+class M3Test : public M2Test
 {
     ENABLE_REFLEX
 public:
@@ -287,19 +288,26 @@ template <>
 struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
 {
     static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::mx, META_STRING("mx")},
+        TA_MetaField {&Raw::m_vec, META_STRING("m_vec"), TA_PROPERTY},
+        TA_MetaField {&Raw::mx, META_STRING("mx"), TA_PROPERTY},
         TA_MetaField {&Raw::my, META_STRING("my")},
         TA_MetaField {&Raw::px, META_STRING("px")},
     };
 };
 
 template <>
-struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test>
+struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test, M2Test>
 {
     static constexpr TA_MetaFieldList fields = {
-        // TA_MetaField {&Raw::vec, META_STRING("vec"), TA_PROPERTY},
-        // TA_MetaField {&Raw::m_array, META_STRING("m_array"), TA_PROPERTY},
-        // TA_MetaField {&Raw::pFloatPtr, META_STRING("pFloatPtr"), TA_PROPERTY},
+        TA_MetaField {&Raw::vec, META_STRING("vec"), TA_PROPERTY},
+        TA_MetaField {&Raw::m_array, META_STRING("m_array"), TA_PROPERTY},
+        TA_MetaField {&Raw::pFloatPtr, META_STRING("pFloatPtr"), TA_PROPERTY},
+        TA_MetaField {&Raw::m_list, META_STRING("m_list"), TA_PROPERTY},
+        TA_MetaField {&Raw::m_forwardList, META_STRING("m_forwardList"), TA_PROPERTY},
+        TA_MetaField {&Raw::m_deque, META_STRING("m_deque"), TA_PROPERTY},
+        TA_MetaField {&Raw::m_stack, META_STRING("m_stack"), TA_PROPERTY},
+        TA_MetaField {&Raw::m_queue, META_STRING("m_queue"), TA_PROPERTY},
+        TA_MetaField {&Raw::m_prioritQueue, META_STRING("m_prioritQueue"), TA_PROPERTY},
     };
 };
 
