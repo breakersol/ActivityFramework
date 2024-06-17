@@ -51,7 +51,7 @@ public:
 
 class MetaTest
 {
-    ENABLE_REFLEX
+    ENABLE_REFLEX    //If you want to reflect private members, then declaring this macro is a must
 
     enum MetaColor
     {
