@@ -16,10 +16,11 @@
 
 #include "Components/TA_MetaObject.h"
 #include "Components/TA_ConnectionUtils.h"
+#include "Components/TA_ThreadPool.h"
 
 namespace CoreAsync
 {
-    TA_MetaObject::TA_MetaObject() : m_pRegister(new TA_ConnectionsRegister()), m_pRecorder(new TA_ConnectionsRecorder(this))
+TA_MetaObject::TA_MetaObject() : m_pRegister(new TA_ConnectionsRegister()), m_pRecorder(new TA_ConnectionsRecorder(this)), m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
     {
 
     }
@@ -36,6 +37,16 @@ namespace CoreAsync
             delete m_pRecorder;
             m_pRecorder = nullptr;
         }
+    }
+
+    TA_MetaObject::TA_MetaObject(const TA_MetaObject &object) : m_pRegister(object.m_pRegister), m_pRecorder(object.m_pRecorder), m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
+    {
+
+    }
+
+    TA_MetaObject::TA_MetaObject(TA_MetaObject &&object) : m_pRegister(std::move(object.m_pRegister)), m_pRecorder(std::move(object.m_pRecorder)), m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
+    {
+
     }
 
     bool TA_MetaObject::registConnection(std::string_view &&object, TA_ConnectionUnit &&unit)
@@ -56,6 +67,16 @@ namespace CoreAsync
     bool TA_MetaObject::removeSender(TA_MetaObject *pSender)
     {
         return m_pRecorder->remove(pSender);
+    }
+
+    bool TA_MetaObject::moveToThread(std::size_t idx)
+    {
+        if(idx >= TA_ThreadHolder::get().size())
+        {
+            return false;
+        }
+        m_affinityThreadIdx.store(idx, std::memory_order_release);
+        return true;
     }
 }
 

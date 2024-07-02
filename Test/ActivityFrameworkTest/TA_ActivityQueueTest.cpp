@@ -43,11 +43,11 @@ void TA_ActivityQueueTest::TearDown()
 }
 
 
-TEST_F(TA_ActivityQueueTest, sizeTest)
+TEST_F(TA_ActivityQueueTest, capacityTest)
 {
 //    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
     CoreAsync::ActivityQueue queue;
-    EXPECT_EQ(10240,queue.size());
+    EXPECT_EQ(10240,queue.capacity());
 }
 
 
@@ -108,7 +108,7 @@ TEST_F(TA_ActivityQueueTest, emptyTest)
 TEST_F(TA_ActivityQueueTest, fullTest)
 {
     CoreAsync::ActivityQueue queue;
-    for(int i = 0;i < queue.size();++i)
+    for(int i = 0;i < queue.capacity();++i)
     {
         std::string str {"321"};
         queue.push(CoreAsync::ITA_ActivityCreator::create(&MetaTest::getStr,str));

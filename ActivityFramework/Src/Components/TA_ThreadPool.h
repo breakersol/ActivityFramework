@@ -26,15 +26,16 @@
 #include <vector>
 #include <semaphore>
 #include <future>
+#include <numeric>
 
 namespace CoreAsync {
-    class TA_ThreadPool : public TA_MetaObject
+    class TA_ThreadPool
     {
         using SharedPromise = std::shared_ptr<std::promise<TA_Variant> >;
 
         struct ThreadState
         {
-            std::counting_semaphore<ActivityQueue::size()> resource {0};
+            std::counting_semaphore<ActivityQueue::capacity()> resource {0};
         };
 
     public:
@@ -64,6 +65,20 @@ namespace CoreAsync {
             m_threads.clear();
         }
 
+        std::size_t topPriorityThread() const
+        {
+            std::size_t lowIdx {std::numeric_limits<std::size_t>::max()}, lowSize {std::numeric_limits<std::size_t>::max()};
+            for(std::size_t idx = 0;idx < m_activityQueues.size();++idx)
+            {
+                if(m_activityQueues[idx].size() < lowSize)
+                {
+                    lowIdx = idx;
+                    lowSize = m_activityQueues[idx].size();
+                }
+            }
+            return lowIdx;
+        }
+
         auto postActivity(TA_BasicActivity *pActivity, bool autoDelete = false)
         {
             if(!pActivity)
@@ -81,7 +96,8 @@ namespace CoreAsync {
                 return var;
             }, std::move(pr));
             auto activityId {wrapperActivity->id()};
-            std::size_t idx = activityId % m_threads.size();
+            auto affinityId {pActivity->affinityThread()};
+            std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
             if(!m_activityQueues[idx].push(wrapperActivity))
                 return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
             m_states[idx].resource.release();
@@ -109,7 +125,6 @@ namespace CoreAsync {
                                 if(m_activityQueues[idx].pop(pActivity) && pActivity)
                                 {
                                     TA_Variant var = (*pActivity)();
-                                    TA_Connection::active(this, &TA_ThreadPool::taskCompleted, pActivity->id(), var);
                                     delete pActivity;
                                     pActivity = nullptr;
                                 }
@@ -117,7 +132,6 @@ namespace CoreAsync {
                             if(trySteal(pActivity, idx) && pActivity)
                             {
                                 TA_Variant var = (*pActivity)();
-                                TA_Connection::active(this, &TA_ThreadPool::taskCompleted, pActivity->id(), var);
                                 delete pActivity;
                                 pActivity = nullptr;
                             }
@@ -146,9 +160,6 @@ namespace CoreAsync {
             return false;
         }
 
-    TA_Signals:
-        void taskCompleted(std::size_t id, TA_Variant var) {}
-
     private:
         std::vector<ThreadState> m_states;;
         std::vector<std::jthread> m_threads;
@@ -165,14 +176,6 @@ namespace CoreAsync {
             static TA_ThreadPool pool;
             return pool;
         }
-    };
-
-    template <>
-    struct Reflex::TA_TypeInfo<TA_ThreadPool> : TA_MetaTypeInfo<TA_ThreadPool>
-    {
-        static constexpr TA_MetaFieldList fields = {
-            TA_MetaField {&Raw::taskCompleted, META_STRING("taskCompleted")},
-        };
     };
 }
 

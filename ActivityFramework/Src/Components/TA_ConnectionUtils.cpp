@@ -92,69 +92,28 @@ namespace CoreAsync
         return m_connections.size();
     }
 
-    std::atomic<bool> TA_ConnectionResponder::m_enableConsume {true};
-
-    std::counting_semaphore<ActivityQueue::size()> TA_ConnectionResponder::m_resource {0};
-
     TA_ConnectionResponder & TA_ConnectionResponder::GetIns()
     {
         static TA_ConnectionResponder responder;
         return responder;
     }
 
-    TA_ConnectionResponder::TA_ConnectionResponder() : m_consumingThread([this]() {consume();})
+    TA_ConnectionResponder::TA_ConnectionResponder()
     {
 
     }
 
     TA_ConnectionResponder::~TA_ConnectionResponder()
     {
-        m_enableConsume.store(false,std::memory_order_release);
-        m_resource.release();
-        if(m_consumingThread.joinable())
-        {
-            m_consumingThread.join();
-        }
         TA_CommonTools::debugInfo(META_STRING("Destroy Responder!\n"));
     }
 
-    bool TA_ConnectionResponder::response(TA_BasicActivity *&pActivity, TA_ConnectionType type)
+    bool TA_ConnectionResponder::response(TA_BasicActivity *&pActivity)
     {
         if(!pActivity)
             return false;
-        switch (type) {
-        case TA_ConnectionType::Direct:
-        {
-            auto ft = TA_ThreadHolder::get().postActivity(pActivity, true);
-            return true;
-        }
-        case TA_ConnectionType::Queued:
-        {
-            auto res = m_queue.push(pActivity);
-            m_resource.release();
-            return res;
-        }
-        default:
-            return false;
-        }
-    }
-
-    void TA_ConnectionResponder::consume()
-    {
-        while(m_enableConsume.load(std::memory_order_acquire))
-        {
-            m_resource.acquire();
-            TA_BasicActivity *pActivity {nullptr};
-            if(m_queue.front() && m_queue.pop(pActivity))
-            {
-                (*pActivity)();
-            }
-            if(pActivity)
-            {
-                delete pActivity;
-                pActivity = nullptr;
-            }
-        }
+        TA_ThreadHolder::get().postActivity(pActivity, true);
+        return true;
     }
 
     TA_ConnectionsRecorder::TA_ConnectionsRecorder(void *pReceiver) : m_pReceiver(pReceiver)

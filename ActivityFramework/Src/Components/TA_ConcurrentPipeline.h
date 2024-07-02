@@ -19,7 +19,7 @@
 
 #include "TA_BasicPipeline.h"
 
-#include <semaphore>
+#include <future>
 
 namespace CoreAsync {
     class ACTIVITY_FRAMEWORK_EXPORT TA_ConcurrentPipeline : public TA_BasicPipeline
@@ -32,8 +32,6 @@ namespace CoreAsync {
         TA_ConcurrentPipeline(TA_ConcurrentPipeline &&activity) = delete;
         TA_ConcurrentPipeline & operator = (const TA_ConcurrentPipeline &) = delete;
 
-        void taskCompleted(std::size_t id, TA_Variant var);
-
         void clear() override final;
         void reset() override final;
 
@@ -41,9 +39,7 @@ namespace CoreAsync {
         void run() override final;
 
     private:
-        std::vector<std::size_t> m_activityIds;
-        std::size_t m_waitingCount;
-        std::binary_semaphore m_postSemaphore {0};
+        std::vector<std::pair<std::future<TA_Variant>, std::size_t>> m_activityIds;
 
     };
 
@@ -52,9 +48,7 @@ namespace CoreAsync {
         template <>
         struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ConcurrentPipeline> : TA_MetaTypeInfo<TA_ConcurrentPipeline,TA_BasicPipeline>
         {
-            static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::taskCompleted, META_STRING("taskCompleted")},
-            };
+            static constexpr TA_MetaFieldList fields = {};
         };
     }
 }
