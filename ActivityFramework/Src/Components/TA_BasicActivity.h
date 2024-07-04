@@ -19,6 +19,7 @@
 
 #include <deque>
 #include <atomic>
+#include <numeric>
 
 #include "TA_Variant.h"
 #include "TA_ActivityFramework_global.h"

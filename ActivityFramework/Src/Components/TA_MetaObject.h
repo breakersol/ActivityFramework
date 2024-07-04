@@ -34,7 +34,7 @@ namespace CoreAsync
         friend class TA_ConnectionsRegister;
         friend class TA_ConnectionsRecorder;
     public:
-        explicit TA_MetaObject();
+        TA_MetaObject();
         virtual ~TA_MetaObject();
 
         TA_MetaObject(const TA_MetaObject &object);

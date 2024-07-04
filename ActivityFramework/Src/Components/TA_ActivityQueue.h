@@ -18,7 +18,6 @@
 #define TA_ACTIVITYQUEUE_H
 
 #include <atomic>
-#include <iostream>
 #include <array>
 
 namespace CoreAsync
