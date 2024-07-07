@@ -22,8 +22,7 @@
 #include <unordered_set>
 #include <tuple>
 #include <memory>
-#include <semaphore>
-#include <thread>
+#include <shared_mutex>
 
 #include "TA_ReceiverObject.h"
 #include "TA_MetaObject.h"
@@ -108,6 +107,7 @@ namespace CoreAsync
             std::string_view senderFuncName {Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<SenderFunc>(sFunc))};
             if(senderFuncName.empty())
                 return list;
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
             auto && [start, end] = m_connections.equal_range(typeid(ParentType).name());
             if(start == m_connections.end() && end == m_connections.end())
             {
@@ -131,11 +131,15 @@ namespace CoreAsync
         TA_ConnectionsRegister(const TA_ConnectionsRegister &reg) = delete;
         TA_ConnectionsRegister(TA_ConnectionsRegister &&reg) = delete;
 
+        TA_ConnectionsRegister & operator = (const TA_ConnectionsRegister &reg) = delete;
+        TA_ConnectionsRegister & operator = (TA_ConnectionsRegister &&reg) = delete;
+
     private:
         void clear();
 
     private:
         std::unordered_multimap<std::string_view, TA_ConnectionUnit> m_connections;
+        std::shared_mutex m_mutex;
 
     };
 
@@ -170,6 +174,7 @@ namespace CoreAsync
     private:
         std::unordered_set<void *> m_recordSet;
         void *m_pReceiver;
+        std::mutex m_mutex;
 
     };
 
