@@ -171,8 +171,6 @@ struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>, TA_MetaRol
     {
 
     }
-
-    static constexpr Role m_fieldRole {role};
 };
 
 template <typename ...FIELDS>
