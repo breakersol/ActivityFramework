@@ -20,6 +20,7 @@
 #include "TA_ActivityFramework_global.h"
 
 #include <string_view>
+#include <thread>
 
 namespace CoreAsync
 {
@@ -36,6 +37,13 @@ namespace CoreAsync
         TA_MetaObject();
         virtual ~TA_MetaObject();
 
+        TA_MetaObject(const TA_MetaObject &object);
+        TA_MetaObject(TA_MetaObject &&object);
+
+        const std::thread::id & sourceThread() const {return m_sourceThread;}
+        std::size_t affinityThread() const {return m_affinityThreadIdx.load(std::memory_order_acquire);}
+        bool moveToThread(std::size_t idx);
+
     private:
         bool registConnection(std::string_view &&object, TA_ConnectionUnit &&unit);
         bool removeConnection(std::string_view &&object, TA_ConnectionUnit &&unit);
@@ -46,6 +54,8 @@ namespace CoreAsync
     private:
         TA_ConnectionsRegister *m_pRegister;
         TA_ConnectionsRecorder *m_pRecorder;
+        const std::thread::id m_sourceThread;
+        std::atomic_size_t m_affinityThreadIdx;
 
     };
 }

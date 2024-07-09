@@ -34,12 +34,12 @@ namespace CoreAsync {
         TA_LinkedActivity(TA_LinkedActivity &&activity) = delete;
         TA_LinkedActivity & operator = (const TA_LinkedActivity &) = delete;
 
-        TA_LinkedActivity(Fn &&func, Ins &ins, FuncPara &... para) : TA_SingleActivity<Fn, Ins, Ret, FuncPara...> (std::move(func),ins,para...),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
+        TA_LinkedActivity(Fn &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_SingleActivity<Fn, Ins, Ret, FuncPara...> (std::move(func),ins,para..., affinityThread),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
         {
 
         }
 
-        TA_LinkedActivity(Fn &&func, Ins &ins, FuncPara &&... para) : TA_SingleActivity<Fn, Ins, Ret, FuncPara...> (std::move(func),ins,std::forward<FuncPara>(para)...),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
+        TA_LinkedActivity(Fn &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_SingleActivity<Fn, Ins, Ret, FuncPara...> (std::move(func),ins,std::forward<FuncPara>(para)..., affinityThread),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
         {
 
         }
@@ -156,12 +156,12 @@ namespace CoreAsync {
         TA_LinkedActivity(TA_LinkedActivity &&activity) = delete;
         TA_LinkedActivity & operator = (const TA_LinkedActivity &) = delete;
 
-        TA_LinkedActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para) : TA_SingleActivity<NonMemberFunctionPtr<Ret,FuncPara...>, INVALID_INS, Ret, FuncPara...> (std::move(func),para...),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
+        TA_LinkedActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_SingleActivity<NonMemberFunctionPtr<Ret,FuncPara...>, INVALID_INS, Ret, FuncPara...> (std::move(func),para..., affinityThread),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
         {
 
         }
 
-        TA_LinkedActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : TA_SingleActivity<NonMemberFunctionPtr<Ret,FuncPara...>, INVALID_INS, Ret, FuncPara...> (std::move(func),std::forward<FuncPara>(para)...),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
+        TA_LinkedActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_SingleActivity<NonMemberFunctionPtr<Ret,FuncPara...>, INVALID_INS, Ret, FuncPara...> (std::move(func),std::forward<FuncPara>(para)..., affinityThread),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
         {
 
         }
@@ -278,12 +278,12 @@ namespace CoreAsync {
         TA_LinkedActivity(TA_LinkedActivity &&activity) = delete;
         TA_LinkedActivity & operator = (const TA_LinkedActivity &) = delete;
 
-        TA_LinkedActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para) : TA_SingleActivity<LambdaType<Ret,FuncPara...>, INVALID_INS, Ret, FuncPara...> (std::move(func),para...),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
+        TA_LinkedActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_SingleActivity<LambdaType<Ret,FuncPara...>, INVALID_INS, Ret, FuncPara...> (std::move(func),para..., affinityThread),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
         {
 
         }
 
-        TA_LinkedActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para) : TA_SingleActivity<LambdaType<Ret,FuncPara...>, INVALID_INS, Ret, FuncPara...> (std::move(func),std::forward<FuncPara>(para)...),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
+        TA_LinkedActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_SingleActivity<LambdaType<Ret,FuncPara...>, INVALID_INS, Ret, FuncPara...> (std::move(func),std::forward<FuncPara>(para)..., affinityThread),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
         {
 
         }
@@ -400,7 +400,7 @@ namespace CoreAsync {
         TA_LinkedActivity(TA_LinkedActivity &&activity) = delete;
         TA_LinkedActivity & operator = (const TA_LinkedActivity &) = delete;
 
-        TA_LinkedActivity(LambdaTypeWithoutPara<Ret> &&func) : TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS, Ret, INVALID_INS> (std::move(func)),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
+        TA_LinkedActivity(LambdaTypeWithoutPara<Ret> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS, Ret, INVALID_INS> (std::move(func), affinityThread),m_pLinkedActivity(nullptr),m_pParallelActivity(nullptr),m_branchSelected(0)
         {
 
         }

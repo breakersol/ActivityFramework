@@ -13,14 +13,9 @@ Using **/ActivityFramework/ActivityFramework/CMakeList.txt** to build the projec
 2. Using **ActivityFramework/Test/CMakeList.txt** to unit test project.
 3. Running ActivityFrameworkTest.
 ### Versioning
-- [v0.1.0-beta](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.0-beta)
-- [v0.1.1](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.1)
-- [v0.1.2](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.2)
-- [v0.1.3](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.3)
-- [v0.1.4](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.4)
-- [v0.1.5](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.5)
-- [v0.1.6](https://github.com/breakersol/ActivityPipeline/releases/tag/v0.1.6)
 - [v0.2.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.0)
+- [v0.2.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.1)
+- [v0.2.2](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.2)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
@@ -50,7 +45,8 @@ public:
 
 class MetaTest
 {
-public:
+    ENABLE_REFLEX    //If you want to reflect private members, then declaring this macro is a must
+
     enum MetaColor
     {
         META_RED,
@@ -215,19 +211,20 @@ namespace CoreAsync::Reflex
 <br/>Next, you can use the interface **ITA_Connection::connect** as follow:
 ```cpp
     CoreAsync::ITA_Connection::connect(pTest, &MetaTest::startTest, pTest, &MetaTest::printNums);
-    CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Direct>(pTest, &MetaTest::printTest, pTest, &MetaTest::printSlot);
+    CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queue>(pTest, &MetaTest::printTest, pTest, &MetaTest::printSlot);
 ```
 <br/>**ITA_Connection::connect** requires the same number of arguments for both of sender function and receiver function.
 
-<br/>Connection currently offers only two types of connections: 
+<br/>Connection currently offers three types of connections: 
 ```cpp
     enum class TA_ConnectionType
     {
+        Auto,
         Direct,
         Queued
     };
 ```
-<br/>The default connection type is _Queued_, which means the receiver function won't be executed immediately, but added into the activity queue to wait for call. _Direct_ means that the activity will be executed immediately in another thread.
+<br/>The default connection type is _Auto_, which automatically determines whether to use a Direct Connection or a Queued Connection based on whether the sender and receiver are in the same thread. This is the default type when connecting signals and slots.
 
 <br/>If you'd like to active the signal function by calling **ITA_Connection::active**. 
 ```cpp
@@ -289,6 +286,27 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
 ```
 <br/>The above code indicates that we first create two branches activity_4 and activity_5 on activity_3. At this layer, activity_3 represents branch index 0, while activity_4 and activity_5 represent 1 and 2, respectively. Similarly, we created the branch on activity_1 activity_2 and activity_3. **selectBranch({2,2})** means that when activity_1 is executed(**(*activity_1)()**), it will be executed in the order from activity_3 to activity_5 and return the result of activity_5. And activity_1 itself will not be executed.
 
+#### Thread Pool
+A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
+- **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
+```cpp
+    CoreAsync::TA_ThreadPool threadPool;
+    std::vector<std::future<CoreAsync::TA_Variant>> testVec;
+    std::vector<int> validVec(1024);
+    for(int i = 0;i < activities.size();++i)
+    {
+        testVec.emplace_back(threadPool.postActivity(activities[i]).first);
+        validVec[i] = i;
+    }
+    for(int i = 0;i < testVec.size();++i)
+    {
+        EXPECT_EQ(testVec[i].get().get<int>(), validVec[i]);
+    }
+```
+- **size**: Return the number of threads.
+- **shutDown**: Request to shut down and clear all of threads.
+---
+
 #### Pipelines
 Activity Pipeline currently offers five types of pipelines to use: **Auto Chain Pipeline, Concurrent Pipeline, Manual Chain Pipeline, Manual Steps Chain Pipeline, and Manual Key Activity Chain Pipeline**, and all types of pipelines can be created through **ITA_PipelineCreator**.
 1. _Auto Chain Pipeline_: The pipeline will automatically execute all activites in order.
@@ -325,27 +343,3 @@ Pipeline status description:
 - **Ready**: Pipeline execution completed.
 ---
 ***Note: Pipeline Creator has ownership of all pipeline objects. And once an activity is added into a pipeline, its ownership would be transferred to the pipeline and the original activity pointer will be set as nullptr.***
-
-#### Thread Pool
-A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
-- **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
-```cpp
-    CoreAsync::TA_ThreadPool threadPool;
-    std::vector<std::future<CoreAsync::TA_Variant>> testVec;
-    std::vector<int> validVec(1024);
-    for(int i = 0;i < activities.size();++i)
-    {
-        testVec.emplace_back(threadPool.postActivity(activities[i]).first);
-        validVec[i] = i;
-    }
-    for(int i = 0;i < testVec.size();++i)
-    {
-        EXPECT_EQ(testVec[i].get().get<int>(), validVec[i]);
-    }
-```
-- **size**: Return the number of threads.
-- **shutDown**: Request to shut down and clear all of threads.
----
-##### Signals:
-- **taskCompleted(std::size_t id, TA_Variant var)**
-    <br/>This signal will be activated when an activity is completed. _id_ is the unique id of the activity, and _var_ is the result of execution.

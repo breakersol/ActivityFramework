@@ -23,7 +23,7 @@ namespace CoreAsync {
     class TA_Connection
     {
     public:
-        template <TA_ConnectionType type = TA_ConnectionType::Queued, EnableConnectObjectType Sender, typename SenderFunc, EnableConnectObjectType Receiver, typename ReceiverFunc>
+        template <TA_ConnectionType type = TA_ConnectionType::Auto, EnableConnectObjectType Sender, typename SenderFunc, EnableConnectObjectType Receiver, typename ReceiverFunc>
         static constexpr bool connect(Sender *pSender, SenderFunc &&sFunc, Receiver *pReceiver, ReceiverFunc &&rFunc)
         {
             if constexpr(!Reflex::TA_MemberTypeTrait<SenderFunc>::instanceMethodFlag || !Reflex::TA_MemberTypeTrait<ReceiverFunc>::instanceMethodFlag || !IsReturnTypeEqual<void,SenderFunc,std::is_same>::value)
@@ -48,7 +48,7 @@ namespace CoreAsync {
             std::string_view receiverFuncName {Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<ReceiverFunc>(rFunc))};
             if(senderFuncName.empty() || receiverFuncName.empty() || !pSender || !pReceiver)
                 return false;
-            if (!pReceiver->recordSender(pSender))
+            if(!pReceiver->recordSender(pSender))
                 return false;
             return dynamic_cast<TA_MetaObject *>(pSender)->registConnection(typeid(std::decay_t<Sender>).name(), std::forward<TA_ConnectionUnit>({pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc), type}));
         }
@@ -78,21 +78,39 @@ namespace CoreAsync {
             }
 
             auto receiverList = pSender->m_pRegister->findReceiverWrappers(pSender, std::forward<SenderFunc>(sFunc));
-
             if(!receiverList.empty())
             {
                 for(auto &rObj : receiverList)
-                {
-                    void **pArgs = new void *[sizeof...(para)] {static_cast<void *>(new std::decay_t<FuncPara>(para))...};
-                    CoreAsync::TA_BasicActivity *pActivity = std::get<0>(rObj)->active(std::get<1>(rObj), std::forward<std::string_view>(std::get<2>(rObj)), pArgs);
-                    TA_ConnectionResponder::GetIns().response(pActivity, std::get<3>(rObj));
+                { 
+                    decltype(auto) pReceiver {std::get<1>(rObj)};
+                    decltype(auto) connectType {std::get<3>(rObj)};
+                    if(pReceiver->sourceThread() == pSender->sourceThread() && (connectType == TA_ConnectionType::Direct || connectType == TA_ConnectionType::Auto))
+                    {
+                        if constexpr(sizeof...(para) != 0)
+                        {
+                            void *pArgs[sizeof...(para)] {static_cast<void *>(&para)...};
+                            std::get<0>(rObj)->call(pReceiver, std::forward<std::string_view>(std::get<2>(rObj)), pArgs);
+                        }
+                        else
+                            std::get<0>(rObj)->call(pReceiver, std::forward<std::string_view>(std::get<2>(rObj)), nullptr);
+                    }
+                    else
+                    {
+                        void **pArgs = new void *[sizeof...(para)] {static_cast<void *>(new std::decay_t<FuncPara>(para))...};
+                        CoreAsync::TA_BasicActivity *pActivity = std::get<0>(rObj)->active(pReceiver, std::forward<std::string_view>(std::get<2>(rObj)), pArgs);
+                        if(connectType == TA_ConnectionType::Direct && pSender->affinityThread() != pReceiver->affinityThread())
+                        {
+                            pActivity->moveToThread(pSender->affinityThread());
+                        }
+                        if(!TA_ConnectionResponder::GetIns().response(pActivity))
+                            return false;
+                    }
                 }
                 return true;
             }
             return false;
         }
     };
-
 }
 
 #endif // TA_CONNECTION_H
