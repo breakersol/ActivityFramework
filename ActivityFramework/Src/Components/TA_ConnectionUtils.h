@@ -22,8 +22,7 @@
 #include <unordered_set>
 #include <tuple>
 #include <memory>
-#include <semaphore>
-#include <thread>
+#include <shared_mutex>
 
 #include "TA_ReceiverObject.h"
 #include "TA_MetaObject.h"
@@ -41,6 +40,7 @@ namespace CoreAsync
 
     enum class TA_ConnectionType
     {
+        Auto,
         Direct,
         Queued
     };
@@ -49,18 +49,18 @@ namespace CoreAsync
     {
         friend class TA_ConnectionsRegister;
 
-        void *m_pSender {nullptr};
-        void *m_pReceiver {nullptr};
+        TA_MetaObject *m_pSender {nullptr};
+        TA_MetaObject *m_pReceiver {nullptr};
         std::string_view m_senderFunc {};
         std::string_view m_receiverFunc {};
         std::shared_ptr<TA_BaseReceiverObject> m_pReceiverObject {nullptr};
-        TA_ConnectionType m_type {TA_ConnectionType::Queued};
+        TA_ConnectionType m_type {TA_ConnectionType::Auto};
 
     public:
         TA_ConnectionUnit() {}
 
         template <typename Sender, typename SenderFunc, typename Receiver, typename RecRet, typename RClass, typename ...RPara>
-        TA_ConnectionUnit(Sender *&pSender, SenderFunc &&sFunc, Receiver *&pReceiver, RecRet(RClass::*&&rFunc)(RPara...), TA_ConnectionType type = TA_ConnectionType::Queued) : m_pSender(pSender),m_pReceiver(pReceiver),m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<SenderFunc>(sFunc))),m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<RecRet(RClass::*)(RPara...)>(rFunc))),m_pReceiverObject(new TA_ReceiverObject<std::decay_t<Receiver>>()),m_type(type)
+        TA_ConnectionUnit(Sender *&pSender, SenderFunc &&sFunc, Receiver *&pReceiver, RecRet(RClass::*&&rFunc)(RPara...), TA_ConnectionType type = TA_ConnectionType::Auto) : m_pSender(pSender),m_pReceiver(pReceiver),m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<SenderFunc>(sFunc))),m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<RecRet(RClass::*)(RPara...)>(rFunc))),m_pReceiverObject(new TA_ReceiverObject<std::decay_t<Receiver>>()),m_type(type)
         {
 
         }
@@ -84,7 +84,7 @@ namespace CoreAsync
     class TA_ConnectionsRegister
     {
     public:
-        using ReceiversList = std::list<std::tuple<TA_BaseReceiverObject *, void *, std::string_view, TA_ConnectionType> >;
+        using ReceiversList = std::list<std::tuple<TA_BaseReceiverObject *, TA_MetaObject *, std::string_view, TA_ConnectionType> >;
 
         bool registConnection(std::string_view &&object, TA_ConnectionUnit &&unit);
         bool removeConnection(std::string_view &&object, TA_ConnectionUnit &&unit);
@@ -107,6 +107,7 @@ namespace CoreAsync
             std::string_view senderFuncName {Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<SenderFunc>(sFunc))};
             if(senderFuncName.empty())
                 return list;
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
             auto && [start, end] = m_connections.equal_range(typeid(ParentType).name());
             if(start == m_connections.end() && end == m_connections.end())
             {
@@ -130,11 +131,15 @@ namespace CoreAsync
         TA_ConnectionsRegister(const TA_ConnectionsRegister &reg) = delete;
         TA_ConnectionsRegister(TA_ConnectionsRegister &&reg) = delete;
 
+        TA_ConnectionsRegister & operator = (const TA_ConnectionsRegister &reg) = delete;
+        TA_ConnectionsRegister & operator = (TA_ConnectionsRegister &&reg) = delete;
+
     private:
         void clear();
 
     private:
         std::unordered_multimap<std::string_view, TA_ConnectionUnit> m_connections;
+        std::shared_mutex m_mutex;
 
     };
 
@@ -143,19 +148,11 @@ namespace CoreAsync
     public:
         ACTIVITY_FRAMEWORK_EXPORT static TA_ConnectionResponder & GetIns();
 
-        ACTIVITY_FRAMEWORK_EXPORT bool response(TA_BasicActivity *&pActivity, TA_ConnectionType type);
+        ACTIVITY_FRAMEWORK_EXPORT bool response(TA_BasicActivity *&pActivity);
 
     private:
         TA_ConnectionResponder();
         ~TA_ConnectionResponder();
-
-        void consume();
-
-    private:
-        std::jthread m_consumingThread;
-        ActivityQueue m_queue {};
-        static std::atomic<bool> m_enableConsume;
-        static std::counting_semaphore<ActivityQueue::size()> m_resource;
 
     };
 
@@ -177,6 +174,7 @@ namespace CoreAsync
     private:
         std::unordered_set<void *> m_recordSet;
         void *m_pReceiver;
+        std::mutex m_mutex;
 
     };
 

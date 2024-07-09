@@ -18,7 +18,6 @@
 #define TA_ACTIVITYQUEUE_H
 
 #include <atomic>
-#include <iostream>
 #include <array>
 
 namespace CoreAsync
@@ -46,7 +45,7 @@ namespace CoreAsync
         TA_ActivityQueue & operator = (const TA_ActivityQueue &queue) = delete;
         TA_ActivityQueue & operator = (TA_ActivityQueue &&queue) = delete;
 
-        static constexpr std::size_t size()
+        static constexpr std::size_t capacity()
         {
             return N;
         }
@@ -59,6 +58,14 @@ namespace CoreAsync
         bool isEmpty() const
         {
             return m_frontIndex.load(std::memory_order_acquire) == m_rearIndex.load(std::memory_order_acquire);
+        }
+
+        std::size_t size() const
+        {
+            std::size_t r {m_rearIndex.load(std::memory_order_acquire)};
+            std::size_t f {m_frontIndex.load(std::memory_order_acquire)};
+
+            return r <= f ? f - r : capacity() + r;
         }
 
         bool push(T &&t)

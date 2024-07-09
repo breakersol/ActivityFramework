@@ -31,6 +31,7 @@ namespace CoreAsync
 
     bool TA_ConnectionsRegister::registConnection(std::string_view &&object, TA_ConnectionUnit &&unit)
     {
+        std::unique_lock<std::shared_mutex> lock(m_mutex);
         if(!m_connections.contains(std::forward<std::string_view>(object)))
         {
             m_connections.emplace(std::forward<std::string_view>(object), std::forward<TA_ConnectionUnit>(unit));
@@ -52,6 +53,7 @@ namespace CoreAsync
 
     bool TA_ConnectionsRegister::removeConnection(std::string_view &&object, TA_ConnectionUnit &&unit)
     {
+        std::unique_lock<std::shared_mutex> lock(m_mutex);
         auto && [start, end] = m_connections.equal_range(std::forward<std::string_view>(object));
         if(start == m_connections.end() && end == m_connections.end())
         {
@@ -71,6 +73,7 @@ namespace CoreAsync
 
     void TA_ConnectionsRegister::removeConnection(void *pReceiver)
     {
+        std::unique_lock<std::shared_mutex> lock(m_mutex);
         std::erase_if(m_connections, [&pReceiver](const auto &item)
         {
             auto const &[k, v] = item;
@@ -80,6 +83,7 @@ namespace CoreAsync
 
     void TA_ConnectionsRegister::clear()
     {
+        std::unique_lock<std::shared_mutex> lock(m_mutex);
         for (auto &[k, v] : m_connections)
         {
             reinterpret_cast<TA_MetaObject *>(v.m_pReceiver)->m_pRecorder->remove(v.m_pSender);
@@ -89,12 +93,9 @@ namespace CoreAsync
 
     std::size_t TA_ConnectionsRegister::size() const
     {
+        std::shared_lock<std::shared_mutex> lock(*const_cast<std::shared_mutex *>(&m_mutex));
         return m_connections.size();
     }
-
-    std::atomic<bool> TA_ConnectionResponder::m_enableConsume {true};
-
-    std::counting_semaphore<ActivityQueue::size()> TA_ConnectionResponder::m_resource {0};
 
     TA_ConnectionResponder & TA_ConnectionResponder::GetIns()
     {
@@ -102,59 +103,22 @@ namespace CoreAsync
         return responder;
     }
 
-    TA_ConnectionResponder::TA_ConnectionResponder() : m_consumingThread([this]() {consume();})
+    TA_ConnectionResponder::TA_ConnectionResponder()
     {
 
     }
 
     TA_ConnectionResponder::~TA_ConnectionResponder()
     {
-        m_enableConsume.store(false,std::memory_order_release);
-        m_resource.release();
-        if(m_consumingThread.joinable())
-        {
-            m_consumingThread.join();
-        }
         TA_CommonTools::debugInfo(META_STRING("Destroy Responder!\n"));
     }
 
-    bool TA_ConnectionResponder::response(TA_BasicActivity *&pActivity, TA_ConnectionType type)
+    bool TA_ConnectionResponder::response(TA_BasicActivity *&pActivity)
     {
         if(!pActivity)
             return false;
-        switch (type) {
-        case TA_ConnectionType::Direct:
-        {
-            auto ft = TA_ThreadHolder::get().postActivity(pActivity, true);
-            return true;
-        }
-        case TA_ConnectionType::Queued:
-        {
-            auto res = m_queue.push(pActivity);
-            m_resource.release();
-            return res;
-        }
-        default:
-            return false;
-        }
-    }
-
-    void TA_ConnectionResponder::consume()
-    {
-        while(m_enableConsume.load(std::memory_order_acquire))
-        {
-            m_resource.acquire();
-            TA_BasicActivity *pActivity {nullptr};
-            if(m_queue.front() && m_queue.pop(pActivity))
-            {
-                (*pActivity)();
-            }
-            if(pActivity)
-            {
-                delete pActivity;
-                pActivity = nullptr;
-            }
-        }
+        TA_ThreadHolder::get().postActivity(pActivity, true);
+        return true;
     }
 
     TA_ConnectionsRecorder::TA_ConnectionsRecorder(void *pReceiver) : m_pReceiver(pReceiver)
@@ -171,7 +135,9 @@ namespace CoreAsync
     {
         if (!pObject)
             return false;
+        m_mutex.lock();
         m_recordSet.emplace(pObject);
+        m_mutex.unlock();
         return true;
     }
 
@@ -179,6 +145,7 @@ namespace CoreAsync
     {
         if (!pObject)
             return false;
+        std::lock_guard<std::mutex> lock(m_mutex);
         if (m_recordSet.count(pObject) != 0)
         {
             m_recordSet.erase(pObject);
@@ -189,11 +156,13 @@ namespace CoreAsync
 
     void TA_ConnectionsRecorder::clear()
     {
+        m_mutex.lock();
         for (auto &item : m_recordSet)
         {
             reinterpret_cast<TA_MetaObject *>(item)->m_pRegister->removeConnection(m_pReceiver);
         }
         m_recordSet.clear();
+        m_mutex.unlock();
     }
 }
 

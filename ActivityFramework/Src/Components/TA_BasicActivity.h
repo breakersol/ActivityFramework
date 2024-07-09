@@ -19,6 +19,7 @@
 
 #include <deque>
 #include <atomic>
+#include <numeric>
 
 #include "TA_Variant.h"
 #include "TA_ActivityFramework_global.h"
@@ -27,7 +28,7 @@ namespace CoreAsync {
     class TA_BasicActivity
     {
     public:
-        TA_BasicActivity() : m_id(m_count.load(std::memory_order_acquire))
+        explicit TA_BasicActivity(std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_id(m_count.load(std::memory_order_acquire)), m_affinityThread(affinityThread)
         {
             m_count.fetch_add(1);
         }
@@ -47,9 +48,20 @@ namespace CoreAsync {
             return m_id;
         }
 
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.load(std::memory_order_acquire);
+        }
+
+        void moveToThread(std::size_t thread)
+        {
+            m_affinityThread.store(thread, std::memory_order_release);
+        }
+
     private:
         static std::atomic_size_t ACTIVITY_FRAMEWORK_EXPORT m_count;
         const std::size_t m_id;
+        std::atomic_size_t m_affinityThread {std::numeric_limits<std::size_t>::max()};
 
     };
 }

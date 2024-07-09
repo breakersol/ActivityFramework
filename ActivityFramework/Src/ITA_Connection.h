@@ -26,7 +26,7 @@ namespace CoreAsync
     class ITA_Connection
     {
     public:
-        template <ConnectionType ct = TA_ConnectionType::Queued, class Sender, typename SenderFunc, typename Receiver, typename ReceiverFunc>
+        template <ConnectionType ct = TA_ConnectionType::Auto, class Sender, typename SenderFunc, typename Receiver, typename ReceiverFunc>
         static constexpr bool connect(Sender *&pSender, SenderFunc &&sFunc, Receiver *&pReceiver, ReceiverFunc &&rFunc)
         {
             return TA_Connection::connect<ct>(pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc));

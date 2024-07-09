@@ -311,7 +311,7 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
     EXPECT_EQ(0,res_1);
     EXPECT_EQ(9,res_2);
 
-    line->reset();
+    //line->reset();
 
     std::function<bool()> testFunc = [&]()->bool {
         auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
