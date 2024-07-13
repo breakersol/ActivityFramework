@@ -149,19 +149,29 @@ struct TA_MemberTypeTrait
 
 // };
 
-template <typename ROLE>
-struct TA_MetaRole
+template <std::size_t value>
+struct TA_MetaVersion
 {
-    static constexpr std::string_view m_role {ROLE::data()};
-    static constexpr bool m_isProperty {ROLE::data() == std::string_view("Property")};
+    static constexpr std::size_t m_value {value};
 };
 
-template <typename T, typename NAME, typename ROLE = decltype(META_STRING(""))>
-struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>, TA_MetaRole<ROLE>
+template <typename Role, typename Version>
+struct TA_MetaRole
 {
-    constexpr TA_MetaField(T t, NAME, ROLE = {}) : TA_MetaTypeName<T,NAME>{t}
+    static constexpr std::string_view m_role {Role::data()};
+    static constexpr std::size_t m_version {Version::m_value};
+    static constexpr bool m_isProperty {Role::data() == std::string_view("Property")};
+};
+
+template <typename Role, typename Version>
+using TA_MetaPropertyInfo = std::tuple<Role, Version>;
+
+template <typename T, typename NAME, typename Role = decltype(META_STRING("")), typename Version = TA_MetaVersion<1> >
+struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>, TA_MetaRole<Role, Version>
+{
+    constexpr TA_MetaField(T t, NAME, TA_MetaPropertyInfo<Role, Version> = {}) : TA_MetaTypeName<T,NAME>{t}
     {
-        if constexpr(TA_MetaRole<ROLE>::m_isProperty)
+        if constexpr(TA_MetaRole<Role, Version>::m_isProperty)
         {
             static_assert(IsInstanceVariable<T>::value, "Non instance variable can't be declared as property.");
         }
@@ -611,7 +621,10 @@ private:
 #define ENABLE_REFLEX \
 template <typename T> friend struct CoreAsync::Reflex::TA_TypeInfo;
 
-#define TA_PROPERTY \
-META_STRING("Property")
+#define TA_DEFAULT_PROPERTY \
+CoreAsync::Reflex::TA_MetaPropertyInfo<decltype(META_STRING("Property")), TA_MetaVersion<1>> {}
+
+#define TA_PROPERTY(VALUE) \
+CoreAsync::Reflex::TA_MetaPropertyInfo<decltype(META_STRING("Property")), TA_MetaVersion<VALUE>> {}
 
 #endif // TA_METAREFLEX_H

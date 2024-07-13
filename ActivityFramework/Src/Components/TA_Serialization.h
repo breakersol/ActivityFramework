@@ -359,7 +359,7 @@ namespace CoreAsync
             {
                 using ValType = std::remove_pointer_t<typename VariableTypeInfo<std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::findType(typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {}))>>::RetType>;
                 ValType val {};
-                std::cout << typeid(ValType).name() << std::endl;
+                // std::cout << typeid(ValType).name() << std::endl;
                 *this >> val;
                 Reflex::TA_TypeInfo<Rt>::update(t, val, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {});
             }
