@@ -150,7 +150,7 @@ struct TA_MemberTypeTrait
 // };
 
 template <std::size_t value>
-struct TA_MetaVersion
+struct TA_MetaRoleVersion
 {
     static constexpr std::size_t m_value {value};
 };
@@ -164,12 +164,12 @@ struct TA_MetaRole
 };
 
 template <typename Role, typename Version>
-using TA_MetaPropertyInfo = std::tuple<Role, Version>;
+using TA_MetaPropertyParameters = std::tuple<Role, Version>;
 
-template <typename T, typename NAME, typename Role = decltype(META_STRING("")), typename Version = TA_MetaVersion<1> >
+template <typename T, typename NAME, typename Role = decltype(META_STRING("")), typename Version = TA_MetaRoleVersion<1> >
 struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>, TA_MetaRole<Role, Version>
 {
-    constexpr TA_MetaField(T t, NAME, TA_MetaPropertyInfo<Role, Version> = {}) : TA_MetaTypeName<T,NAME>{t}
+    constexpr TA_MetaField(T t, NAME, TA_MetaPropertyParameters<Role, Version> = {}) : TA_MetaTypeName<T,NAME>{t}
     {
         if constexpr(TA_MetaRole<Role, Version>::m_isProperty)
         {
@@ -264,10 +264,10 @@ public:
     template <typename M>
     struct PropertyMapper
     {
-        using type = M::TName;
+        using type = std::tuple<typename M::TName, TA_MetaRoleVersion<M::m_version>>;
     };
 
-    struct PropertyNames
+    struct PropertyInfos
     {
         using Types = MetaFilterMapper<TA_MetaTypelist<FIELDS...>, PropertyFilter, PropertyMapper>::result;
     };
@@ -489,9 +489,9 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
         using VariantTypes = typename MetaMerge<typename decltype(TA_TypeInfo<T>::fields)::ValueTypes, typename TA_TypeInfo<BASES>::TA_Values::VariantTypes...>::type;
     };
 
-    struct TA_PropertyNames
+    struct TA_PropertyInfos
     {
-        using List = MetaRemoveDuplicate<typename MetaAppend<typename std::remove_cv_t<decltype(TA_TypeInfo<T>::fields)>::PropertyNames::Types, typename std::remove_cv_t<decltype(TA_TypeInfo<BASES>::fields)>::PropertyNames::Types...>::type>::result;
+        using List = MetaRemoveDuplicate<typename MetaAppend<typename std::remove_cv_t<decltype(TA_TypeInfo<T>::fields)>::PropertyInfos::Types, typename std::remove_cv_t<decltype(TA_TypeInfo<BASES>::fields)>::PropertyInfos::Types...>::type>::result;
         static constexpr auto size = MetaSize<List>::value;
     };
 
@@ -622,9 +622,9 @@ private:
 template <typename T> friend struct CoreAsync::Reflex::TA_TypeInfo;
 
 #define TA_DEFAULT_PROPERTY \
-CoreAsync::Reflex::TA_MetaPropertyInfo<decltype(META_STRING("Property")), TA_MetaVersion<1>> {}
+CoreAsync::Reflex::TA_MetaPropertyParameters<decltype(META_STRING("Property")), TA_MetaRoleVersion<1>> {}
 
 #define TA_PROPERTY(VALUE) \
-CoreAsync::Reflex::TA_MetaPropertyInfo<decltype(META_STRING("Property")), TA_MetaVersion<VALUE>> {}
+CoreAsync::Reflex::TA_MetaPropertyParameters<decltype(META_STRING("Property")), TA_MetaRoleVersion<VALUE>> {}
 
 #endif // TA_METAREFLEX_H

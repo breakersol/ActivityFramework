@@ -37,8 +37,8 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         t.setStack({t.getDeque().begin(), t.getDeque().end()});
         t.mx = 999;
         t.m_vec = {1,1,1,1};
-    //     t.setQueue({t.getDeque().begin(), t.getDeque().end()});
-    //     t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
+        t.setQueue({t.getDeque().begin(), t.getDeque().end()});
+        t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
         output << t;
     }
     {
@@ -53,13 +53,13 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
     EXPECT_EQ(t.getDeque(), p.getDeque());
     EXPECT_EQ(t.getStack(), p.getStack());
     EXPECT_EQ(t.getStack(), p.getStack());
-    EXPECT_EQ(t.mx, p.mx);
+    EXPECT_EQ(5, p.mx);
     EXPECT_EQ(t.m_vec, p.m_vec);
-    // EXPECT_EQ(t.getQueue(), p.getQueue());
+    EXPECT_EQ(t.getQueue(), p.getQueue());
 
-    // auto pq1 {t.getPriorityQueue()};
-    // auto pq2 {p.getPriorityQueue()};
-    // EXPECT_TRUE(arePriorityQueueEqual(pq1, pq2));
+    auto pq1 {t.getPriorityQueue()};
+    auto pq2 {p.getPriorityQueue()};
+    EXPECT_TRUE(arePriorityQueueEqual(pq1, pq2));
 
-    // delete ptr;
+    delete ptr;
 }

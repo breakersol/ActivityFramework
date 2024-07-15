@@ -289,7 +289,7 @@ struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
 {
     static constexpr TA_MetaFieldList fields = {
         TA_MetaField {&Raw::m_vec, META_STRING("m_vec"),TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::mx, META_STRING("mx"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::mx, META_STRING("mx"), TA_PROPERTY(2)},
         TA_MetaField {&Raw::my, META_STRING("my")},
         TA_MetaField {&Raw::px, META_STRING("px")},
     };

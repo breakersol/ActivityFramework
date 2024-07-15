@@ -35,19 +35,19 @@ namespace CoreAsync
     class TA_Serialization
     {
     public:
-        TA_Serialization()
+        explicit TA_Serialization(std::size_t version = 1) : m_version(version)
         {
 
         }
 
-        TA_Serialization(const std::string &path)
+        TA_Serialization(const std::string &path, std::size_t version = 1) : m_version(version)
         {
-            openFile(path);
+            open(path);
         }
 
         ~TA_Serialization()
         {
-
+            close();
         }
 
         TA_Serialization(const TA_Serialization &serialzation) = delete;
@@ -56,16 +56,51 @@ namespace CoreAsync
         TA_Serialization & operator = (const TA_Serialization &serialzation) = delete;
         TA_Serialization & operator = (TA_Serialization &&serialzation) = delete;
 
-        void setFilePath(const std::string &path)
+        bool open(const std::string &filePath)
         {
-            openFile(path);
+            close();
+            if constexpr(OType == OperationType::Input)
+            {
+                m_fileSream.open(filePath, std::ios::binary | std::ios::in);
+            }
+            else
+            {
+                m_fileSream.open(filePath, std::ios::binary | std::ios::out);
+            }
+            if (!m_fileSream || !m_fileSream.is_open())
+            {
+                CoreAsync::TA_CommonTools::debugInfo("Cannot open the file.\n");
+                return false;
+            }
+            if constexpr(OType == OperationType::Input)
+            {
+                m_fileSream.read(reinterpret_cast<char *>(&m_version), sizeof(m_version));
+            }
+            else
+            {
+                m_fileSream.write(reinterpret_cast<const char *>(&m_version), sizeof(m_version));
+            }
+            return true;
+        }
+
+        void close()
+        {
+            if(m_fileSream.is_open())
+            {
+                m_fileSream.close();
+            }
+        }
+
+        std::size_t version() const
+        {
+            return m_version;
         }
 
         template <CustomType T>
         TA_Serialization & operator << (const T &t)
         {
             static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
-            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyNames::size> {});
+            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size> {});
             return *this;
         }
 
@@ -73,7 +108,7 @@ namespace CoreAsync
         TA_Serialization & operator >> (T &t)
         {
             static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
-            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyNames::size> {});
+            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size> {});
             return *this;
         }
 
@@ -81,9 +116,12 @@ namespace CoreAsync
         TA_Serialization & operator << (T t)
         {
             static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
-            if(TA_EndianConversion::isSystemLittleEndian())
-                t = TA_EndianConversion::swapEndian(t);
-            m_fileSream.write(reinterpret_cast<const char *>(&t), sizeof(t));
+            if(m_fileSream.is_open())
+            {
+                if(TA_EndianConversion::isSystemLittleEndian())
+                    t = TA_EndianConversion::swapEndian(t);
+                m_fileSream.write(reinterpret_cast<const char *>(&t), sizeof(t));
+            }
             return *this;
         }
 
@@ -91,9 +129,12 @@ namespace CoreAsync
         TA_Serialization & operator >> (T &t)
         {
             static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
-            m_fileSream.read(reinterpret_cast<char *>(&t), sizeof(t));
-            if(TA_EndianConversion::isSystemLittleEndian())
-                t = TA_EndianConversion::swapEndian(t);
+            if(m_fileSream.is_open())
+            {
+                m_fileSream.read(reinterpret_cast<char *>(&t), sizeof(t));
+                if(TA_EndianConversion::isSystemLittleEndian())
+                    t = TA_EndianConversion::swapEndian(t);
+            }
             return *this;
         }
 
@@ -347,51 +388,34 @@ namespace CoreAsync
         }
 
         template <typename T, std::size_t IDX0, std::size_t ...IDXS>
-        constexpr void callProperty (T &t, std::index_sequence<IDX0, IDXS...> = std::make_index_sequence<Reflex::TA_TypeInfo<std::remove_cvref_t<T>>::TA_PropertyNames::size> {})
+        constexpr void callProperty (T &t, std::index_sequence<IDX0, IDXS...> = std::make_index_sequence<Reflex::TA_TypeInfo<std::remove_cvref_t<T>>::TA_PropertyInfos::size> {})
         {
             using Rt = std::remove_cvref_t<T>;
-            using Properties = Reflex::TA_TypeInfo<Rt>::TA_PropertyNames::List;
+            using Properties = Reflex::TA_TypeInfo<Rt>::TA_PropertyInfos::List;
             if constexpr(OType == OperationType::Output)
             {
-                *this << Reflex::TA_TypeInfo<Rt>::invoke(typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {}, t);
+                if(m_version >= std::tuple_element_t<1, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>::m_value)
+                {
+                    *this << Reflex::TA_TypeInfo<Rt>::invoke(std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type> {}, t);
+                }
             }
             else
             {
-                using ValType = std::remove_pointer_t<typename VariableTypeInfo<std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::findType(typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {}))>>::RetType>;
-                ValType val {};
-                // std::cout << typeid(ValType).name() << std::endl;
-                *this >> val;
-                Reflex::TA_TypeInfo<Rt>::update(t, val, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type {});
+                if(std::tuple_element_t<1, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>::m_value <= m_version)
+                {
+                    using ValType = std::remove_pointer_t<typename VariableTypeInfo<std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::findType(std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type> {}))>>::RetType>;
+                    ValType val {};
+                    // std::cout << typeid(ValType).name() << std::endl;
+                    *this >> val;
+                    Reflex::TA_TypeInfo<Rt>::update(t, val, std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type> {});
+                }
             }
             callProperty(t, std::index_sequence<IDXS...> {});
         }
 
     private:
-        bool openFile(const std::string &filePath)
-        {
-            if(m_fileSream.is_open())
-            {
-                m_fileSream.close();
-            }
-            if constexpr(OType == OperationType::Input)
-            {
-                m_fileSream.open(filePath, std::ios::binary | std::ios::in);
-            }
-            else
-            {
-                m_fileSream.open(filePath, std::ios::binary | std::ios::out);
-            }
-            if (!m_fileSream || !m_fileSream.is_open())
-            {
-                CoreAsync::TA_CommonTools::debugInfo("Cannot open the file.\n");
-                return false;
-            }
-            return true;
-        }
-
-
-    private:
         std::fstream m_fileSream;
+        std::size_t m_version;
 
     };
 }
