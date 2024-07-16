@@ -43,7 +43,7 @@ public:
     void product(int a, int b) {auto x = a * b;}
 };
 
-class MetaTest
+class MetaTest : public BaseTest, public OtherTest
 {
     ENABLE_REFLEX    //If you want to reflect private members, then declaring this macro is a must
 
