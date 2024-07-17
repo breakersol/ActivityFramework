@@ -10,7 +10,9 @@
 #include <unordered_set>
 #include <stack>
 #include <queue>
+#include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "TA_CommonTools.h"
 #include "TA_EndianConversion.h"
@@ -273,7 +275,7 @@ namespace CoreAsync
                     *this >> val;
                     temp.push_front(std::move(val));
                 }
-                t.push_range(temp);
+                t = {temp.begin(), temp.end()};
             }
             else if constexpr(std::is_same_v<std::priority_queue<typename T::value_type, typename T::container_type, typename T::value_compare>, T>)
             {
