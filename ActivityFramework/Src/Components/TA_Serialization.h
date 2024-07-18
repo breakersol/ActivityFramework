@@ -24,7 +24,7 @@ namespace CoreAsync
     enum class SerializationType
     {
         BinaryFile,
-        JsonFile
+        // JsonFile
     };
 
     enum class OperationType
@@ -71,7 +71,7 @@ namespace CoreAsync
             }
             if (!m_fileStream || !m_fileStream.is_open())
             {
-                CoreAsync::TA_CommonTools::debugInfo("Cannot open the file.\n");
+                CoreAsync::TA_CommonTools::debugInfo(META_STRING("Cannot open the file.\n"));
                 return false;
             }
             if constexpr(OType == OperationType::Deserialization)
@@ -136,15 +136,15 @@ namespace CoreAsync
                 m_fileStream.read(reinterpret_cast<char *>(&t), sizeof(t));
                 if (m_fileStream.eof())
                 {
-                    CoreAsync::TA_CommonTools::debugInfo("End of file reached unexpectedly.\n");
+                    CoreAsync::TA_CommonTools::debugInfo(META_STRING("End of file reached unexpectedly.\n"));
                 }
                 else if (m_fileStream.fail())
                 {
-                    CoreAsync::TA_CommonTools::debugInfo("Logical error on i/o operation.\n");
+                    CoreAsync::TA_CommonTools::debugInfo(META_STRING("Logical error on i/o operation.\n"));
                 }
                 else if (m_fileStream.bad())
                 {
-                    CoreAsync::TA_CommonTools::debugInfo("Read operation failed due to severe stream error.\n");
+                    CoreAsync::TA_CommonTools::debugInfo(META_STRING("Read operation failed due to severe stream error.\n"));
                 }
                 if(TA_EndianConversion::isSystemLittleEndian())
                     t = TA_EndianConversion::swapEndian(t);

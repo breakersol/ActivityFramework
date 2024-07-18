@@ -25,7 +25,7 @@ void TA_SerializationTest::TearDown()
 TEST_F(TA_SerializationTest, CustomTypeTest)
 {
     float *ptr = new float(5.3);
-    M3Test t, p;
+    M3Test t, p1, p2;
     {
         CoreAsync::TA_Serializer output("./test.afw");
         t.setVec({2,3,4,5});
@@ -39,26 +39,26 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         t.m_vec = {1,1,1,1};
         t.setQueue({t.getDeque().begin(), t.getDeque().end()});
         t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
-        output << t;
+        output << t << t;
     }
     {
         CoreAsync::TA_Serializer<CoreAsync::OperationType::Deserialization> input("./test.afw");
-        input >> p;
+        input >> p1 >> p2;
     }
-    EXPECT_EQ(t.getVec(), p.getVec());
-    EXPECT_EQ(*t.getRawPtr(), *p.getRawPtr());
-    EXPECT_EQ(t.getArray(), p.getArray());
-    EXPECT_EQ(t.getList(), p.getList());
-    EXPECT_EQ(t.getForwardList(), p.getForwardList());
-    EXPECT_EQ(t.getDeque(), p.getDeque());
-    EXPECT_EQ(t.getStack(), p.getStack());
-    EXPECT_EQ(t.getStack(), p.getStack());
-    EXPECT_EQ(5, p.mx);
-    EXPECT_EQ(t.m_vec, p.m_vec);
-    EXPECT_EQ(t.getQueue(), p.getQueue());
+    EXPECT_EQ(t.getVec(), p2.getVec());
+    EXPECT_EQ(*t.getRawPtr(), *p2.getRawPtr());
+    EXPECT_EQ(t.getArray(), p2.getArray());
+    EXPECT_EQ(t.getList(), p2.getList());
+    EXPECT_EQ(t.getForwardList(), p2.getForwardList());
+    EXPECT_EQ(t.getDeque(), p2.getDeque());
+    EXPECT_EQ(t.getStack(), p2.getStack());
+    EXPECT_EQ(t.getStack(), p2.getStack());
+    EXPECT_EQ(5, p2.mx);
+    EXPECT_EQ(t.m_vec, p2.m_vec);
+    EXPECT_EQ(t.getQueue(), p2.getQueue());
 
     auto pq1 {t.getPriorityQueue()};
-    auto pq2 {p.getPriorityQueue()};
+    auto pq2 {p2.getPriorityQueue()};
     EXPECT_TRUE(arePriorityQueueEqual(pq1, pq2));
 
     delete ptr;
