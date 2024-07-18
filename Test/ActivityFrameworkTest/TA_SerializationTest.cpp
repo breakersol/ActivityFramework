@@ -27,7 +27,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
     float *ptr = new float(5.3);
     M3Test t, p;
     {
-        CoreAsync::TA_Serialization output("./test.afw");
+        CoreAsync::TA_Serializer output("./test.afw");
         t.setVec({2,3,4,5});
         t.setRawPtr(ptr);
         t.setArray({2,3,4,5,6});
@@ -42,7 +42,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         output << t;
     }
     {
-        CoreAsync::TA_Serialization<CoreAsync::OperationType::Input> input("./test.afw");
+        CoreAsync::TA_Serializer<CoreAsync::OperationType::Deserialization> input("./test.afw");
         input >> p;
     }
     EXPECT_EQ(t.getVec(), p.getVec());

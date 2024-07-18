@@ -29,67 +29,67 @@ namespace CoreAsync
 
     enum class OperationType
     {
-        Input,
-        Output
+        Deserialization,
+        Serialization
     };
 
-    template <OperationType OType = OperationType::Output, SerializationType SType = SerializationType::BinaryFile>
-    class TA_Serialization
+    template <OperationType OType = OperationType::Serialization , SerializationType SType = SerializationType::BinaryFile>
+    class TA_Serializer
     {
     public:
-        explicit TA_Serialization(std::size_t version = 1) : m_version(version)
+        explicit TA_Serializer(std::size_t version = 1) : m_version(version)
         {
 
         }
 
-        TA_Serialization(const std::string &path, std::size_t version = 1) : m_version(version)
+        TA_Serializer(const std::string &path, std::size_t version = 1) : m_version(version)
         {
             open(path);
         }
 
-        ~TA_Serialization()
+        ~TA_Serializer()
         {
             close();
         }
 
-        TA_Serialization(const TA_Serialization &serialzation) = delete;
-        TA_Serialization(TA_Serialization &&serialzation) = delete;
+        TA_Serializer(const TA_Serializer &serialzation) = delete;
+        TA_Serializer(TA_Serializer &&serialzation) = delete;
 
-        TA_Serialization & operator = (const TA_Serialization &serialzation) = delete;
-        TA_Serialization & operator = (TA_Serialization &&serialzation) = delete;
+        TA_Serializer & operator = (const TA_Serializer &serialzation) = delete;
+        TA_Serializer & operator = (TA_Serializer &&serialzation) = delete;
 
         bool open(const std::string &filePath)
         {
             close();
-            if constexpr(OType == OperationType::Input)
+            if constexpr(OType == OperationType::Deserialization)
             {
-                m_fileSream.open(filePath, std::ios::binary | std::ios::in);
+                m_fileStream.open(filePath, std::ios::binary | std::ios::in);
             }
             else
             {
-                m_fileSream.open(filePath, std::ios::binary | std::ios::out);
+                m_fileStream.open(filePath, std::ios::binary | std::ios::out);
             }
-            if (!m_fileSream || !m_fileSream.is_open())
+            if (!m_fileStream || !m_fileStream.is_open())
             {
                 CoreAsync::TA_CommonTools::debugInfo("Cannot open the file.\n");
                 return false;
             }
-            if constexpr(OType == OperationType::Input)
+            if constexpr(OType == OperationType::Deserialization)
             {
-                m_fileSream.read(reinterpret_cast<char *>(&m_version), sizeof(m_version));
+                m_fileStream.read(reinterpret_cast<char *>(&m_version), sizeof(m_version));
             }
             else
             {
-                m_fileSream.write(reinterpret_cast<const char *>(&m_version), sizeof(m_version));
+                m_fileStream.write(reinterpret_cast<const char *>(&m_version), sizeof(m_version));
             }
             return true;
         }
 
         void close()
         {
-            if(m_fileSream.is_open())
+            if(m_fileStream.is_open())
             {
-                m_fileSream.close();
+                m_fileStream.close();
             }
         }
 
@@ -99,41 +99,53 @@ namespace CoreAsync
         }
 
         template <CustomType T>
-        TA_Serialization & operator << (const T &t)
+        TA_Serializer & operator << (const T &t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size> {});
             return *this;
         }
 
         template <CustomType T>
-        TA_Serialization & operator >> (T &t)
+        TA_Serializer & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
+            static_assert(OType == OperationType::Deserialization, "The operation type isn't Deserialization");
             callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size> {});
             return *this;
         }
 
         template <EndianConvertedType T>
-        TA_Serialization & operator << (T t)
+        TA_Serializer & operator << (T t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
-            if(m_fileSream.is_open())
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
+            if(m_fileStream.is_open())
             {
                 if(TA_EndianConversion::isSystemLittleEndian())
                     t = TA_EndianConversion::swapEndian(t);
-                m_fileSream.write(reinterpret_cast<const char *>(&t), sizeof(t));
+                m_fileStream.write(reinterpret_cast<const char *>(&t), sizeof(t));
             }
             return *this;
         }
 
         template <EndianConvertedType T>
-        TA_Serialization & operator >> (T &t)
+        TA_Serializer & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
-            if(m_fileSream.is_open())
+            static_assert(OType == OperationType::Deserialization, "The operation type isn't Deserialization");
+            if(m_fileStream.is_open())
             {
-                m_fileSream.read(reinterpret_cast<char *>(&t), sizeof(t));
+                m_fileStream.read(reinterpret_cast<char *>(&t), sizeof(t));
+                if (m_fileStream.eof())
+                {
+                    CoreAsync::TA_CommonTools::debugInfo("End of file reached unexpectedly.\n");
+                }
+                else if (m_fileStream.fail())
+                {
+                    CoreAsync::TA_CommonTools::debugInfo("Logical error on i/o operation.\n");
+                }
+                else if (m_fileStream.bad())
+                {
+                    CoreAsync::TA_CommonTools::debugInfo("Read operation failed due to severe stream error.\n");
+                }
                 if(TA_EndianConversion::isSystemLittleEndian())
                     t = TA_EndianConversion::swapEndian(t);
             }
@@ -141,9 +153,9 @@ namespace CoreAsync
         }
 
         template <StdContainerType T>
-        TA_Serialization & operator << (const T &t)
+        TA_Serializer & operator << (const T &t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             *this << std::ranges::distance(t);
             std::ranges::for_each(std::as_const(t), [this](const T::value_type &val) {
                 *this << val;
@@ -152,9 +164,9 @@ namespace CoreAsync
         }
 
         template <StdAdaptorType T>
-        TA_Serialization & operator << (const T &t)
+        TA_Serializer & operator << (const T &t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             *this << std::ranges::size(t);
             T copyAdaptor = t;
             if constexpr(std::is_same_v<std::stack<typename T::value_type, typename T::container_type>, T>)
@@ -185,9 +197,9 @@ namespace CoreAsync
         }
 
         template <typename T, std::size_t N>
-        TA_Serialization & operator >> (std::array<T, N> &array)
+        TA_Serializer & operator >> (std::array<T, N> &array)
         {
-            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
+            static_assert(OType == OperationType::Deserialization, "The operation type isn't Deserialization");
             std::size_t size;
             *this >> size;
             for(auto &v : array)
@@ -198,9 +210,9 @@ namespace CoreAsync
         }
 
         template <StdContainerType T>
-        TA_Serialization & operator >> (T &t)
+        TA_Serializer & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
+            static_assert(OType == OperationType::Deserialization, "The operation type isn't Deserialization");
             std::size_t size {};
             *this >> size;
             if constexpr(std::is_same_v<std::vector<typename T::value_type>, T> ||
@@ -252,9 +264,9 @@ namespace CoreAsync
         }
 
         template <StdAdaptorType T>
-        TA_Serialization & operator >> (T &t)
+        TA_Serializer & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
+            static_assert(OType == OperationType::Deserialization, "The operation type isn't Deserialization");
             std::size_t size {};
             *this >> size;
             if constexpr(std::is_same_v<std::queue<typename T::value_type, typename T::container_type>, T>)
@@ -290,30 +302,30 @@ namespace CoreAsync
         }
 
         template <typename K, typename V>
-        TA_Serialization & operator << (const std::pair<K, V> &pair)
+        TA_Serializer & operator << (const std::pair<K, V> &pair)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             return *this << pair.first << pair.second;
         }
 
         template <typename K, typename V>
-        TA_Serialization & operator >> (std::pair<K, V> &pair)
+        TA_Serializer & operator >> (std::pair<K, V> &pair)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             return *this >> pair.first >> pair.second;
         }
 
         template <RawPtr T>
-        TA_Serialization & operator << (const T &t)
+        TA_Serializer & operator << (const T &t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             return *this << *t;
         }
 
         template <RawPtr T>
-        TA_Serialization & operator << (T &&t)
+        TA_Serializer & operator << (T &&t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             if(t)
             {
                 return *this << *t;
@@ -322,18 +334,18 @@ namespace CoreAsync
         }
 
         template <RawPtr T>
-        TA_Serialization & operator >> (T &t)
+        TA_Serializer & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
+            static_assert(OType == OperationType::Deserialization, "The operation type isn't Deserialization");
             if(!t)
                 return *this;
             return *this >> *t;
         }
 
         template<typename T, int N>
-        TA_Serialization & operator << (const T (&a)[N])
+        TA_Serializer & operator << (const T (&a)[N])
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             for(int i = 0;i < N;++i)
             {
                 *this << a[i];
@@ -342,9 +354,9 @@ namespace CoreAsync
         }
 
         template<typename T, int N>
-        TA_Serialization & operator >> (T (&a)[N])
+        TA_Serializer & operator >> (T (&a)[N])
         {
-            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
+            static_assert(OType == OperationType::Deserialization, "The operation type isn't Deserialization");
             for(int i = 0;i < N;++i)
             {
                 *this >> a[i];
@@ -353,32 +365,32 @@ namespace CoreAsync
         }
 
         template <EnumType T>
-        TA_Serialization & operator << (T t)
+        TA_Serializer & operator << (T t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             *this << static_cast<uint8_t>(t);
             return *this;
         }
 
         template <EnumType T>
-        TA_Serialization & operator >> (T &t)
+        TA_Serializer & operator >> (T &t)
         {
-            static_assert(OType == OperationType::Input, "The operation type isn't INPUT");
+            static_assert(OType == OperationType::Deserialization, "The operation type isn't Deserialization");
             uint8_t val {};
             *this >> val;
             t = static_cast<T>(val);
             return *this;
         }
 
-        TA_Serialization & operator << (std::nullptr_t)
+        TA_Serializer & operator << (std::nullptr_t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't OUTPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
             return *this;
         }
 
-        TA_Serialization & operator >> (std::nullptr_t)
+        TA_Serializer & operator >> (std::nullptr_t)
         {
-            static_assert(OType == OperationType::Output, "The operation type isn't INPUT");
+            static_assert(OType == OperationType::Serialization , "The operation type isn't Deserialization");
             return *this;
         }
 
@@ -394,7 +406,8 @@ namespace CoreAsync
         {
             using Rt = std::remove_cvref_t<T>;
             using Properties = Reflex::TA_TypeInfo<Rt>::TA_PropertyInfos::List;
-            if constexpr(OType == OperationType::Output)
+            static_assert(CoreAsync::Reflex::HasValidString<std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>>::value, "Invalid name retrieved during serialization.");
+            if constexpr(OType == OperationType::Serialization )
             {
                 if(m_version >= std::tuple_element_t<1, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>::m_value)
                 {
@@ -416,7 +429,7 @@ namespace CoreAsync
         }
 
     private:
-        std::fstream m_fileSream;
+        std::fstream m_fileStream;
         std::size_t m_version;
 
     };

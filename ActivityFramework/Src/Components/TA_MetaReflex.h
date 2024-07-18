@@ -343,6 +343,10 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
     {
         constexpr auto target = findType(NAME {});
         using CF = decltype(target);
+        if constexpr(std::is_same_v<nullptr_t, CF>)
+        {
+            return nullptr;
+        }
         if constexpr(std::is_enum_v<decltype(target)>)
         {
             return target;
