@@ -216,8 +216,15 @@ namespace CoreAsync
             std::size_t size {};
             *this >> size;
             if constexpr(std::is_same_v<std::vector<typename T::value_type>, T> ||
-                          std::is_same_v<std::list<typename T::value_type>, T> ||
-                          std::is_same_v<std::deque<typename T::value_type>, T>)
+                         std::is_same_v<std::deque<typename T::value_type>, T>)
+            {
+                t.resize(size);
+                for(auto i = 0;i < size;++i)
+                {
+                    *this >> t[i];
+                }
+            }
+            else if constexpr(std::is_same_v<std::list<typename T::value_type>, T>)
             {
                 for(auto i = 0;i < size;++i)
                 {
@@ -311,7 +318,7 @@ namespace CoreAsync
         template <typename K, typename V>
         TA_Serializer & operator >> (std::pair<K, V> &pair)
         {
-            static_assert(OType == OperationType::Serialization , "The operation type isn't Serialization ");
+            static_assert(OType == OperationType::Deserialization , "The operation type isn't Deserialization ");
             return *this >> pair.first >> pair.second;
         }
 
