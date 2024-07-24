@@ -28,13 +28,40 @@ namespace CoreAsync {
 
     class TA_BufferReader
     {
+    public:
         TA_BufferReader() = delete;
         TA_BufferReader(const std::string &file, std::size_t size);
-
         ~TA_BufferReader();
 
         TA_BufferReader(const TA_BufferReader &writer) = delete;
         TA_BufferReader(TA_BufferReader &&writer) = delete;
+
+        bool isValid() const;
+
+        template <EndianConvertedType T>
+        bool read(T t)
+        {
+            if(!isValid() || m_fileStream.eof() || m_fileStream.fail() || m_fileStream.bad())
+                return false;
+            if(m_iStrStream.str().empty() || m_validSize - m_iStrStream.tellg() < sizeof(t))
+            {
+                if(!fillBuffer() || m_validSize < sizeof(t))
+                    return false;
+            }
+            m_iStrStream.read(reinterpret_cast<char*>(&t), sizeof(t));
+            return true;
+        }
+
+    private:
+        void init(const std::string &file);
+        bool fillBuffer();
+
+    private:
+        std::ifstream m_fileStream;
+        std::vector<char> m_buffer;
+        std::istringstream m_iStrStream {};
+        std::size_t m_validSize {0};
+
     };
 
     class TA_BufferWriter
