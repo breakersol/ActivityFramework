@@ -26,81 +26,139 @@
 
 namespace CoreAsync {
 
-    class TA_BufferReader
+class TA_BufferReader;
+class TA_BufferWriter;
+
+template <typename Opt>
+class TA_BasicBufferOperator
+{
+public:
+    TA_BasicBufferOperator() = delete;
+
+    TA_BasicBufferOperator(const std::string &file, std::size_t size) : m_buffer(size)
     {
-    public:
-        TA_BufferReader() = delete;
-        TA_BufferReader(const std::string &file, std::size_t size);
-        ~TA_BufferReader();
+        init(file);
+    }
 
-        TA_BufferReader(const TA_BufferReader &writer) = delete;
-        TA_BufferReader(TA_BufferReader &&writer) = delete;
+    virtual ~TA_BasicBufferOperator()
+    {
+        if(m_fileStream.is_open())
+            m_fileStream.close();
+    }
 
-        bool isValid() const;
+    TA_BasicBufferOperator(const TA_BasicBufferOperator &op) = delete;
+    TA_BasicBufferOperator(TA_BasicBufferOperator &&op) = delete;
 
-        template <EndianConvertedType T>
-        bool read(T t)
+    bool isValid() const
+    {
+        return m_fileStream.is_open();
+    }
+
+    template <typename T>
+    bool read(T t)
+    {
+        static_assert(std::is_same_v<Opt, TA_BufferReader>, "Read is not the member of current type");
+        return static_cast<Opt *>(this)->read(t);
+    }
+
+    template <typename T>
+    bool write(T t)
+    {
+        static_assert(std::is_same_v<Opt, TA_BufferWriter>, "Write is not the member of current type");
+        return static_cast<Opt *>(this)->write(t);
+    }
+
+    void flush()
+    {
+        static_assert(std::is_same_v<Opt, TA_BufferWriter>, "Flush is not the member of current type");
+        return static_cast<Opt *>(this)->flush();
+    }
+
+private:
+    void init(const std::string &file)
+    {
+        static_cast<Opt *>(this)->init(file);
+    }
+
+protected:
+    std::fstream m_fileStream;
+    std::vector<char> m_buffer;
+
+};
+
+
+class TA_BufferReader : public TA_BasicBufferOperator<TA_BufferReader>
+{
+    friend class TA_BasicBufferOperator<TA_BufferReader>;
+public:
+    TA_BufferReader() = delete;
+    TA_BufferReader(const std::string &file, std::size_t size);
+    ~TA_BufferReader();
+
+    TA_BufferReader(const TA_BufferReader &writer) = delete;
+    TA_BufferReader(TA_BufferReader &&writer) = delete;
+
+    template <EndianConvertedType T>
+    bool read(T t)
+    {
+        if(!isValid() || m_fileStream.eof() || m_fileStream.fail() || m_fileStream.bad())
+            return false;
+        if(m_iStrStream.str().empty() || m_validSize - m_iStrStream.tellg() < sizeof(t))
         {
-            if(!isValid() || m_fileStream.eof() || m_fileStream.fail() || m_fileStream.bad())
+            if(!fillBuffer() || m_validSize < sizeof(t))
                 return false;
-            if(m_iStrStream.str().empty() || m_validSize - m_iStrStream.tellg() < sizeof(t))
-            {
-                if(!fillBuffer() || m_validSize < sizeof(t))
-                    return false;
-            }
-            m_iStrStream.read(reinterpret_cast<char*>(&t), sizeof(t));
-            return true;
         }
+        m_iStrStream.read(reinterpret_cast<char*>(&t), sizeof(t));
+        return true;
+    }
 
-    private:
-        void init(const std::string &file);
-        bool fillBuffer();
+private:
+    void init(const std::string &file);
+    bool fillBuffer();
 
-    private:
-        std::ifstream m_fileStream;
-        std::vector<char> m_buffer;
-        std::istringstream m_iStrStream {};
-        std::size_t m_validSize {0};
+private:
+    std::istringstream m_iStrStream {};
+    std::size_t m_validSize {0};
 
-    };
+};
 
-    class TA_BufferWriter
+class TA_BufferWriter : public TA_BasicBufferOperator<TA_BufferWriter>
+{
+    friend class TA_BasicBufferOperator<TA_BufferWriter>;
+public:
+    TA_BufferWriter() = delete;
+    TA_BufferWriter(const std::string &file, std::size_t size);
+
+    ~TA_BufferWriter();
+
+    TA_BufferWriter(const TA_BufferWriter &writer) = delete;
+    TA_BufferWriter(TA_BufferWriter &&writer) = delete;
+
+    TA_BufferWriter & operator = (const TA_BufferWriter &writer) = delete;
+    TA_BufferWriter & operator = (TA_BufferWriter &&writer) = delete;
+
+    template <EndianConvertedType T>
+    void write(T t)
     {
-    public:
-        TA_BufferWriter() = delete;
-        TA_BufferWriter(const std::string &file, std::size_t size);
-
-        ~TA_BufferWriter();
-
-        TA_BufferWriter(const TA_BufferWriter &writer) = delete;
-        TA_BufferWriter(TA_BufferWriter &&writer) = delete;
-
-        TA_BufferWriter & operator = (const TA_BufferWriter &writer) = delete;
-        TA_BufferWriter & operator = (TA_BufferWriter &&writer) = delete;
-
-        bool isValid() const;
-
-        template <EndianConvertedType T>
-        void write(T t)
+        if(m_oStrStream.tellp() + static_cast<std::streampos>(sizeof(t)) > static_cast<std::streampos>(m_buffer.size()))
         {
-            if(m_oStrStream.tellp() + static_cast<std::streampos>(sizeof(t)) > static_cast<std::streampos>(m_buffer.size()))
-            {
-                flush();
-            }
-            m_oStrStream.write(reinterpret_cast<const char *>(&t), sizeof(t));
+            flush();
         }
+        m_oStrStream.write(reinterpret_cast<const char *>(&t), sizeof(t));
+    }
 
-        void flush();
+    void flush();
 
-    private:
-        void init(const std::string &file);
+private:
+    void init(const std::string &file);
 
-    private:
-        std::ofstream m_fileStream;
-        std::vector<char> m_buffer;
-        std::ostringstream m_oStrStream;
+private:
+    std::ostringstream m_oStrStream;
 
-    };
+};
+
+using BufferReader = TA_BasicBufferOperator<TA_BufferReader>;
+using BufferWriter = TA_BasicBufferOperator<TA_BufferWriter>;
 
 }
 
