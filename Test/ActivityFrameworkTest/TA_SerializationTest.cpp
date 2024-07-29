@@ -41,7 +41,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         output << t << t;
     }
     {
-        CoreAsync::TA_Serializer<CoreAsync::OperationType::Deserialization> input("./test.afw");
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw");
         input >> p1 >> p2;
     }
     EXPECT_EQ(t.getVec(), p2.getVec());
@@ -83,7 +83,7 @@ TEST_F(TA_SerializationTest, VersionTest)
         output << t << t;
     }
     {
-        CoreAsync::TA_Serializer<CoreAsync::OperationType::Deserialization> input("./test.afw", 2);
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2);
         input >> p1 >> p2;
     }
     EXPECT_EQ(t.getVec(), p2.getVec());
@@ -114,9 +114,9 @@ TEST_F(TA_SerializationTest, LargeScaleTest)
     {
         output << t;
     }
-    output.close();
+    // output.close();
     std::vector<M3Test> vec(1000);
-    CoreAsync::TA_Serializer<CoreAsync::OperationType::Deserialization> input("./test.afw", 2);
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2);
     for(std::size_t i = 0;i < 1000;++i)
     {
         input >> vec[i];

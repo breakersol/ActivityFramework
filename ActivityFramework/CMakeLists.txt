@@ -70,7 +70,7 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_EndianConversion.h
     Src/Components/TA_Serialization.h
     Src/Components/TA_Buffer.h
-    Src/Components/TA_Buffer.cpp
+
 )
 
 target_compile_definitions(ActivityFramework PRIVATE ACTIVITY_FRAMEWORK_LIBRARY)
