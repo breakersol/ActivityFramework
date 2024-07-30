@@ -26,7 +26,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
     float *ptr = new float(5.3);
     M3Test t, p1, p2;
     {
-        CoreAsync::TA_Serializer output("./test.afw");
+        CoreAsync::TA_Serializer output("./test.afw", 1, 1024);
         t.setVec({2,3,4,5});
         t.setRawPtr(ptr);
         t.setArray({2,3,4,5,6});
@@ -41,7 +41,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
         output << t << t;
     }
     {
-        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw");
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 1, 1024);
         input >> p1 >> p2;
     }
     EXPECT_EQ(t.getVec(), p2.getVec());
@@ -108,15 +108,15 @@ TEST_F(TA_SerializationTest, VersionTest)
 
 TEST_F(TA_SerializationTest, LargeScaleTest)
 {
-    CoreAsync::TA_Serializer output("./test.afw", 2);
+    CoreAsync::TA_Serializer output("./test.afw", 2, 10);
     M3Test t;
     for(std::size_t i = 0;i < 1000;++i)
     {
         output << t;
     }
-    // output.close();
+    output.close();
     std::vector<M3Test> vec(1000);
-    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2);
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2, 10);
     for(std::size_t i = 0;i < 1000;++i)
     {
         input >> vec[i];

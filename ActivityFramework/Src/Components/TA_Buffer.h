@@ -43,8 +43,7 @@ public:
 
     virtual ~TA_BasicBufferOperator()
     {
-        if(m_fileStream.is_open())
-            m_fileStream.close();
+        close();
     }
 
     TA_BasicBufferOperator(const TA_BasicBufferOperator &op) = delete;
@@ -53,6 +52,12 @@ public:
     bool isValid() const
     {
         return m_fileStream.is_open();
+    }
+
+    void close()
+    {
+        if(m_fileStream.is_open())
+            m_fileStream.close();
     }
 
     template <typename T>
@@ -199,9 +204,8 @@ private:
         m_oStrStream.rdbuf()->pubsetbuf(m_buffer.data(), m_buffer.size());
     }
 
-
 private:
-    std::ostringstream m_oStrStream;
+    std::ostringstream m_oStrStream {};
 
 };
 

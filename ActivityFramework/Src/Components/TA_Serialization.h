@@ -54,7 +54,7 @@ namespace CoreAsync
 
         ~TA_Serializer()
         {
-            close();
+            destroy();
         }
 
         TA_Serializer(const TA_Serializer &serialzation) = delete;
@@ -63,24 +63,14 @@ namespace CoreAsync
         TA_Serializer & operator = (const TA_Serializer &serialzation) = delete;
         TA_Serializer & operator = (TA_Serializer &&serialzation) = delete;
 
-        bool init()
-        {
-            if (!m_pDataOperator->isValid())
-            {
-                CoreAsync::TA_CommonTools::debugInfo(META_STRING("Cannot open the file.\n"));
-                return false;
-            }
-            if constexpr(std::is_same_v<BufferReader, OType>)
-            {
-                return m_pDataOperator->read(m_version);
-            }
-            else
-                return m_pDataOperator->write(m_version);
-        }
-
         std::size_t version() const
         {
             return m_version;
+        }
+
+        void close()
+        {
+            m_pDataOperator->close();
         }
 
         template <CustomType T>
@@ -115,6 +105,7 @@ namespace CoreAsync
             static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
             if(TA_EndianConversion::isSystemLittleEndian())
                 t = TA_EndianConversion::swapEndian(t);
+            m_pDataOperator->read(t);
             return *this;
         }
 
@@ -371,6 +362,10 @@ namespace CoreAsync
         template <typename T>
         constexpr void callProperty(const T &t, std::index_sequence<> = {})
         {
+            if constexpr(std::is_same_v<BufferWriter, OType>)
+            {
+                m_pDataOperator->flush();
+            }
             return;
         }
 
@@ -380,7 +375,7 @@ namespace CoreAsync
             using Rt = std::remove_cvref_t<T>;
             using Properties = Reflex::TA_TypeInfo<Rt>::TA_PropertyInfos::List;
             static_assert(CoreAsync::Reflex::HasValidString<std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>>::value, "Invalid name retrieved during serialization.");
-            if constexpr(std::is_same_v<BufferWriter, OType> )
+            if constexpr(std::is_same_v<BufferWriter, OType>)
             {
                 if(m_version >= std::tuple_element_t<1, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>::m_value)
                 {
@@ -401,13 +396,28 @@ namespace CoreAsync
             callProperty(t, std::index_sequence<IDXS...> {});
         }
 
-        void close()
+        void destroy()
         {
             if(m_pDataOperator)
             {
                 delete m_pDataOperator;
                 m_pDataOperator = nullptr;
             }
+        }
+
+        bool init()
+        {
+            if (!m_pDataOperator->isValid())
+            {
+                CoreAsync::TA_CommonTools::debugInfo(META_STRING("Cannot open the file.\n"));
+                return false;
+            }
+            if constexpr(std::is_same_v<BufferReader, OType>)
+            {
+                return m_pDataOperator->read(m_version);
+            }
+            else
+                return m_pDataOperator->write(m_version);
         }
 
     private:
