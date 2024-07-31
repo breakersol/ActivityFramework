@@ -103,9 +103,9 @@ namespace CoreAsync
         TA_Serializer & operator >> (T &t)
         {
             static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
+            m_pDataOperator->read(t);
             if(TA_EndianConversion::isSystemLittleEndian())
                 t = TA_EndianConversion::swapEndian(t);
-            m_pDataOperator->read(t);
             return *this;
         }
 

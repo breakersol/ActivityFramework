@@ -23,6 +23,8 @@
 #include <vector>
 
 #include "TA_EndianConversion.h"
+#include "TA_CommonTools.h"
+#include "TA_MetaStringView.h"
 
 namespace CoreAsync {
 
@@ -61,14 +63,14 @@ public:
     }
 
     template <typename T>
-    bool read(T t)
+    bool read(T &t)
     {
         static_assert(std::is_same_v<Opt, TA_BufferReader>, "Read is not the member of current type");
         return static_cast<Opt *>(this)->read(t);
     }
 
     template <typename T>
-    bool write(T t)
+    bool write(T &t)
     {
         static_assert(std::is_same_v<Opt, TA_BufferWriter>, "Write is not the member of current type");
         return static_cast<Opt *>(this)->write(t);
@@ -94,7 +96,7 @@ public:
     TA_BufferReader() = delete;
     TA_BufferReader(const std::string &file, std::size_t size) : CoreAsync::TA_BasicBufferOperator<TA_BufferReader>(file, size)
     {
-
+        init(file);
     }
 
     ~TA_BufferReader()
@@ -107,10 +109,8 @@ public:
     TA_BufferReader(TA_BufferReader &&writer) = delete;
 
     template <EndianConvertedType T>
-    bool read(T t)
+    bool read(T &t)
     {
-        if(!isValid() || m_fileStream.eof() || m_fileStream.fail() || m_fileStream.bad())
-            return false;
         if(m_iStrStream.str().empty() || m_validSize - m_iStrStream.tellg() < sizeof(t))
         {
             if(!fillBuffer() || m_validSize < sizeof(t))
@@ -128,6 +128,21 @@ private:
 
     bool fillBuffer()
     {
+        if (m_fileStream.eof())
+        {
+            CoreAsync::TA_CommonTools::debugInfo(META_STRING("End of file reached unexpectedly.\n"));
+            return false;
+        }
+        else if (m_fileStream.fail())
+        {
+            CoreAsync::TA_CommonTools::debugInfo(META_STRING("Logical error on i/o operation.\n"));
+            return false;
+        }
+        else if (m_fileStream.bad())
+        {
+            CoreAsync::TA_CommonTools::debugInfo(META_STRING("Read operation failed due to severe stream error.\n"));
+            return false;
+        }
         std::size_t bufferPos = m_iStrStream.tellg();
         std::size_t occupiedPos {m_validSize - bufferPos};
         if (bufferPos != 0)
@@ -172,7 +187,7 @@ public:
     TA_BufferWriter & operator = (TA_BufferWriter &&writer) = delete;
 
     template <EndianConvertedType T>
-    bool write(T t)
+    bool write(T &t)
     {
         if(!isValid())
             return false;
