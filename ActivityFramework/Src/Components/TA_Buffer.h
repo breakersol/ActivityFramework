@@ -38,7 +38,7 @@ public:
     TA_BasicBufferOperator() = delete;
     TA_BasicBufferOperator(const std::string &file, std::size_t size) : m_buffer(size)
     {
-        init(file);
+
     }
 
     virtual ~TA_BasicBufferOperator()
@@ -78,12 +78,6 @@ public:
     {
         static_assert(std::is_same_v<Opt, TA_BufferWriter>, "Flush is not the member of current type");
         return static_cast<Opt *>(this)->flush();
-    }
-
-private:
-    void init(const std::string &file)
-    {
-        static_cast<Opt *>(this)->init(file);
     }
 
 protected:
@@ -199,9 +193,9 @@ public:
 
 private:
     void init(const std::string &file)
-    {
-        m_fileStream.open(file, std::ios::binary | std::ios::out);
+    {  
         m_oStrStream.rdbuf()->pubsetbuf(m_buffer.data(), m_buffer.size());
+        m_fileStream.open(file, std::ios::binary | std::ios::out);
     }
 
 private:
