@@ -114,6 +114,7 @@ TEST_F(TA_SerializationTest, LargeScaleTest)
     {
         output << t;
     }
+    output.flush();
     output.close();
     std::vector<M3Test> vec(1000);
     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2, 10);

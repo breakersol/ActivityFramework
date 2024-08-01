@@ -91,7 +91,6 @@ protected:
 
 class TA_BufferReader : public TA_BasicBufferOperator<TA_BufferReader>
 {
-    friend class TA_BasicBufferOperator<TA_BufferReader>;
 public:
     TA_BufferReader() = delete;
     TA_BufferReader(const std::string &file, std::size_t size) : CoreAsync::TA_BasicBufferOperator<TA_BufferReader>(file, size)
@@ -167,7 +166,6 @@ private:
 
 class TA_BufferWriter : public TA_BasicBufferOperator<TA_BufferWriter>
 {
-    friend class TA_BasicBufferOperator<TA_BufferWriter>;
 public:
     TA_BufferWriter() = delete;
     TA_BufferWriter(const std::string &file, std::size_t size) : TA_BasicBufferOperator<TA_BufferWriter>(file, size)
@@ -191,11 +189,11 @@ public:
     {
         if(!isValid())
             return false;
+        m_oStrStream.write(reinterpret_cast<const char *>(&t), sizeof(t));
         if(m_oStrStream.tellp() + static_cast<std::streampos>(sizeof(t)) > static_cast<std::streampos>(m_buffer.size()))
         {
             flush();
         }
-        m_oStrStream.write(reinterpret_cast<const char *>(&t), sizeof(t));
         return true;
     }
 

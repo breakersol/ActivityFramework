@@ -37,13 +37,7 @@
 
 namespace CoreAsync
 {
-    enum class SerializationType
-    {
-        BinaryFile,
-        // JsonFile
-    };
-
-    template <BufferOperatorType OType = BufferWriter , SerializationType SType = SerializationType::BinaryFile>
+    template <BufferOperatorType OType = BufferWriter>
     class TA_Serializer
     {
     public:
@@ -66,6 +60,11 @@ namespace CoreAsync
         std::size_t version() const
         {
             return m_version;
+        }
+
+        void flush()
+        {
+            m_pDataOperator->flush();
         }
 
         void close()
@@ -362,10 +361,6 @@ namespace CoreAsync
         template <typename T>
         constexpr void callProperty(const T &t, std::index_sequence<> = {})
         {
-            if constexpr(std::is_same_v<BufferWriter, OType>)
-            {
-                m_pDataOperator->flush();
-            }
             return;
         }
 
