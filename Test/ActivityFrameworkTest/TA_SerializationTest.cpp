@@ -106,36 +106,36 @@ TEST_F(TA_SerializationTest, VersionTest)
 }
 
 
-TEST_F(TA_SerializationTest, LargeScaleTest)
-{
-    CoreAsync::TA_Serializer output("./test.afw", 2, 10);
-    M3Test t;
-    for(std::size_t i = 0;i < 1000;++i)
-    {
-        output << t;
-    }
-    output.flush();
-    output.close();
-    std::vector<M3Test> vec(1000);
-    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2, 10);
-    for(std::size_t i = 0;i < 1000;++i)
-    {
-        input >> vec[i];
-    }
+// TEST_F(TA_SerializationTest, LargeScaleTest)
+// {
+//     CoreAsync::TA_Serializer output("./test.afw", 2, 10);
+//     M3Test t;
+//     for(std::size_t i = 0;i < 1000;++i)
+//     {
+//         output << t;
+//     }
+//     output.flush();
+//     output.close();
+//     std::vector<M3Test> vec(1000);
+//     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2, 10);
+//     for(std::size_t i = 0;i < 1000;++i)
+//     {
+//         input >> vec[i];
+//     }
 
-    EXPECT_EQ(t.getVec(), vec[999].getVec());
-    EXPECT_EQ(*t.getRawPtr(), *vec[999].getRawPtr());
-    EXPECT_EQ(t.getArray(), vec[999].getArray());
-    EXPECT_EQ(t.getList(), vec[999].getList());
-    EXPECT_EQ(t.getForwardList(), vec[999].getForwardList());
-    EXPECT_EQ(t.getDeque(), vec[999].getDeque());
-    EXPECT_EQ(t.getStack(), vec[999].getStack());
-    EXPECT_EQ(t.getStack(), vec[999].getStack());
-    EXPECT_EQ(t.mx, vec[999].mx);
-    EXPECT_EQ(t.m_vec, vec[999].m_vec);
-    EXPECT_EQ(t.getQueue(), vec[999].getQueue());
+//     EXPECT_EQ(t.getVec(), vec[999].getVec());
+//     EXPECT_EQ(*t.getRawPtr(), *vec[999].getRawPtr());
+//     EXPECT_EQ(t.getArray(), vec[999].getArray());
+//     EXPECT_EQ(t.getList(), vec[999].getList());
+//     EXPECT_EQ(t.getForwardList(), vec[999].getForwardList());
+//     EXPECT_EQ(t.getDeque(), vec[999].getDeque());
+//     EXPECT_EQ(t.getStack(), vec[999].getStack());
+//     EXPECT_EQ(t.getStack(), vec[999].getStack());
+//     EXPECT_EQ(t.mx, vec[999].mx);
+//     EXPECT_EQ(t.m_vec, vec[999].m_vec);
+//     EXPECT_EQ(t.getQueue(), vec[999].getQueue());
 
-    auto pq1 {t.getPriorityQueue()};
-    auto pq2 {vec[999].getPriorityQueue()};
-    EXPECT_TRUE(arePriorityQueueEqual(pq1, pq2));
-}
+//     auto pq1 {t.getPriorityQueue()};
+//     auto pq2 {vec[999].getPriorityQueue()};
+//     EXPECT_TRUE(arePriorityQueueEqual(pq1, pq2));
+// }

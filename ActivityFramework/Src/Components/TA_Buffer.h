@@ -85,6 +85,7 @@ public:
 protected:
     std::fstream m_fileStream;
     std::vector<char> m_buffer;
+    std::size_t m_offset {0}, m_validSize {0};
 
 };
 
@@ -100,8 +101,7 @@ public:
 
     ~TA_BufferReader()
     {
-        m_iStrStream.str("");
-        m_iStrStream.clear();
+
     }
 
     TA_BufferReader(const TA_BufferReader &writer) = delete;
@@ -110,12 +110,13 @@ public:
     template <EndianConvertedType T>
     bool read(T &t)
     {
-        if(m_iStrStream.str().empty() || m_validSize - m_iStrStream.tellg() < sizeof(t))
+        if(isEnd() || m_validSize - m_offset < sizeof(t))
         {
             if(!fillBuffer() || m_validSize < sizeof(t))
                 return false;
         }
-        m_iStrStream.read(reinterpret_cast<char*>(&t), sizeof(t));
+        std::memcpy(&t, m_buffer.data() + m_offset, sizeof(T));
+        m_offset += sizeof(T);
         return true;
     }
 
@@ -123,6 +124,11 @@ private:
     void init(const std::string &file)
     {
         m_fileStream.open(file, std::ios::binary | std::ios::in);
+    }
+
+    bool isEnd() const
+    {
+        return m_offset == m_validSize;
     }
 
     bool fillBuffer()
@@ -142,25 +148,17 @@ private:
             CoreAsync::TA_CommonTools::debugInfo(META_STRING("Read operation failed due to severe stream error.\n"));
             return false;
         }
-        std::size_t bufferPos = m_iStrStream.tellg();
-        std::size_t occupiedPos {m_validSize - bufferPos};
-        if (bufferPos != 0)
+        std::size_t restedSize {m_validSize - m_offset};
+        if (m_offset != 0)
         {
-            memmove(m_buffer.data(), m_buffer.data() + bufferPos, occupiedPos);
+            memmove(m_buffer.data(), m_buffer.data() + m_offset, restedSize);
         }
-        m_fileStream.read(m_buffer.data() + occupiedPos, m_buffer.size() - occupiedPos);
+        m_fileStream.read(m_buffer.data() + restedSize, m_buffer.size() - restedSize);
         std::size_t byteRead = m_fileStream.gcount();
-        m_validSize = occupiedPos + byteRead;
-
-        m_iStrStream.str({m_buffer.data(), m_validSize});
-        m_iStrStream.clear();
-
+        m_validSize = restedSize + byteRead;
+        m_offset = 0;
         return byteRead > 0;
     }
-
-private:
-    std::istringstream m_iStrStream {};
-    std::size_t m_validSize {0};
 
 };
 
@@ -189,31 +187,28 @@ public:
     {
         if(!isValid())
             return false;
-        m_oStrStream.write(reinterpret_cast<const char *>(&t), sizeof(t));
-        if(m_oStrStream.tellp() + static_cast<std::streampos>(sizeof(t)) > static_cast<std::streampos>(m_buffer.size()))
+        if(m_offset + sizeof(t) > m_buffer.size())
         {
             flush();
         }
+        std::memcpy(m_buffer.data() + m_offset, &t, sizeof(std::remove_cvref_t<T>));
+        m_offset += sizeof(std::remove_cvref_t<T>);
+        m_validSize += sizeof(std::remove_cvref_t<T>);
         return true;
     }
 
     void flush()
     {
-        m_fileStream.write(m_oStrStream.str().data(), m_oStrStream.tellp());
-        m_oStrStream.str("");
-        m_oStrStream.clear();
+        m_fileStream.write(m_buffer.data(), m_validSize);
+        m_offset = 0;
+        m_validSize = 0;
     }
 
 private:
     void init(const std::string &file)
-    {  
-        m_oStrStream.rdbuf()->pubsetbuf(m_buffer.data(), m_buffer.size());
+    {    
         m_fileStream.open(file, std::ios::binary | std::ios::out);
     }
-
-private:
-    std::ostringstream m_oStrStream {};
-
 };
 
 template <typename T>
