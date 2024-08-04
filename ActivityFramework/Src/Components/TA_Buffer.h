@@ -115,7 +115,7 @@ public:
             if(!fillBuffer() || m_validSize < sizeof(t))
                 return false;
         }
-        std::memcpy(&t, m_buffer.data() + m_offset, sizeof(T));
+        memcpy(&t, m_buffer.data() + m_offset, sizeof(T));
         m_offset += sizeof(T);
         return true;
     }
@@ -191,7 +191,7 @@ public:
         {
             flush();
         }
-        std::memcpy(m_buffer.data() + m_offset, &t, sizeof(std::remove_cvref_t<T>));
+        memcpy(m_buffer.data() + m_offset, &t, sizeof(std::remove_cvref_t<T>));
         m_offset += sizeof(std::remove_cvref_t<T>);
         m_validSize += sizeof(std::remove_cvref_t<T>);
         return true;
