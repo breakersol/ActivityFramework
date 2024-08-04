@@ -58,7 +58,7 @@ struct IsInstanceVariable
 template <typename CL, typename T>
 struct IsInstanceVariable<T CL::*>
 {
-    static constexpr bool value =!std::is_function_v<T CL::*> && std::is_member_pointer_v<T CL::*>;
+    static constexpr bool value = !std::is_function_v<T> && std::is_member_pointer_v<T CL::*>;
 };
 
 template <typename T>
@@ -131,7 +131,26 @@ template <typename Func>
 struct FunctionTypeInfo;
 
 template <typename C, typename R, typename ...PARA>
+struct FunctionTypeInfo<R(C::* &&)(PARA...)>
+{
+    using RetType = R;
+    using ParentClass = C;
+    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
+    static constexpr std::size_t paraSize = sizeof...(PARA);
+};
+
+template <typename C, typename R, typename ...PARA>
 struct FunctionTypeInfo<R(C::*)(PARA...)>
+{
+    using RetType = R;
+    using ParentClass = C;
+    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
+    static constexpr std::size_t paraSize = sizeof...(PARA);
+    static constexpr bool isMemberFunction {true};
+};
+
+template <typename C, typename R, typename ...PARA>
+struct FunctionTypeInfo<R(C::* &&)(PARA...) const>
 {
     using RetType = R;
     using ParentClass = C;
@@ -146,6 +165,15 @@ struct FunctionTypeInfo<R(C::*)(PARA...) const>
     using ParentClass = C;
     using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
     static constexpr std::size_t paraSize = sizeof...(PARA);
+    static constexpr bool isMemberFunction {true};
+};
+
+template <typename R, typename ...PARA>
+struct FunctionTypeInfo<R(* &&)(PARA...)>
+{
+    using RetType = R;
+    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
+    static constexpr std::size_t paraSize = sizeof...(PARA);
 };
 
 template <typename R, typename ...PARA>
@@ -154,6 +182,7 @@ struct FunctionTypeInfo<R(*)(PARA...)>
     using RetType = R;
     using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
     static constexpr std::size_t paraSize = sizeof...(PARA);
+    static constexpr bool isMemberFunction {false};
 };
 
 template <typename Var>
@@ -178,6 +207,69 @@ concept Iterator = requires (T t)
     {*std::declval<std::decay_t<T>>()};
     {++std::declval<std::decay_t<T> &>()};
 };
+
+template <typename AType>
+concept StdAdaptorType = requires(AType at)
+{
+    typename std::decay_t<AType>::size_type;
+    typename std::decay_t<AType>::container_type;
+};
+
+template <typename CType>
+concept StdContainerType = requires(CType ct)
+{
+    typename std::decay_t<CType>::value_type;
+    typename std::decay_t<CType>::iterator;
+    typename std::decay_t<CType>::const_iterator;
+    typename std::decay_t<CType>::size_type;
+};
+
+template <typename CSType>
+concept ValidCST = !std::is_fundamental<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_enum<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_union<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_array<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_pointer<std::remove_cvref_t<CSType>>::value &&
+                   !std::is_null_pointer<std::remove_cvref_t<CSType>>::value &&
+                   !StdContainerType<CSType> &&
+                   !StdAdaptorType<CSType> &&
+                   std::is_class<std::remove_cvref_t<CSType>>::value;
+
+template <typename CSType>
+concept CustomType = requires(CSType ct)
+{
+    {ct} -> ValidCST;
+};
+
+template <typename NCSType>
+concept NonCustomType = !CustomType<NCSType>;
+
+template <typename T>
+concept IsRawPtr = std::is_pointer_v<std::decay_t<T>>;
+
+template <typename T>
+concept RawPtr = requires(T t)
+{
+    {t} -> IsRawPtr;
+};
+
+template <typename T>
+concept IsEnumType = std::is_enum_v<std::decay_t<T>>;
+
+template <typename T>
+concept EnumType = requires(T t)
+{
+    {t} -> IsEnumType;
+};
+
+template <typename FType>
+concept FieldType = requires(FType ct)
+{
+    { ct.m_isProperty } -> std::convertible_to<bool>;
+};
+
+template <typename FType>
+concept NonFieldType = !FieldType<FType>;
 
 }
 

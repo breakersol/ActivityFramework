@@ -18,8 +18,6 @@
 #define TA_METAREFLEX_H
 
 #include <string_view>
-#include <variant>
-#include <concepts>
 
 #include "Components/TA_MetaStringView.h"
 #include "TA_TypeFilter.h"
@@ -151,33 +149,45 @@ struct TA_MemberTypeTrait
 
 // };
 
-enum class Role
+template <std::size_t value>
+struct TA_MetaRoleVersion
 {
-    Property,
-    NonProperty
+    static constexpr std::size_t m_value {value};
 };
 
-template <typename T, typename NAME, Role role = Role::NonProperty>
-struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>
+template <typename Role, typename Version>
+struct TA_MetaRole
 {
-    constexpr TA_MetaField(T t, NAME) : TA_MetaTypeName<T,NAME>{t}
-    {
+    static constexpr std::string_view m_role {Role::data()};
+    static constexpr std::size_t m_version {Version::m_value};
+    static constexpr bool m_isProperty {Role::data() == std::string_view("Property")};
+};
 
+template <typename Role, typename Version>
+using TA_MetaPropertyParameters = std::tuple<Role, Version>;
+
+template <typename T, typename NAME, typename Role = decltype(META_STRING("")), typename Version = TA_MetaRoleVersion<1> >
+struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T,NAME>, TA_MetaRole<Role, Version>
+{
+    constexpr TA_MetaField(T t, NAME, TA_MetaPropertyParameters<Role, Version> = {}) : TA_MetaTypeName<T,NAME>{t}
+    {
+        if constexpr(TA_MetaRole<Role, Version>::m_isProperty)
+        {
+            static_assert(IsInstanceVariable<T>::value, "Non instance variable can't be declared as property.");
+        }
     }
 
     constexpr TA_MetaField() : TA_MetaTypeName<T,NAME> {nullptr}
     {
 
     }
-
-    static constexpr Role m_fieldRole {role};
 };
 
 template <typename ...FIELDS>
 class TA_MetaFieldList
 {
 public:
-    using ValueTypes = TA_MetaTypelist<decltype(FIELDS {}.value())...>;
+    using ValueTypes = TA_MetaTypelist<decltype(FIELDS {}.value())...>; 
 
     constexpr TA_MetaFieldList(FIELDS ...fs) : m_fields(fs...)
     {
@@ -245,8 +255,24 @@ public:
         } ();
     }
 
-private:
+    template <FieldType P>
+    struct PropertyFilter
+    {
+        static constexpr bool value = P::m_isProperty;
+    };
 
+    template <typename M>
+    struct PropertyMapper
+    {
+        using type = std::tuple<typename M::TName, TA_MetaRoleVersion<M::m_version>>;
+    };
+
+    struct PropertyInfos
+    {
+        using Types = MetaFilterMapper<TA_MetaTypelist<FIELDS...>, PropertyFilter, PropertyMapper>::result;
+    };
+
+private:
     template <typename VALUE>
     constexpr bool containsMatchedType(VALUE &&, std::index_sequence<>) const
     {
@@ -317,6 +343,10 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
     {
         constexpr auto target = findType(NAME {});
         using CF = decltype(target);
+        if constexpr(std::is_same_v<nullptr_t, CF>)
+        {
+            return nullptr;
+        }
         if constexpr(std::is_enum_v<decltype(target)>)
         {
             return target;
@@ -357,6 +387,30 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
                 (obj.*target) = para;
         }
     }
+
+    template <typename NAME>
+    static constexpr auto offset(NAME = {})
+    {
+        using TargetType = std::remove_cvref_t<decltype(findType(NAME {}))>;
+        static_assert(std::is_standard_layout_v<TargetType>, "The type is not stand layout type.");
+        return offsetof(T, TargetType);
+    }
+
+    // [[deprecated]] static constexpr std::size_t operationSize()
+    // {
+    //     return TA_TypeInfo<T>::operations.size();
+    // }
+
+    // template <std::size_t IDX>
+    // [[deprecated]]static constexpr decltype(auto) findPropertyOperation()
+    // {
+    //     using OpType = decltype(TA_TypeInfo<T>::operations.template getOperation<IDX>());
+    //     constexpr auto read {findType(META_STRING(OpType::readOperation))};
+    //     constexpr auto write {findType(META_STRING(OpType::writeOperation))};
+    //     static_assert(!std::is_function_v<decltype(read)>, "The read operation found is wrong.");
+    //     static_assert(!std::is_function_v<decltype(write)>, "The write operation found is wrong.");
+    //     return std::tuple {read, write};
+    // }
 
     template <typename VALUE>
     static constexpr bool containsValue(VALUE && v)
@@ -439,6 +493,12 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
         using VariantTypes = typename MetaMerge<typename decltype(TA_TypeInfo<T>::fields)::ValueTypes, typename TA_TypeInfo<BASES>::TA_Values::VariantTypes...>::type;
     };
 
+    struct TA_PropertyInfos
+    {
+        using List = MetaRemoveDuplicate<typename MetaAppend<typename std::remove_cv_t<decltype(TA_TypeInfo<T>::fields)>::PropertyInfos::Types, typename std::remove_cv_t<decltype(TA_TypeInfo<BASES>::fields)>::PropertyInfos::Types...>::type>::result;
+        static constexpr auto size = MetaSize<List>::value;
+    };
+
     template <typename BASE>
     struct TA_MetaInfoPack
     {
@@ -459,7 +519,7 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
 
     struct TA_MetaBaseTypesInfo
     {
-        using types = typename MetaMap<TA_MetaTypelist<BASES...>, TA_MetaInfoPack>::type;
+        using types = typename MetaMapper<TA_MetaTypelist<BASES...>, TA_MetaInfoPack>::type;
         static constexpr std::size_t size = types::size;
     };
 
@@ -543,7 +603,6 @@ private:
         return findName(std::forward<VALUE>(v), std::index_sequence<IDXS...> {});
     }
 
-
     static constexpr decltype(auto) findValue(std::string_view &&str, std::index_sequence<> = {})
     {
         return typename MetaVariant<typename TA_Values::VariantTypes>::Var {};
@@ -565,5 +624,11 @@ private:
 
 #define ENABLE_REFLEX \
 template <typename T> friend struct CoreAsync::Reflex::TA_TypeInfo;
+
+#define TA_DEFAULT_PROPERTY \
+CoreAsync::Reflex::TA_MetaPropertyParameters<decltype(META_STRING("Property")), TA_MetaRoleVersion<1>> {}
+
+#define TA_PROPERTY(VALUE) \
+CoreAsync::Reflex::TA_MetaPropertyParameters<decltype(META_STRING("Property")), TA_MetaRoleVersion<VALUE>> {}
 
 #endif // TA_METAREFLEX_H

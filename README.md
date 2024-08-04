@@ -5,7 +5,7 @@ These instructions will get you a copy of the project up and running on your loc
 ### Prerequisites
 - CMake: Not less than 3.20
 - Windows: MSVC 17.5.33530.505 or higher
-- Linux: GCC11 or higher
+- Linux: GCC13 or higher
 ### Installing
 Using **/ActivityFramework/ActivityFramework/CMakeList.txt** to build the project ActivityPipeline, and set the build dir as **/ActivityFramework/build**.
 ### Running the tests

@@ -17,6 +17,7 @@
 #ifndef TA_COMMONTOOLS_H
 #define TA_COMMONTOOLS_H
 
+#include <cstdint>
 #include <list>
 #include <map>
 #include <string_view>
