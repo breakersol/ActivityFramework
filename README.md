@@ -20,8 +20,8 @@ Using **/ActivityFramework/ActivityFramework/CMakeList.txt** to build the projec
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
 This project is licensed under the Apache-2.0 license License - see the [LICENSE.md](https://github.com/breakersol/ActivityPipeline/blob/master/LICENSE) file for details
-### Basic Usage
-#### Meta Reflex
+## Basic Usage
+### Meta Reflex
 This module implements a simple compile-time reflection mechanism and it is part of the infrastructure of **Connection**. It supports reflection of member variables, member functions, static member variables, static member variables, and member enumeration types, and it can reflect the base class information under single-level inheritance relationship, multi-level inheritance relationship. But for diamond inheritance there are still some problems existed now. 
 
 <br/>Here are an example of using it:
@@ -173,7 +173,171 @@ struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest,BaseTest,OtherTest>
     auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("META_RED"));
 ```
 **Note: If a type is exported to use, then the meta info for that type needs to be exported as well.**
-#### Connection
+### Serialization & Deserialization
+This module is responsible for both serialization and deserialization of data types to and from a buffer. It provides a robust foundation for serialization tasks, accommodating a variety of data types and structures, and ensuring data integrity and type safety through compile-time checks and runtime validations.<br/>
+<br/>- **Supported Types**:<br/>
+| Category              | Supported Types Examples                                          |
+|-----------------------|-------------------------------------------------------------------|
+| **Custom Types**      | Any user-defined type that adheres to the serialization interface |
+| **Standard Containers** | `std::vector`, `std::deque`, `std::list`, `std::map`, `std::set`, `std::multimap`, `std::multiset`, `std::unordered_map`, `std::unordered_set`, `std::unordered_multimap`, `std::unordered_multiset`, `std::forward_list` |
+| **Stack-like Adaptors** | `std::stack`, `std::queue`, `std::priority_queue`                |
+| **Basic Data Types**   | `int`, `float`, `double`, etc.                                    |
+| **Pairs**              | `std::pair<T1, T2>`                                               |
+| **Arrays**             | `std::array`, C-style arrays, e.g., `int[10]`                                   |
+| **Enums**              | Enumerated types                                                  |
+| **Pointers**           | Raw pointers to types that are serializable                       |
+
+<br/>- **Endianess Conversion**:<br/>
+Serializer handles endianess conversions for basic data types, ensuring that data is correctly serialized and deserialized across different hardware architectures.
+<br/>- **Version Management**:<br/>
+The serializer supports versioning, allowing for backward compatibility in serialized data. This feature is crucial for applications that may evolve over time, ensuring that older data formats can still be read by newer versions of the software.
+<br/>- **Support for class inheritance**:<br/>
+When serializing/de-serializing a subclass object, the attribute data of the parent class is automatically serialized/de-serialized.
+
+When using this module, you must implement the TA_TypeInfo of the object that is going to be serialized/de-serialized and extend the attribute information in it.
+```cpp
+class M3Test : public M2Test
+{
+    ENABLE_REFLEX
+public:
+    void setVec(const std::vector<int> &v)
+    {
+        vec = v;
+    }
+
+    const std::vector<int> & getVec() const
+    {
+        return vec;
+    }
+
+    void setRawPtr(float *&ptr)
+    {
+        if(pFloatPtr)
+            delete pFloatPtr;
+        pFloatPtr = ptr;
+    }
+
+    float * getRawPtr() const
+    {
+        return pFloatPtr;
+    }
+
+    template <std::size_t N = 5>
+    void setArray(const std::array<uint32_t, N> &array)
+    {
+        m_array = array;
+    }
+
+    const std::array<uint32_t, 5> & getArray() const
+    {
+        return m_array;
+    }
+
+    void setList(const std::list<uint16_t> &list)
+    {
+        m_list = list;
+    }
+
+    const std::list<uint16_t> & getList() const
+    {
+        return m_list;
+    }
+
+    void setForwardList(const std::forward_list<uint64_t> &list)
+    {
+        m_forwardList = list;
+    }
+
+    const std::forward_list<uint64_t> & getForwardList() const
+    {
+        return m_forwardList;
+    }
+
+    void setDeque(const std::deque<int16_t> &deque)
+    {
+        m_deque = deque;
+    }
+
+    const std::deque<int16_t> & getDeque() const
+    {
+        return m_deque;
+    }
+
+    void setStack(const std::stack<int32_t> &stack)
+    {
+        m_stack = stack;
+    }
+
+    const std::stack<int32_t> & getStack() const
+    {
+        return m_stack;
+    }
+
+    void setQueue(const std::queue<int64_t> &queue)
+    {
+        m_queue = queue;
+    }
+
+    const std::queue<int64_t> & getQueue() const
+    {
+        return m_queue;
+    }
+
+    void setPrioritQueue(const std::priority_queue<double> &queue)
+    {
+        m_prioritQueue = queue;
+    }
+
+    const std::priority_queue<double> & getPriorityQueue() const
+    {
+        return m_prioritQueue;
+    }
+
+private:
+    std::vector<int> vec {1, 2, 3, 4};
+    float *pFloatPtr = new float(1.5);
+    std::array<uint32_t, 5> m_array {1, 2, 3, 4, 5};
+    std::list<uint16_t> m_list {8,8,8,8,8,8};
+    std::forward_list<uint64_t> m_forwardList {100000, 10000};
+    std::deque<int16_t> m_deque {1,2,3,4,5};
+    std::stack<int32_t> m_stack;
+    std::queue<int64_t> m_queue;
+    std::priority_queue<double> m_prioritQueue;
+
+};
+
+template <>
+struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test, M2Test>
+{
+    static constexpr TA_MetaFieldList fields = {
+        TA_MetaField {&Raw::vec, META_STRING("vec"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::m_array, META_STRING("m_array"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::pFloatPtr, META_STRING("pFloatPtr"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::m_list, META_STRING("m_list"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::m_forwardList, META_STRING("m_forwardList"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::m_deque, META_STRING("m_deque"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::m_stack, META_STRING("m_stack"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::m_queue, META_STRING("m_queue"), TA_DEFAULT_PROPERTY},
+        TA_MetaField {&Raw::m_prioritQueue, META_STRING("m_prioritQueue"), TA_DEFAULT_PROPERTY},
+    };
+};
+```
+From the snippet above, it is evident that **TA_DEFAULT_PROPERTY** is passed into *TA_MetaField*. The corresponding class member variable is defined as a property within the domain, which allows it to be automatically identified by the serialization module. Consequently, serialization and deserialization processes are applied to this property. Any class member variables not defined as properties are automatically excluded during serialization and deserialization.
+**TA_DEFAULT_PROPERTY** indicates that the serialization version of the attribute is set to 1. You can also define the serialization version of the property as some other value greater than 1 using **TA_PROPERTY(VALUE)**.
+
+```cpp
+    M3Test p1, p2;
+    {
+        CoreAsync::TA_Serializer output("./test.afw", 2);    //Set the serialization version as 2.
+        output << p1;
+    }
+    {
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2); //Set the de-serialization version as 2.
+        input >> p2;
+    }
+```
+In the demo above, properties with a serialized version of 2 or lower are eligible for serialization. The same criteria apply to deserialization.
+### Connection
 This is a simplified version of the Qt-like signal-slot mechanism.It allows objects to communicate with each other in a loosely coupled way, by emitting signals and connecting them to slots. When a signal is emitted, all connected slots are called, allowing objects to respond to events in a flexible and decoupled manner.
 The condition for using this mechanism is to make the target class inherit from **TA_MetaObject** and to implement type info of this type.
 ```cpp
@@ -234,7 +398,7 @@ Finally, if the connection is unnecessary anymore, you can **disconnect** it.
 ```cpp
     CoreAsync::ITA_Connection::disconnect(pTest, &MetaTest::printTest, ppTest, &MetaTest::printSlot);
 ```
-#### Activity
+### Activity
 Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides several methods to create them, you can learn about them from the source code of the unit test. This is one of the methods  :
 ```cpp
     auto acivity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::printNums, pTest, m,n);
@@ -286,7 +450,7 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
 ```
 <br/>The above code indicates that we first create two branches activity_4 and activity_5 on activity_3. At this layer, activity_3 represents branch index 0, while activity_4 and activity_5 represent 1 and 2, respectively. Similarly, we created the branch on activity_1 activity_2 and activity_3. **selectBranch({2,2})** means that when activity_1 is executed(**(*activity_1)()**), it will be executed in the order from activity_3 to activity_5 and return the result of activity_5. And activity_1 itself will not be executed.
 
-#### Thread Pool
+### Thread Pool
 A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
 - **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
 ```cpp
@@ -307,7 +471,7 @@ A lightweight thread pool has been implemented within the framework, which is as
 - **shutDown**: Request to shut down and clear all of threads.
 ---
 
-#### Pipelines
+### Pipelines
 Activity Pipeline currently offers five types of pipelines to use: **Auto Chain Pipeline, Concurrent Pipeline, Manual Chain Pipeline, Manual Steps Chain Pipeline, and Manual Key Activity Chain Pipeline**, and all types of pipelines can be created through **ITA_PipelineCreator**.
 1. _Auto Chain Pipeline_: The pipeline will automatically execute all activites in order.
 2. _Concurrent Pipeline_: All the activities in this pipeline will be executed in concurrency.
@@ -329,7 +493,7 @@ Activity Pipeline currently offers five types of pipelines to use: **Auto Chain 
 - **void setKeyActivityIndex(int index)**: Set the _index_ activity as the key activity, and the pipeline will not continue backwards at this position, but will repeat the execution of this key activity unless the **skipKeyActivity** is called. Invalid when called in **Busy** state. API specific to **Manual Key Activity Chain Pipeline**.
 - **void skipKeyActivity()**: Skip the key activity to the next activity. API specific to **Manual Steps Chain Pipeline**. Invalid when called in **Busy** state.
 ---
-##### Signals:
+#### Signals:
 - **pipelineStateChanged(TA_BasicPipeline::State)**
     <br/>This signal will be activated when the state of pipeline changed.
 - **pipelineReady()**
