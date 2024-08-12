@@ -37,6 +37,15 @@
 
 namespace CoreAsync
 {
+    template <typename T>
+    concept IsSerializable = IsStandLayout<T> || IsTrivalCopyable<T> || EndianVerifyExp<T>;
+
+    template <typename T>
+    concept SerializableType = requires(T t)
+    {
+        {t}->IsSerializable;
+    };
+
     template <BufferOperatorType OType = BufferWriter>
     class TA_Serializer
     {
@@ -88,7 +97,7 @@ namespace CoreAsync
             return *this;
         }
 
-        template <EndianConvertedType T>
+        template <SerializableType T>
         TA_Serializer & operator << (T t)
         {
             static_assert(std::is_same_v<BufferWriter, OType> , "The operation type isn't Serialization ");
@@ -98,7 +107,7 @@ namespace CoreAsync
             return *this;
         }
 
-        template <EndianConvertedType T>
+        template <SerializableType T>
         TA_Serializer & operator >> (T &t)
         {
             static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
