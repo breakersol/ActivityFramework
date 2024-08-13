@@ -25,18 +25,24 @@ TEST_F(TA_EndianSwapTest, SwapEndianUint16) {
     uint16_t input = 0x1234;
     uint16_t expected = CoreAsync::TA_EndianConversion::isSystemLittleEndian() ? 0x3412 : input;
     ASSERT_EQ(CoreAsync::TA_EndianConversion::swapEndian(input), expected);
+    CoreAsync::TA_EndianConversion::swapEndian(&input);
+    ASSERT_EQ(input, expected);
 }
 
 TEST_F(TA_EndianSwapTest, SwapEndianUint32) {
     uint32_t input = 0x12345678;
     uint32_t expected = CoreAsync::TA_EndianConversion::isSystemLittleEndian() ? 0x78563412 : input;
     ASSERT_EQ(CoreAsync::TA_EndianConversion::swapEndian(input), expected);
+    CoreAsync::TA_EndianConversion::swapEndian(&input);
+    ASSERT_EQ(input, expected);
 }
 
 TEST_F(TA_EndianSwapTest, SwapEndianUint64) {
     uint64_t input = 0x123456789ABCDEF0;
     uint64_t expected = CoreAsync::TA_EndianConversion::isSystemLittleEndian() ? 0xF0DEBC9A78563412 : input;
     ASSERT_EQ(CoreAsync::TA_EndianConversion::swapEndian(input), expected);
+    CoreAsync::TA_EndianConversion::swapEndian(&input);
+    ASSERT_EQ(input, expected);
 }
 
 TEST_F(TA_EndianSwapTest, SwapEndianFloat) {
@@ -47,6 +53,8 @@ TEST_F(TA_EndianSwapTest, SwapEndianFloat) {
     if (!CoreAsync::TA_EndianConversion::isSystemLittleEndian())
         expected = input;
     ASSERT_FLOAT_EQ(CoreAsync::TA_EndianConversion::swapEndian(input), expected);
+    CoreAsync::TA_EndianConversion::swapEndian(&input);
+    ASSERT_EQ(input, expected);
 }
 
 TEST_F(TA_EndianSwapTest, SwapEndianDouble) {
@@ -57,4 +65,6 @@ TEST_F(TA_EndianSwapTest, SwapEndianDouble) {
     if (!CoreAsync::TA_EndianConversion::isSystemLittleEndian())
         expected = input;
     ASSERT_DOUBLE_EQ(CoreAsync::TA_EndianConversion::swapEndian(input), expected);
+    CoreAsync::TA_EndianConversion::swapEndian(&input);
+    ASSERT_EQ(input, expected);
 }

@@ -102,7 +102,7 @@ namespace CoreAsync
         {
             static_assert(std::is_same_v<BufferWriter, OType> , "The operation type isn't Serialization ");
             if(TA_EndianConversion::isSystemLittleEndian())
-                t = TA_EndianConversion::swapEndian(t);
+                TA_EndianConversion::swapEndian(&t);
             m_pDataOperator->write(t);
             return *this;
         }
@@ -113,7 +113,7 @@ namespace CoreAsync
             static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
             m_pDataOperator->read(t);
             if(TA_EndianConversion::isSystemLittleEndian())
-                t = TA_EndianConversion::swapEndian(t);
+                TA_EndianConversion::swapEndian(&t);
             return *this;
         }
 
