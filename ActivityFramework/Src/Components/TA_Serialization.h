@@ -38,7 +38,7 @@
 namespace CoreAsync
 {
     template <typename T>
-    concept IsSerializable = IsStandLayout<T> || IsTrivalCopyable<T> || EndianVerifyExp<T>;
+    concept IsSerializable = EndianVerifyExp<T>;
 
     template <typename T>
     concept SerializableType = requires(T t)
