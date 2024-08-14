@@ -193,6 +193,14 @@ Serializer handles endianess conversions for basic data types, ensuring that dat
 The serializer supports versioning, allowing for backward compatibility in serialized data. This feature is crucial for applications that may evolve over time, ensuring that older data formats can still be read by newer versions of the software.
 <br/>- **Support for class inheritance**:<br/>
 When serializing/de-serializing a subclass object, the attribute data of the parent class is automatically serialized/de-serialized.
+<br/>- **Interfaces**:<br/>
+| Function Signature                                 | Description                                                  |
+|----------------------------------------------------|--------------------------------------------------------------|
+| `explicit TA_Serializer(const std::string &path, std::size_t version = 1, std::size_t bufferSize = 1024 * 1024)` | Constructor initializes the serializer with a file path, optional version, and buffer size. |
+| `~TA_Serializer()`                                 | Destructor that handles resource cleanup.                     |
+| `std::size_t version() const`                      | Returns the serialization version.                           |
+| `void flush()`                                     | Flushes the buffer to ensure all data is written.             |
+| `void close()`                                     | Closes the data operator (file), ensuring all data is finalized. |
 
 When using this module, you must implement the TA_TypeInfo of the object that is going to be serialized/de-serialized and extend the attribute information in it.
 ```cpp
