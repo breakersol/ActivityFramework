@@ -50,7 +50,7 @@ namespace CoreAsync
     class TA_Serializer
     {
     public:
-        explicit TA_Serializer(const std::string &path, std::size_t version = 1, std::size_t bufferSize = 1024 * 1024) : m_version(version), m_pDataOperator(new OType::OperatorType(path, bufferSize))
+        explicit TA_Serializer(const std::string &path, std::size_t version = 1, std::size_t bufferSize = 1024 * 1024 * 2) : m_version(version), m_pDataOperator(new OType::OperatorType(path, bufferSize))
         {
             init();
         }
@@ -257,7 +257,7 @@ namespace CoreAsync
                 {
                     typename T::value_type val;
                     *this >> val;
-                    temp.push_front(std::move(val));
+                    temp.emplace_front(std::move(val));
                 }
                 t = {temp.begin(), temp.end()};
             }
@@ -394,7 +394,7 @@ namespace CoreAsync
                     ValType val {};
                     // std::cout << typeid(ValType).name() << std::endl;
                     *this >> val;
-                    Reflex::TA_TypeInfo<Rt>::update(t, val, std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type> {});
+                    Reflex::TA_TypeInfo<Rt>::update(t, std::move(val), std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type> {});
                 }
             }
             callProperty(t, std::index_sequence<IDXS...> {});
