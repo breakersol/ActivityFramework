@@ -1,5 +1,5 @@
 # Activity Framework     ![Build Status](https://img.shields.io/github/actions/workflow/status/breakersol/ActivityFramework/cmake.yml)
-Activity Framework is a lightweight C++ development framework under development. It currently implemented compile-time reflection , circular queue , thread pool , Qt-like signal and slot mechanism module , as well as asynchronous pipeline to facilitate the use of special scenarios and other features.The Activity Framework is currently supported on Windows and Linux.
+Activity Framework is a lightweight C++ development framework under development. It currently implemented compile-time reflection, Serialization & deserialization, circular queue , thread pool , Qt-like signal and slot mechanism module , as well as asynchronous pipeline to facilitate the use of special scenarios and other features.The Activity Framework is currently supported on Windows and Linux.
 ## Getting Started
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 ### Prerequisites
@@ -16,6 +16,7 @@ Using **/ActivityFramework/ActivityFramework/CMakeList.txt** to build the projec
 - [v0.2.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.0)
 - [v0.2.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.1)
 - [v0.2.2](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.2)
+- [v0.3.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.3.0)
 ### Authors
 - **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
 ### License
