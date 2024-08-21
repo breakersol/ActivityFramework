@@ -215,9 +215,10 @@ namespace CoreAsync
             {
                 for(auto i = 0;i < size;++i)
                 {
-                    std::pair<typename T::key_type, typename T::mapped_type> val;
-                    *this >> val;
-                    t.emplace(std::move(val));
+                    typename T::key_type key {};
+                    typename T::mapped_type val {};
+                    *this >> key >> val;
+                    t.emplace_hint(t.end(), std::move(key), std::move(val));
                 }
             }
             else if constexpr(std::is_same_v<std::set<typename T::key_type>, T> ||
@@ -229,7 +230,7 @@ namespace CoreAsync
                 {
                     typename T::key_type val;
                     *this >> val;
-                    t.emplace(std::move(val));
+                    t.emplace_hint(t.end(), std::move(val));
                 }
             }
             return *this;
