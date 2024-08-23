@@ -1,27 +1,67 @@
-# Activity Framework     ![Build Status](https://img.shields.io/github/actions/workflow/status/breakersol/ActivityFramework/cmake.yml)
-Activity Framework is a lightweight C++ development framework under development. It currently implemented compile-time reflection, Serialization & deserialization, circular queue , thread pool , Qt-like signal and slot mechanism module , as well as asynchronous pipeline to facilitate the use of special scenarios and other features.The Activity Framework is currently supported on Windows and Linux.
+# Activity Framework ![Build Status](https://img.shields.io/github/actions/workflow/status/breakersol/ActivityFramework/cmake.yml)
+
+**Activity Framework** is an advanced, evolving lightweight C++ development framework optimized for efficiency and flexibility. Engineered to augment the software development process, it incorporates a rich set of tools that streamline and enhance the development of complex applications. Below is a detailed overview of its features, platform support, and dependencies.
+
+### Features
+
+| Feature                          | Description                                                                 |
+|----------------------------------|-----------------------------------------------------------------------------|
+| Compile-time Reflection          | Facilitates metadata manipulation at compile-time, enhancing adaptability.  |
+| Serialization & Deserialization  | Ensures robust data persistence and retrieval, crucial for data integrity.  |
+| Circular Queue                   | Implements an efficient circular data structure for improved data handling. |
+| Thread Pool                      | Optimizes concurrent task executions through effective thread management.   |
+| Qt-like Signal and Slot Mechanism| Provides a dynamic event-handling mechanism inspired by the Qt framework.   |
+
+### Platform Support
+
+- **Windows**: Fully optimized and supported.
+- **Linux**: Ensures full compatibility and performance.
+
+### Dependencies
+
+- Exclusively relies on the C++ Standard Library, minimizing external dependencies and simplifying integration.
+
+This framework is ideal for developers seeking a robust, scalable, and easily integrated solution for sophisticated C++ applications.
+
 ## Getting Started
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+
+These instructions will guide you through setting up the project on your local machine for development and testing purposes.
+
 ### Prerequisites
-- CMake: Not less than 3.20
+
+- CMake: Version 3.20 or higher
 - Windows: MSVC 17.5.33530.505 or higher
 - Linux: GCC13 or higher
+
 ### Installing
-Using **/ActivityFramework/ActivityFramework/CMakeList.txt** to build the project ActivityPipeline, and set the build dir as **/ActivityFramework/build**.
-### Running the tests
-1. Build the Google Test under **ActivityFramework/Test/ThirdParty/googletest/**.
-2. Using **ActivityFramework/Test/CMakeList.txt** to unit test project.
-3. Running ActivityFrameworkTest.
+
+To build the project, use the `CMakeList.txt` at **/ActivityFramework/ActivityFramework/CMakeList.txt** and set the build directory to **/ActivityFramework/build**.
+
+### Running the Tests
+
+1. Build the Google Test framework under **ActivityFramework/Test/ThirdParty/googletest/**.
+2. Utilize **ActivityFramework/Test/CMakeList.txt** to prepare the unit test project.
+3. Execute `ActivityFrameworkTest` to run the tests.
+
 ### Versioning
+
+Recent versions can be accessed at:
 - [v0.2.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.0)
 - [v0.2.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.1)
 - [v0.2.2](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.2)
 - [v0.3.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.3.0)
+
 ### Authors
-- **Sol** - Initial work - [breakersol](https://github.com/breakersol) E-mail:breakersol@outlook.com
+
+- **Sol** - Initial work - [breakersol](https://github.com/breakersol)
+Email: breakersol@outlook.com
+
 ### License
-This project is licensed under the Apache-2.0 license License - see the [LICENSE.md](https://github.com/breakersol/ActivityPipeline/blob/master/LICENSE) file for details
+
+This project is licensed under the Apache-2.0 License - see the [LICENSE.md](https://github.com/breakersol/ActivityPipeline/blob/master/LICENSE) file for details.
+
 ## Basic Usage
+
 ### Meta Reflex
 This module implements a simple compile-time reflection mechanism and it is part of the infrastructure of **Connection**. It supports reflection of member variables, member functions, static member variables, static member variables, and member enumeration types, and it can reflect the base class information under single-level inheritance relationship, multi-level inheritance relationship. But for diamond inheritance there are still some problems existed now. 
 
