@@ -7,3 +7,4 @@
 /Test/ThirdParty/googletest/build-vs
 /Test/*.user
 /*.user
+/Benchmark/build

@@ -7,17 +7,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Release)
 
 include_directories(../ActivityFramework/Src)
-include_directories(../../benchmark-1.9.0/include ../../benchmark-1.9.0/src)
+include_directories(benchmark-1.9.0/include ../../benchmark-1.9.0/src)
 
 add_executable(Benchmark main.cpp)
 
-target_link_directories(Benchmark PRIVATE ../../benchmark-1.9.0/build/src/Release)
+if(MSVC)
+    target_link_directories(Benchmark PRIVATE benchmark-1.9.0/build/src/Release)
+    target_link_directories(Benchmark PRIVATE ../build/Release/ActivityFramework/output)
 
-target_link_libraries(Benchmark PRIVATE benchmark)
-target_link_libraries(Benchmark PRIVATE benchmark_main)
-target_link_libraries(Benchmark PRIVATE Shlwapi.lib)
+    target_link_libraries(Benchmark PRIVATE benchmark)
+    target_link_libraries(Benchmark PRIVATE benchmark_main)
+    target_link_libraries(Benchmark PRIVATE Shlwapi.lib)
+    target_link_libraries(Benchmark PRIVATE ActivityFramework)
 
-target_compile_definitions(Benchmark PRIVATE BENCHMARK_STATIC_DEFINE)
+    target_compile_definitions(Benchmark PRIVATE BENCHMARK_STATIC_DEFINE)
+endif()
 
 include(GNUInstallDirs)
 install(TARGETS Benchmark
