@@ -77,6 +77,20 @@ namespace CoreAsync
             }
             return value;
         }
+
+        template<typename T>
+        static constexpr void swapEndian(T *value) {
+            if constexpr(std::is_integral<T>::value || std::is_floating_point<T>::value)
+            {
+                unsigned char *bytes = reinterpret_cast<unsigned char *>(value);
+                size_t length = sizeof(T);
+
+                for (size_t i = 0; i < length / 2; ++i)
+                {
+                    std::swap(bytes[i], bytes[length - 1 - i]);
+                }
+            }
+        }
     };
 }
 

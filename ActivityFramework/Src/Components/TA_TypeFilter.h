@@ -271,6 +271,24 @@ concept FieldType = requires(FType ct)
 template <typename FType>
 concept NonFieldType = !FieldType<FType>;
 
+template <typename T>
+concept IsTrivalCopyable = std::is_trivially_copyable_v<T>;
+
+template <typename T>
+concept TrivalCopyableType = requires(T t)
+{
+    {t}->IsTrivalCopyable;
+};
+
+template <typename T>
+concept IsStandLayout = std::is_standard_layout_v<T>;
+
+template <typename T>
+concept StandLayoutType = requires(T t)
+{
+    {t}->IsStandLayout;
+};
+
 }
 
 #endif // TA_TYPEFILTER_H
