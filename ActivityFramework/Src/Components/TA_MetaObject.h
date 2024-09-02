@@ -55,8 +55,8 @@ namespace CoreAsync
         bool removeSender(TA_MetaObject *pSender);
 
     private:
-        TA_ConnectionsRegister *m_pRegister;
-        TA_ConnectionsRecorder *m_pRecorder;
+        std::shared_ptr<TA_ConnectionsRegister> m_pRegister;
+        std::shared_ptr<TA_ConnectionsRecorder> m_pRecorder;
         const std::thread::id m_sourceThread;
         std::atomic_size_t m_affinityThreadIdx;
 
