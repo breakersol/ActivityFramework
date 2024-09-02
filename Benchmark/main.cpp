@@ -18,9 +18,9 @@ static void BM_Serialization(benchmark::State &state)
         CoreAsync::TA_Serializer output("./test.afw");
         for (auto _ : state) {
             output << vectorData << listData << mapData;
-            output.flush();
-            output.close();
+            output.flush();   
         }
+        output.close();
     }
 }
 BENCHMARK(BM_Serialization)->Iterations(1);
@@ -37,13 +37,13 @@ static void BM_Deserialization(benchmark::State& state)
         CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw");
         for (auto _ : state) {
             input >> vec >> lt >> md;
-            input.close();
 
             // To prevent the compiler from optimizing out the whole loop
             benchmark::DoNotOptimize(vec);
             benchmark::DoNotOptimize(lt);
             benchmark::DoNotOptimize(md);
         }
+        input.close();
     }
 }
 BENCHMARK(BM_Deserialization)->Iterations(1);
