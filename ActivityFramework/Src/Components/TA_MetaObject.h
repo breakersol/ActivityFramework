@@ -40,6 +40,9 @@ namespace CoreAsync
         TA_MetaObject(const TA_MetaObject &object);
         TA_MetaObject(TA_MetaObject &&object);
 
+        TA_MetaObject & operator = (const TA_MetaObject &object);
+        TA_MetaObject & operator = (TA_MetaObject &&object);
+
         const std::thread::id & sourceThread() const {return m_sourceThread;}
         std::size_t affinityThread() const {return m_affinityThreadIdx.load(std::memory_order_acquire);}
         bool moveToThread(std::size_t idx);
