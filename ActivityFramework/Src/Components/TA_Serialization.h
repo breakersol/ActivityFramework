@@ -37,11 +37,20 @@
 
 namespace CoreAsync
 {
+    template <typename T>
+    concept IsSerializable = EndianVerifyExp<T>;
+
+    template <typename T>
+    concept SerializableType = requires(T t)
+    {
+        {t}->IsSerializable;
+    };
+
     template <BufferOperatorType OType = BufferWriter>
     class TA_Serializer
     {
     public:
-        explicit TA_Serializer(const std::string &path, std::size_t version = 1, std::size_t bufferSize = 1024 * 1024) : m_version(version), m_pDataOperator(new OType::OperatorType(path, bufferSize))
+        explicit TA_Serializer(const std::string &path, std::size_t version = 1, std::size_t bufferSize = 1024 * 1024 * 2) : m_version(version), m_pDataOperator(new OType::OperatorType(path, bufferSize))
         {
             init();
         }
@@ -88,23 +97,23 @@ namespace CoreAsync
             return *this;
         }
 
-        template <EndianConvertedType T>
+        template <SerializableType T>
         TA_Serializer & operator << (T t)
         {
             static_assert(std::is_same_v<BufferWriter, OType> , "The operation type isn't Serialization ");
             if(TA_EndianConversion::isSystemLittleEndian())
-                t = TA_EndianConversion::swapEndian(t);
+                TA_EndianConversion::swapEndian(&t);
             m_pDataOperator->write(t);
             return *this;
         }
 
-        template <EndianConvertedType T>
+        template <SerializableType T>
         TA_Serializer & operator >> (T &t)
         {
             static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
             m_pDataOperator->read(t);
             if(TA_EndianConversion::isSystemLittleEndian())
-                t = TA_EndianConversion::swapEndian(t);
+                TA_EndianConversion::swapEndian(&t);
             return *this;
         }
 
@@ -206,9 +215,10 @@ namespace CoreAsync
             {
                 for(auto i = 0;i < size;++i)
                 {
-                    std::pair<typename T::key_type, typename T::mapped_type> val;
-                    *this >> val;
-                    t.emplace(std::move(val));
+                    typename T::key_type key {};
+                    typename T::mapped_type val {};
+                    *this >> key >> val;
+                    t.emplace_hint(t.end(), std::move(key), std::move(val));
                 }
             }
             else if constexpr(std::is_same_v<std::set<typename T::key_type>, T> ||
@@ -220,7 +230,7 @@ namespace CoreAsync
                 {
                     typename T::key_type val;
                     *this >> val;
-                    t.emplace(std::move(val));
+                    t.emplace_hint(t.end(), std::move(val));
                 }
             }
             return *this;
@@ -248,7 +258,7 @@ namespace CoreAsync
                 {
                     typename T::value_type val;
                     *this >> val;
-                    temp.push_front(std::move(val));
+                    temp.emplace_front(std::move(val));
                 }
                 t = {temp.begin(), temp.end()};
             }
@@ -385,7 +395,7 @@ namespace CoreAsync
                     ValType val {};
                     // std::cout << typeid(ValType).name() << std::endl;
                     *this >> val;
-                    Reflex::TA_TypeInfo<Rt>::update(t, val, std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type> {});
+                    Reflex::TA_TypeInfo<Rt>::update(t, std::move(val), std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type> {});
                 }
             }
             callProperty(t, std::index_sequence<IDXS...> {});
