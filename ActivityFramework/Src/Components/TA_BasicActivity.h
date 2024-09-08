@@ -64,6 +64,8 @@ namespace CoreAsync {
         std::atomic_size_t m_affinityThread {std::numeric_limits<std::size_t>::max()};
 
     };
+
+    struct INVALID_INS {};
 }
 
 #endif // TA_BASICACTIVITY_H

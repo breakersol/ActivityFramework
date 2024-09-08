@@ -36,8 +36,6 @@ namespace CoreAsync {
     template <typename Ret>
     using LambdaTypeWithoutPara = std::function<Ret()>;
 
-    struct INVALID_INS {};
-
     template <typename Fn>
     using SupportMemberFunction = typename std::enable_if<std::is_member_function_pointer<Fn>::value,Fn>::type;
 

@@ -70,6 +70,8 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_EndianConversion.h
     Src/Components/TA_Serialization.h
     Src/Components/TA_Buffer.h
+    Src/Components/TA_MetaActivity.h
+    Src/Components/TA_AffinityThreadComponment.h
 
 )
 
