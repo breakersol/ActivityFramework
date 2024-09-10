@@ -2,7 +2,7 @@
 #define TA_METAACTIVITY_H
 
 #include "TA_MetaReflex.h"
-#include "TA_AffinityThreadComponment.h"
+#include "TA_ActivityComponments.h"
 
 namespace CoreAsync
 {
@@ -136,9 +136,15 @@ namespace CoreAsync
             return m_affinityThread.moveToThread(thread);
         }
 
+        std::int64_t id() const
+        {
+            return m_id.id();
+        }
+
     private:
         const std::tuple<Paras &...> m_paras;
-        TA_AffinityThreadIdx m_affinityThread;
+        TA_ActivityAffinityThread m_affinityThread;
+        TA_ActivityId m_id;
 
     };
 }
