@@ -19,14 +19,70 @@ template <typename T>
 
     class TA_AsyncActivityProxy
     {
+        template <typename Activity>
+        struct AutoDeleter
+        {
+            void operator()(Activity *&pActivity)
+            {
+                delete pActivity;
+                pActivity = nullptr;
+            }
+        };
+
+        using AsyncRet = std::shared_future<TA_Variant>;
     public:
         TA_AsyncActivityProxy() = delete;
 
-        template <ActivityType Activity>
-        TA_AsyncActivityProxy(Activity *pActivity, bool autoDelete = true)
+        template <ActivityType Activity, bool AutoDelete = true>
+        TA_AsyncActivityProxy(Activity *pActivity) : m_pActivity(pActivity)
+        {
+            using RawActivity = std::remove_cvref_t<Activity>;
+            if(pActivity)
+            {
+                if constexpr(AutoDelete)
+                {
+                    m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &promise)->void {
+                        std::unique_ptr<RawActivity, AutoDeleter<RawActivity>> ptr {};
+                        ptr.reset(static_cast<RawActivity *>(pObj));
+                        TA_Variant var;
+                        var.set(ptr->operator()());
+                        promise.set_value(var);
+                    };
+                }
+                else
+                {
+                    m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &promise)->void {
+                        TA_Variant var;
+                        var.set(static_cast<RawActivity *>(pObj)->operator()());
+                        promise.set_value(var);
+                    };
+                }
+            }
+        }
+
+        ~TA_AsyncActivityProxy()
         {
 
         }
+
+        TA_AsyncActivityProxy(const TA_AsyncActivityProxy &other) = delete;
+        TA_AsyncActivityProxy(TA_AsyncActivityProxy &&other) = delete;
+
+        TA_AsyncActivityProxy & operator = (const TA_AsyncActivityProxy &other) = delete;
+        TA_AsyncActivityProxy & operator = (TA_AsyncActivityProxy &&other) = delete;
+
+        AsyncRet execute()
+        {
+            //Post into thread pool...
+            m_pExecuteExp(m_pActivity, m_promise);
+            return m_promise.get_future();
+        }
+
+    private:
+        void (*m_pExecuteExp)(void *, std::promise<TA_Variant> &promise);
+        void *m_pActivity;
+        std::promise<TA_Variant> m_promise {};
+
     };
 }
 
