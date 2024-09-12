@@ -8,7 +8,7 @@
 
 namespace CoreAsync
 {
-template <typename T>
+    template <typename T>
     concept ActivityType = requires(T t) {
         std::decay_t<T>::operator();
         std::decay_t<T>::affinityThread();
@@ -22,10 +22,14 @@ template <typename T>
         template <typename Activity>
         struct AutoDeleter
         {
+            using type = std::remove_cvref_t<Activity>;
             void operator()(Activity *&pActivity)
             {
-                delete pActivity;
-                pActivity = nullptr;
+                if(pActivity)
+                {
+                    delete pActivity;
+                    pActivity = nullptr;
+                }
             }
         };
 
@@ -48,6 +52,13 @@ template <typename T>
                         var.set(ptr->operator()());
                         promise.set_value(var);
                     };
+                    m_pDestructorExp = [](void *&pObj)->void {
+                        if(pObj)
+                        {
+                            delete static_cast<RawActivity *>(pObj);
+                            pObj = nullptr;
+                        }
+                    };
                 }
                 else
                 {
@@ -62,7 +73,7 @@ template <typename T>
 
         ~TA_AsyncActivityProxy()
         {
-
+            m_pDestructorExp(m_pActivity);
         }
 
         TA_AsyncActivityProxy(const TA_AsyncActivityProxy &other) = delete;
@@ -80,6 +91,7 @@ template <typename T>
 
     private:
         void (*m_pExecuteExp)(void *, std::promise<TA_Variant> &promise);
+        void (*m_pDestructorExp)(void *);
         void *m_pActivity;
         std::promise<TA_Variant> m_promise {};
 
