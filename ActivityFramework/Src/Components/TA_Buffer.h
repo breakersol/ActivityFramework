@@ -38,10 +38,6 @@ public:
     using OperatorType = Opt;
 
     TA_BasicBufferOperator() = delete;
-    TA_BasicBufferOperator(const std::string &file, std::size_t size) : m_buffer(size)
-    {
-
-    }
 
     virtual ~TA_BasicBufferOperator()
     {
@@ -80,6 +76,12 @@ public:
     {
         static_assert(std::is_same_v<Opt, TA_BufferWriter>, "Flush is not the member of current type");
         return static_cast<Opt *>(this)->flush();
+    }
+
+protected:
+    TA_BasicBufferOperator(const std::string &file, std::size_t size) : m_buffer(size)
+    {
+
     }
 
 protected:
