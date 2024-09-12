@@ -46,18 +46,11 @@ namespace CoreAsync
                 if constexpr(AutoDelete)
                 {
                     m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &promise)->void {
-                        std::unique_ptr<RawActivity, AutoDeleter<RawActivity>> ptr {};
-                        ptr.reset(static_cast<RawActivity *>(pObj));
+                        std::unique_ptr<RawActivity, AutoDeleter<RawActivity>> ptr {static_cast<RawActivity *>(pObj)};
+                        pObj = nullptr;
                         TA_Variant var;
                         var.set(ptr->operator()());
                         promise.set_value(var);
-                    };
-                    m_pDestructorExp = [](void *&pObj)->void {
-                        if(pObj)
-                        {
-                            delete static_cast<RawActivity *>(pObj);
-                            pObj = nullptr;
-                        }
                     };
                 }
                 else
@@ -68,6 +61,16 @@ namespace CoreAsync
                         promise.set_value(var);
                     };
                 }
+                m_pDestructorExp = [](void *&pObj)->void {
+                    if constexpr(AutoDelete)
+                    {
+                        if(pObj)
+                        {
+                            delete static_cast<RawActivity *>(pObj);
+                            pObj = nullptr;
+                        }
+                    }
+                };
             }
         }
 
