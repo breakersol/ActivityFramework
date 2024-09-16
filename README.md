@@ -8,7 +8,7 @@
 |----------------------------------|-----------------------------------------------------------------------------|
 | Compile-time Reflection          | Facilitates metadata manipulation at compile-time, enhancing adaptability.  |
 | Serialization & Deserialization  | Ensures robust data persistence and retrieval, crucial for data integrity.  |
-| Circular Queue                   | Implements an efficient circular data structure for improved data handling. |
+| Lock-free Circular Queue         | Implements an efficient circular data structure for improved data handling. |
 | Thread Pool                      | Optimizes concurrent task executions through effective thread management.   |
 | Qt-like Signal and Slot Mechanism| Provides a dynamic event-handling mechanism inspired by the Qt framework.   |
 
