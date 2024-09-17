@@ -27,7 +27,7 @@ namespace CoreAsync
                 else
                 {
                     if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
-                       ins.tempkatReflex::template TA_TypeInfo<Ins>::findType(Method {})(paras...);
+                       ins.Reflex::template TA_TypeInfo<Ins>::findType(Method {})(paras...);
                     else
                         return ins.Reflex::template TA_TypeInfo<Ins>::findType(Method {})(paras...);
                 }
