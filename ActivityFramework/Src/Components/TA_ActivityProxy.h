@@ -1,5 +1,5 @@
-#ifndef TA_ASYNCACTIVITYPROXY_H
-#define TA_ASYNCACTIVITYPROXY_H
+#ifndef TA_ACTIVITYPROXY_H
+#define TA_ACTIVITYPROXY_H
 
 #include <concepts>
 #include <future>
@@ -18,7 +18,7 @@ namespace CoreAsync
         !IsTrivalCopyable<T>;
     };
 
-    class TA_AsyncActivityProxy
+    class TA_ActivityProxy
     {
         template <typename Activity>
         struct AutoDeleter
@@ -33,20 +33,18 @@ namespace CoreAsync
                 }
             }
         };
-
-        using AsyncRet = std::shared_future<TA_Variant>;
     public:
-        TA_AsyncActivityProxy() = delete;
+        TA_ActivityProxy() = delete;
 
         template <ActivityType Activity>
-        explicit TA_AsyncActivityProxy(Activity *pActivity, bool autoDelete = true) : m_pActivity(pActivity)
+        explicit TA_ActivityProxy(Activity *pActivity, bool autoDelete = true) : m_pActivity(pActivity)
         {
             using RawActivity = std::remove_cvref_t<Activity>;
             if(pActivity)
             {
                 if(autoDelete)
                 {
-                    m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &promise)->void {
+                    m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &&promise)->void {
                         std::unique_ptr<RawActivity, AutoDeleter<RawActivity>> ptr {static_cast<RawActivity *>(pObj)};
                         pObj = nullptr;
                         TA_Variant var;
@@ -73,50 +71,55 @@ namespace CoreAsync
             }
         }
 
-        ~TA_AsyncActivityProxy()
+        ~TA_ActivityProxy()
         {
             if(m_pDestructorExp)
                 m_pDestructorExp(m_pActivity);
         }
 
-        TA_AsyncActivityProxy(const TA_AsyncActivityProxy &other) = delete;
-        TA_AsyncActivityProxy(TA_AsyncActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pDestructorExp(std::exchange(other.m_pDestructorExp, nullptr)), m_promise(std::move(other.m_promise)), m_future(std::move(other.m_future))
+        TA_ActivityProxy(const TA_ActivityProxy &other) = delete;
+        TA_ActivityProxy(TA_ActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pDestructorExp(std::exchange(other.m_pDestructorExp, nullptr)), m_future(std::move(other.m_future))
         {
 
         }
 
-        TA_AsyncActivityProxy & operator = (const TA_AsyncActivityProxy &other) = delete;
-        TA_AsyncActivityProxy & operator = (TA_AsyncActivityProxy &&other)
+        TA_ActivityProxy & operator = (const TA_ActivityProxy &other) = delete;
+        TA_ActivityProxy & operator = (TA_ActivityProxy &&other)
         {
             if(this != &other)
             {
                 m_pActivity = std::exchange(other.m_pActivity, nullptr);
                 m_pExecuteExp = std::exchange(other.m_pExecuteExp, nullptr);
                 m_pDestructorExp = std::exchange(other.m_pDestructorExp, nullptr);
-                m_promise = std::move(other.m_promise);
                 m_future = std::move(other.m_future);
             }
             return *this;
         }
 
-        AsyncRet asyncResult() const
+        bool isValid() const
         {
-            return m_future;
+            return m_future.valid();
+        }
+
+        TA_Variant result() const
+        {
+            return m_future.get();
         }
 
         void operator()()
         {
-            m_pExecuteExp(m_pActivity, m_promise);
+            std::promise<TA_Variant> promise;
+            m_future = promise.get_future().share();
+            m_pExecuteExp(m_pActivity, std::move(promise));
         }
 
     private:
         void *m_pActivity;
-        void (*m_pExecuteExp)(void *, std::promise<TA_Variant> &promise);
+        void (*m_pExecuteExp)(void *, std::promise<TA_Variant> &&promise);
         void (*m_pDestructorExp)(void *);
-        std::promise<TA_Variant> m_promise {};
-        std::shared_future<TA_Variant> m_future {m_promise.get_future()};
+        std::shared_future<TA_Variant> m_future {};
 
     };
 }
 
-#endif // TA_ASYNCACTIVITYPROXY_H
+#endif // TA_ACTIVITYPROXY_H

@@ -22,8 +22,6 @@
 
 namespace CoreAsync
 {
-    class TA_BasicActivity;
-
     template <typename T, std::size_t N>
     class TA_ActivityQueue
     {

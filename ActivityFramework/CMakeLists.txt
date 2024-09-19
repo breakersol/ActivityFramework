@@ -72,7 +72,7 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_Buffer.h
     Src/Components/TA_MetaActivity.h
     Src/Components/TA_ActivityComponments.h
-    Src/Components/TA_AsyncActivityProxy.h
+    Src/Components/TA_ActivityProxy.h
 
 )
 

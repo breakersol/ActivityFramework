@@ -21,7 +21,7 @@
 #include <atomic>
 #include <cassert>
 
-#include "TA_LinkedActivity.h"
+#include "TA_ActivityProxy.h"
 #include "TA_MetaReflex.h"
 #include "TA_MetaObject.h"
 #include "TA_Connection.h"
@@ -58,8 +58,8 @@ namespace CoreAsync {
         {
 
         }
-        TA_BasicPipeline(const TA_BasicPipeline &activity) = delete;
-        TA_BasicPipeline(TA_BasicPipeline &&activity) = delete;
+        TA_BasicPipeline(const TA_BasicPipeline &other) = delete;
+        TA_BasicPipeline(TA_BasicPipeline &&other) = delete;
         TA_BasicPipeline & operator = (const TA_BasicPipeline &) = delete;
 
         virtual ~TA_BasicPipeline()

@@ -19,7 +19,7 @@
 
 #include "TA_MetaObject.h"
 #include "TA_ActivityQueue.h"
-#include "TA_AsyncActivityProxy.h"
+#include "TA_ActivityProxy.h"
 #include "TA_CommonTools.h"
 #include "TA_MetaStringView.h"
 
@@ -31,7 +31,7 @@
 namespace CoreAsync {
     class TA_ThreadPool
     {
-        using ActivityQueue = TA_ActivityQueue<TA_AsyncActivityProxy *, 10240>;
+        using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
         using SharedPromise = std::shared_ptr<std::promise<TA_Variant> >;
 
         struct ThreadState
@@ -84,15 +84,15 @@ namespace CoreAsync {
         auto postActivity(Activity *pActivity, bool autoDelete = false)
         {
             if(!pActivity)
-                return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
-            TA_AsyncActivityProxy *pProxy {new TA_AsyncActivityProxy(pActivity, autoDelete)};
+                return nullptr;
+            std::shared_ptr<TA_ActivityProxy> pProxy {std::make_shared(pActivity, autoDelete)};
             auto activityId {pActivity->id()};
             auto affinityId {pActivity->affinityThread()};
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
             if(!m_activityQueues[idx].push(pProxy))
-                return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
+                return nullptr;
             m_states[idx].resource.release();
-            return std::make_pair(pProxy->asyncResult(), activityId);
+            return [pProxy]()->TA_Variant {return pProxy->result();};
         }
 
         std::size_t size() const
@@ -108,7 +108,7 @@ namespace CoreAsync {
                 m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
                 m_threads.emplace_back(
                     [&, idx](const std::stop_token &st) {
-                        TA_AsyncActivityProxy *pActivity {nullptr};
+                        std::shared_ptr<TA_ActivityProxy> pActivity {nullptr};
                         while (!st.stop_requested()) {
                             m_states[idx].resource.acquire();
                             while (!m_activityQueues[idx].isEmpty())
@@ -116,15 +116,11 @@ namespace CoreAsync {
                                 if(m_activityQueues[idx].pop(pActivity) && pActivity)
                                 {
                                     (*pActivity)();
-                                    delete pActivity;
-                                    pActivity = nullptr;
                                 }
                             }
                             if(trySteal(pActivity, idx) && pActivity)
                             {
                                 (*pActivity)();
-                                delete pActivity;
-                                pActivity = nullptr;
                             }
                         }
                         TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
@@ -133,7 +129,7 @@ namespace CoreAsync {
             }
         }
 
-        bool trySteal(TA_AsyncActivityProxy *&stolenActivity, std::size_t excludedIdx)
+        bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx)
         {
             std::size_t startIdx {m_stealIdxs[excludedIdx]};
             std::size_t idx {(startIdx + 1) % m_threads.size()};
