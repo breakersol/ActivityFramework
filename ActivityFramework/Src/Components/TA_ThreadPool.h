@@ -17,7 +17,6 @@
 #ifndef TA_THREADPOOL_H
 #define TA_THREADPOOL_H
 
-#include "TA_MetaObject.h"
 #include "TA_ActivityQueue.h"
 #include "TA_ActivityProxy.h"
 #include "TA_CommonTools.h"
@@ -26,13 +25,11 @@
 #include <thread>
 #include <vector>
 #include <semaphore>
-#include <numeric>
 
 namespace CoreAsync {
     class TA_ThreadPool
     {
         using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
-        using SharedPromise = std::shared_ptr<std::promise<TA_Variant> >;
 
         struct ThreadState
         {
@@ -156,8 +153,6 @@ namespace CoreAsync {
 
     struct TA_ThreadHolder
     {
-        using Handle = std::pair<std::future<TA_Variant>, std::size_t>;
-
         static TA_ThreadPool & get()
         {
             static TA_ThreadPool pool;

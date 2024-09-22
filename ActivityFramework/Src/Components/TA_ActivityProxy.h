@@ -1,7 +1,6 @@
 #ifndef TA_ACTIVITYPROXY_H
 #define TA_ACTIVITYPROXY_H
 
-#include <concepts>
 #include <future>
 
 #include "TA_TypeFilter.h"

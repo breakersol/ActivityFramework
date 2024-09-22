@@ -34,8 +34,6 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_ActivityQueue.h
     Src/Components/TA_AutoChainPipeline.cpp
     Src/Components/TA_AutoChainPipeline.h
-    Src/Components/TA_BasicActivity.h
-    Src/Components/TA_BasicActivity.cpp
     Src/Components/TA_BasicPipeline.cpp
     Src/Components/TA_BasicPipeline.h
     Src/Components/TA_CommonTools.h
@@ -53,7 +51,6 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_Connection.h
     Src/Components/TA_ConnectionUtils.cpp
     Src/Components/TA_ConnectionUtils.h
-    Src/Components/TA_LinkedActivity.h
     Src/Components/TA_ManualChainPipeline.cpp
     Src/Components/TA_ManualChainPipeline.h
     Src/Components/TA_ManualKeyActivityChainPipeline.cpp

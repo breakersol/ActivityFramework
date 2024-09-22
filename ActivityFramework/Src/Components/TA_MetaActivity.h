@@ -143,8 +143,8 @@ namespace CoreAsync
 
     private:
         const std::tuple<Paras &...> m_paras;
-        TA_ActivityAffinityThread m_affinityThread;
-        TA_ActivityId m_id;
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
 
     };
 }
