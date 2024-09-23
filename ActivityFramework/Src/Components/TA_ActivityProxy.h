@@ -67,6 +67,13 @@ namespace CoreAsync
                     };
                     m_pDestructorExp = nullptr;
                 }
+                m_pAffinityThreadExp = [](void *&pObj)->std::size_t {
+                    return static_cast<RawActivity *>(pObj)->affinityThread();
+                };
+
+                m_pIdExp = [](void *&pObj)->int64_t {
+                    return static_cast<RawActivity *>(pObj)->id();
+                };
             }
         }
 
@@ -77,7 +84,7 @@ namespace CoreAsync
         }
 
         TA_ActivityProxy(const TA_ActivityProxy &other) = delete;
-        TA_ActivityProxy(TA_ActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pDestructorExp(std::exchange(other.m_pDestructorExp, nullptr)), m_future(std::move(other.m_future))
+        TA_ActivityProxy(TA_ActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pDestructorExp(std::exchange(other.m_pDestructorExp, nullptr)), m_pAffinityThreadExp(std::exchange(other.m_pAffinityThreadExp, nullptr)), m_pIdExp(std::exchange(other.m_pIdExp, nullptr)), m_future(std::move(other.m_future))
         {
 
         }
@@ -90,6 +97,8 @@ namespace CoreAsync
                 m_pActivity = std::exchange(other.m_pActivity, nullptr);
                 m_pExecuteExp = std::exchange(other.m_pExecuteExp, nullptr);
                 m_pDestructorExp = std::exchange(other.m_pDestructorExp, nullptr);
+                m_pAffinityThreadExp = std::exchange(other.m_pAffinityThreadExp, nullptr);
+                m_pIdExp = std::exchange(other.m_pIdExp, nullptr);
                 m_future = std::move(other.m_future);
             }
             return *this;
@@ -112,12 +121,34 @@ namespace CoreAsync
             m_pExecuteExp(m_pActivity, std::move(promise));
         }
 
+        std::size_t affinityThread() const
+        {
+            return m_pAffinityThreadExp(m_pActivity);
+        }
+
+        int64_t id() const
+        {
+            return m_pIdExp(m_pActivity);
+        }
+
     private:
         void *m_pActivity;
         void (*m_pExecuteExp)(void *, std::promise<TA_Variant> &&promise);
         void (*m_pDestructorExp)(void *);
+        std::size_t (*m_pAffinityThreadExp)(void *);
+        int64_t (*m_pIdExp)(void *);
         std::shared_future<TA_Variant> m_future {};
 
+    };
+
+    struct ActivityResultFetcher
+    {
+        std::shared_ptr<TA_ActivityProxy> pProxy;
+
+        TA_Variant operator()()
+        {
+            return pProxy->result();
+        }
     };
 }
 

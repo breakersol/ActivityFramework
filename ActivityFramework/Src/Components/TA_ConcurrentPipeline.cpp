@@ -33,7 +33,7 @@ namespace CoreAsync {
             m_activityIds.resize(activitySize);
             for(std::size_t i = sIndex;i < activitySize;++i)
             {
-                m_activityIds[i] = TA_ThreadHolder::get().postActivity(TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, i));
+                m_activityIds[i] = TA_ThreadHolder::get().postActivity(TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i));
             }
             std::size_t idx {0};
             for(auto &[ft, id] : m_activityIds)

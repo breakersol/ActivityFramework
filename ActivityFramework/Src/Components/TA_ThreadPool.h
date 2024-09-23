@@ -78,18 +78,33 @@ namespace CoreAsync {
         }
 
         template <ActivityType Activity>
-        auto postActivity(Activity *pActivity, bool autoDelete = false)
+        auto postActivity(Activity *pActivity, bool autoDelete = false)->ActivityResultFetcher
         {
             if(!pActivity)
-                return nullptr;
+                throw std::invalid_argument("Activity is null");
             std::shared_ptr<TA_ActivityProxy> pProxy {std::make_shared(pActivity, autoDelete)};
             auto activityId {pActivity->id()};
             auto affinityId {pActivity->affinityThread()};
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
             if(!m_activityQueues[idx].push(pProxy))
-                return nullptr;
+                throw std::runtime_error("Failed to push activity to queue");
             m_states[idx].resource.release();
-            return [pProxy]()->TA_Variant {return pProxy->result();};
+            return {pProxy};
+        }
+
+        auto postActivity(TA_ActivityProxy *&pActivity)->ActivityResultFetcher
+        {
+            if(!pActivity)
+                throw std::invalid_argument("Activity proxy is null");
+            std::shared_ptr<TA_ActivityProxy> pProxy {pActivity};
+            auto activityId {pActivity->id()};
+            auto affinityId {pActivity->affinityThread()};
+            pActivity = nullptr;
+            std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
+            if(!m_activityQueues[idx].push(pProxy))
+                throw std::runtime_error("Failed to push activity to queue");
+            m_states[idx].resource.release();
+            return {pProxy};
         }
 
         std::size_t size() const
