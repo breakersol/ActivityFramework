@@ -17,7 +17,7 @@
 #ifndef TA_SLOTOBJECT_H
 #define TA_SLOTOBJECT_H
 
-#include "TA_LinkedActivity.h"
+#include "TA_SingleActivity.h"
 #include "TA_MetaReflex.h"
 #include "TA_MetaObject.h"
 
@@ -26,7 +26,7 @@ namespace CoreAsync
     class TA_BaseReceiverObject
     {
     public:
-        virtual TA_BasicActivity * active(TA_MetaObject *&pReceiver, std::string_view &&rFunc,void **args) = 0;
+        virtual TA_ActivityProxy * active(TA_MetaObject *&pReceiver, std::string_view &&rFunc,void **args) = 0;
         virtual void call(TA_MetaObject *&pReceiver, std::string_view &&rFunc, void **args) = 0;
         virtual ~TA_BaseReceiverObject() = default;
     };
@@ -36,12 +36,12 @@ namespace CoreAsync
     {
         using RecType = std::decay_t<Receiver>;
     public:
-        virtual TA_BasicActivity * active(TA_MetaObject *&pReceiver, std::string_view &&rFunc,void **args) override
+        virtual TA_ActivityProxy * active(TA_MetaObject *&pReceiver, std::string_view &&rFunc,void **args) override
         { 
             if(!pReceiver)
                 return nullptr;
             auto receiverFunction {Reflex::TA_TypeInfo<RecType>::findTypeValue(rFunc)};
-            auto vistor = [&,this](auto &&value)-> TA_BasicActivity * {
+            auto vistor = [&,this](auto &&value)-> auto {
                 using FuncType = std::decay_t<decltype(value)>;
                 if constexpr(std::is_member_function_pointer_v<FuncType>)
                 {
@@ -50,7 +50,7 @@ namespace CoreAsync
                 }
                 else
                 {
-                    TA_BasicActivity *pActivity {nullptr};
+                    TA_ActivityProxy *pActivity {nullptr};
                     return pActivity;
                 }
             };
@@ -106,7 +106,7 @@ namespace CoreAsync
                 }
 
             };
-            return new CoreAsync::TA_LinkedActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread());
+            return new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread());
         }
 
         template <typename Ret, typename RClass, typename ...PARA, typename std::size_t ...IDXS>
@@ -126,7 +126,7 @@ namespace CoreAsync
                 }
 
             };
-            return new CoreAsync::TA_LinkedActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread());
+            return new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread());
         }
 
         template <typename Ret, typename RClass, typename ...PARA, typename std::size_t ...IDXS>

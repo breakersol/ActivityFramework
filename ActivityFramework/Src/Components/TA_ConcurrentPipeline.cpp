@@ -30,16 +30,15 @@ namespace CoreAsync {
         std::size_t activitySize = m_pActivityList.size();
         if(activitySize > 0)
         {
-            m_activityIds.resize(activitySize);
+            m_resultFetchers.resize(activitySize);
             for(std::size_t i = sIndex;i < activitySize;++i)
             {
-                m_activityIds[i] = TA_ThreadHolder::get().postActivity(TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i));
+                m_resultFetchers[i] = TA_ThreadHolder::get().postActivity(TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i));
             }
             std::size_t idx {0};
-            for(auto &[ft, id] : m_activityIds)
+            for(auto &fetcher : m_resultFetchers)
             {
-                ft.wait();
-                m_resultList[idx] = ft.get();
+                m_resultList[idx] = fetcher();
                 TA_Connection::active(this, &TA_ConcurrentPipeline::activityCompleted, idx, std::forward<TA_Variant>(m_resultList[idx]));
                 idx++;
             }
@@ -66,7 +65,7 @@ namespace CoreAsync {
         }
         m_pActivityList.clear();
         m_resultList.clear();
-        m_activityIds.clear();
+        m_resultFetchers.clear();
         m_mutex.unlock();
         setState(State::Waiting);
     }
@@ -82,7 +81,7 @@ namespace CoreAsync {
         m_mutex.lock();
         m_resultList.clear();
         m_resultList.resize(m_pActivityList.size());
-        m_activityIds.clear();
+        m_resultFetchers.clear();
         m_mutex.unlock();
         setState(State::Waiting);
     }

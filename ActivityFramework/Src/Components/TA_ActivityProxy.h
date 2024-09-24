@@ -74,6 +74,10 @@ namespace CoreAsync
                 m_pIdExp = [](void *&pObj)->int64_t {
                     return static_cast<RawActivity *>(pObj)->id();
                 };
+
+                m_pMoveThreadExp = [](void *&pObj, std::size_t thread)->bool {
+                    return static_cast<RawActivity *>(pObj)->moveToThread(thread);
+                };
             }
         }
 
@@ -84,7 +88,7 @@ namespace CoreAsync
         }
 
         TA_ActivityProxy(const TA_ActivityProxy &other) = delete;
-        TA_ActivityProxy(TA_ActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pDestructorExp(std::exchange(other.m_pDestructorExp, nullptr)), m_pAffinityThreadExp(std::exchange(other.m_pAffinityThreadExp, nullptr)), m_pIdExp(std::exchange(other.m_pIdExp, nullptr)), m_future(std::move(other.m_future))
+        TA_ActivityProxy(TA_ActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pDestructorExp(std::exchange(other.m_pDestructorExp, nullptr)), m_pAffinityThreadExp(std::exchange(other.m_pAffinityThreadExp, nullptr)), m_pIdExp(std::exchange(other.m_pIdExp, nullptr)), m_pMoveThreadExp(std::exchange(other.m_pMoveThreadExp, nullptr)), m_future(std::move(other.m_future))
         {
 
         }
@@ -97,8 +101,9 @@ namespace CoreAsync
                 m_pActivity = std::exchange(other.m_pActivity, nullptr);
                 m_pExecuteExp = std::exchange(other.m_pExecuteExp, nullptr);
                 m_pDestructorExp = std::exchange(other.m_pDestructorExp, nullptr);
-                m_pAffinityThreadExp = std::exchange(other.m_pAffinityThreadExp, nullptr);
+                m_pAffinityThreadExp = std::exchange(other.m_pAffinityThreadExp, nullptr);   
                 m_pIdExp = std::exchange(other.m_pIdExp, nullptr);
+                m_pMoveThreadExp = std::exchange(other.m_pMoveThreadExp, nullptr);
                 m_future = std::move(other.m_future);
             }
             return *this;
@@ -131,12 +136,18 @@ namespace CoreAsync
             return m_pIdExp(m_pActivity);
         }
 
+        bool moveToThread(std::size_t thread)
+        {
+            return m_pMoveThreadExp(m_pActivity, thread);
+        }
+
     private:
         void *m_pActivity;
         void (*m_pExecuteExp)(void *, std::promise<TA_Variant> &&promise);
         void (*m_pDestructorExp)(void *);
         std::size_t (*m_pAffinityThreadExp)(void *);
         int64_t (*m_pIdExp)(void *);
+        bool (*m_pMoveThreadExp)(void *, std::size_t);
         std::shared_future<TA_Variant> m_future {};
 
     };
