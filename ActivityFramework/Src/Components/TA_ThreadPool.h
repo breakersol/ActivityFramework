@@ -82,7 +82,7 @@ namespace CoreAsync {
         {
             if(!pActivity)
                 throw std::invalid_argument("Activity is null");
-            std::shared_ptr<TA_ActivityProxy> pProxy {std::make_shared(pActivity, autoDelete)};
+            std::shared_ptr<TA_ActivityProxy> pProxy {std::make_shared<TA_ActivityProxy>(pActivity, autoDelete)};
             auto activityId {pActivity->id()};
             auto affinityId {pActivity->affinityThread()};
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();

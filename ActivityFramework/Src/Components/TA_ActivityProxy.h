@@ -9,12 +9,13 @@
 namespace CoreAsync
 {
     template <typename T>
-    concept ActivityType = requires(T t) {
-        std::decay_t<T>::operator();
-        std::decay_t<T>::affinityThread();
-        std::decay_t<T>::moveToThread();
-        std::decay_t<T>::id();
-        !IsTrivalCopyable<T>;
+    concept ActivityType = requires(T t, const T ct)
+    {
+        { t() } -> std::convertible_to<TA_Variant>;
+        { ct.affinityThread() } -> std::convertible_to<std::size_t>;
+        { t.moveToThread(std::size_t{}) } -> std::same_as<bool>;
+        { ct.id() } -> std::convertible_to<std::int64_t>;
+        requires !IsTrivalCopyable<std::decay_t<T>>;
     };
 
     class TA_ActivityProxy

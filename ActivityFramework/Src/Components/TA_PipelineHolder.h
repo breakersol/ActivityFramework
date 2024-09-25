@@ -89,11 +89,6 @@ namespace CoreAsync {
             return m_pBasicPipeline->state();
         }
 
-        bool switchActivityBranch(int activityIndex, std::deque<unsigned int> branches)
-        {
-            return m_pBasicPipeline->switchActivityBranch(activityIndex,branches);
-        }
-
         template <typename Activity, typename ...Activities>
         void add(Activity &activity, Activities &...activites)
         {
@@ -214,7 +209,6 @@ namespace CoreAsync {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
-                TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
                 TA_MetaField {&Raw::execute, META_STRING("execute")},
@@ -242,7 +236,6 @@ namespace CoreAsync {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
-                TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
                 TA_MetaField {&Raw::execute, META_STRING("execute")},
@@ -270,7 +263,6 @@ namespace CoreAsync {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
-                TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
                 TA_MetaField {&Raw::execute, META_STRING("execute")},
@@ -298,7 +290,6 @@ namespace CoreAsync {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
-                TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
                 TA_MetaField {&Raw::execute, META_STRING("execute")},
@@ -328,7 +319,6 @@ namespace CoreAsync {
             static constexpr TA_MetaFieldList fields = {
                 TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
-                TA_MetaField {&Raw::switchActivityBranch, META_STRING("switchActivityBranch")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
                 TA_MetaField {&Raw::execute, META_STRING("execute")},

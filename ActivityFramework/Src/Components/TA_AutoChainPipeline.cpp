@@ -29,7 +29,8 @@ namespace CoreAsync {
             for(int i = startIndex();i < m_pActivityList.size();++i)
             {
                 decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-                auto var = (*pActivity)();
+                (*pActivity)();
+                auto var {pActivity->result()};
                 TA_CommonTools::replace(m_resultList, i, var);
                 TA_Connection::active(this, &TA_AutoChainPipeline::activityCompleted, i, var);
             }
