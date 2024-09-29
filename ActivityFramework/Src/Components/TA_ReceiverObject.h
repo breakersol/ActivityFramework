@@ -50,8 +50,7 @@ namespace CoreAsync
                 }
                 else
                 {
-                    TA_ActivityProxy *pActivity {nullptr};
-                    return pActivity;
+                    return nullptr;
                 }
             };
 
@@ -106,7 +105,7 @@ namespace CoreAsync
                 }
 
             };
-            return new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread());
+            return new TA_ActivityProxy{new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread())};
         }
 
         template <typename Ret, typename RClass, typename ...PARA, typename std::size_t ...IDXS>
@@ -126,7 +125,7 @@ namespace CoreAsync
                 }
 
             };
-            return new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread());
+            return new TA_ActivityProxy {new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread())};
         }
 
         template <typename Ret, typename RClass, typename ...PARA, typename std::size_t ...IDXS>
