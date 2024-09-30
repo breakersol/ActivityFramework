@@ -51,7 +51,7 @@ namespace CoreAsync
                         var.set(ptr->operator()());
                         promise.set_value(var);
                     };
-                    m_pDestructorExp = [&autoDelete](void *&pObj)->void {
+                    m_pDestructorExp = [](void *&pObj)->void {
                         if(pObj)
                         {
                             delete static_cast<RawActivity *>(pObj);
@@ -61,18 +61,18 @@ namespace CoreAsync
                 }
                 else
                 {
-                    m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &promise)->void {
+                    m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &&promise)->void {
                         TA_Variant var;
                         var.set(static_cast<RawActivity *>(pObj)->operator()());
                         promise.set_value(var);
                     };
                     m_pDestructorExp = nullptr;
                 }
-                m_pAffinityThreadExp = [](void *&pObj)->std::size_t {
+                m_pAffinityThreadExp = [](void * const &pObj)->std::size_t {
                     return static_cast<RawActivity *>(pObj)->affinityThread();
                 };
 
-                m_pIdExp = [](void *&pObj)->int64_t {
+                m_pIdExp = [](void * const &pObj)->int64_t {
                     return static_cast<RawActivity *>(pObj)->id();
                 };
 
@@ -144,11 +144,11 @@ namespace CoreAsync
 
     private:
         void *m_pActivity;
-        void (*m_pExecuteExp)(void *, std::promise<TA_Variant> &&promise);
-        void (*m_pDestructorExp)(void *);
-        std::size_t (*m_pAffinityThreadExp)(void *);
-        int64_t (*m_pIdExp)(void *);
-        bool (*m_pMoveThreadExp)(void *, std::size_t);
+        void (*m_pExecuteExp)(void *&, std::promise<TA_Variant> &&promise);
+        void (*m_pDestructorExp)(void *&);
+        std::size_t (*m_pAffinityThreadExp)(void * const &);
+        int64_t (*m_pIdExp)(void * const &);
+        bool (*m_pMoveThreadExp)(void *&, std::size_t);
         std::shared_future<TA_Variant> m_future {};
 
     };
