@@ -77,12 +77,11 @@ namespace CoreAsync
         }
 
     private:
-        static std::atomic_int64_t m_count;
+        inline static std::atomic_int64_t m_count {0};
         const std::int64_t m_id;
 
     };
 
-    std::atomic_int64_t TA_ActivityId::m_count {0};
 }
 
 #endif // TA_ACTIVITYCOMPONMENTS_H

@@ -49,7 +49,7 @@ namespace CoreAsync
                         pObj = nullptr;
                         TA_Variant var;
                         var.set(ptr->operator()());
-                        promise.set_value(var);
+                        promise.set_value(std::move(var));
                     };
                     m_pDestructorExp = [](void *&pObj)->void {
                         if(pObj)
@@ -64,7 +64,7 @@ namespace CoreAsync
                     m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &&promise)->void {
                         TA_Variant var;
                         var.set(static_cast<RawActivity *>(pObj)->operator()());
-                        promise.set_value(var);
+                        promise.set_value(std::move(var));
                     };
                     m_pDestructorExp = nullptr;
                 }
