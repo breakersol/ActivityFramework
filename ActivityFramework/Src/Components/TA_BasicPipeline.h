@@ -114,14 +114,14 @@ namespace CoreAsync {
 
     private:
         template<ActivityType Activity,ActivityType ...Activities>
-        void push(Activity &activity,Activities & ...activities)
+        void push(Activity *&activity,Activities *& ...activities)
         {
             push(activity);
             push(activities...);
         }
 
         template <ActivityType Activity>
-        void push(Activity &activity)
+        void push(Activity *&activity)
         {
             if(activity)
             {

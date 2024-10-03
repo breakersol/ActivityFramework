@@ -50,7 +50,8 @@ namespace CoreAsync
                 }
                 else
                 {
-                    return nullptr;
+                    TA_ActivityProxy *pActivity {nullptr};
+                    return pActivity;
                 }
             };
 
