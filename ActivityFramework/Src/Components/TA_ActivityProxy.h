@@ -20,76 +20,38 @@ namespace CoreAsync
 
     class TA_ActivityProxy
     {
-        template <typename Activity>
-        struct AutoDeleter
-        {
-            using type = std::remove_cvref_t<Activity>;
-            void operator()(Activity *&pActivity)
-            {
-                if(pActivity)
-                {
-                    delete pActivity;
-                    pActivity = nullptr;
-                }
-            }
-        };
     public:
         TA_ActivityProxy() = delete;
 
         template <ActivityType Activity>
-        explicit TA_ActivityProxy(Activity *pActivity, bool autoDelete = true) : m_pActivity(pActivity)
+        explicit TA_ActivityProxy(Activity *pActivity, bool autoDelete = true) : m_pActivity(pActivity, autoDelete ? [](void *pActivity)->void{delete static_cast<Activity *>(pActivity);} : [](void *pActivity)->void{})
         {
             using RawActivity = std::remove_cvref_t<Activity>;
             if(pActivity)
             {
-                if(autoDelete)
-                {
-                    m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &&promise)->void {
-                        std::unique_ptr<RawActivity, AutoDeleter<RawActivity>> ptr {static_cast<RawActivity *>(pObj)};
-                        pObj = nullptr;
-                        TA_Variant var;
-                        var.set(ptr->operator()());
-                        promise.set_value(std::move(var));
-                    };
-                    m_pDestructorExp = [](void *&pObj)->void {
-                        if(pObj)
-                        {
-                            delete static_cast<RawActivity *>(pObj);
-                            pObj = nullptr;
-                        }
-                    };
-                }
-                else
-                {
-                    m_pExecuteExp = [](void *&pObj, std::promise<TA_Variant> &&promise)->void {
-                        TA_Variant var;
-                        var.set(static_cast<RawActivity *>(pObj)->operator()());
-                        promise.set_value(std::move(var));
-                    };
-                    m_pDestructorExp = nullptr;
-                }
-                m_pAffinityThreadExp = [](void * const &pObj)->std::size_t {
-                    return static_cast<RawActivity *>(pObj)->affinityThread();
+                m_pExecuteExp = [](auto &pObj, std::promise<TA_Variant> &&promise)->void {
+                    TA_Variant var;
+                    var.set(static_cast<RawActivity *>(pObj.get())->operator()());
+                    promise.set_value(std::move(var));
+                };
+                m_pAffinityThreadExp = [](auto const &pObj)->std::size_t {
+                    return static_cast<RawActivity *>(pObj.get())->affinityThread();
                 };
 
-                m_pIdExp = [](void * const &pObj)->int64_t {
-                    return static_cast<RawActivity *>(pObj)->id();
+                m_pIdExp = [](auto const &pObj)->int64_t {
+                    return static_cast<RawActivity *>(pObj.get())->id();
                 };
 
-                m_pMoveThreadExp = [](void *&pObj, std::size_t thread)->bool {
-                    return static_cast<RawActivity *>(pObj)->moveToThread(thread);
+                m_pMoveThreadExp = [](auto &pObj, std::size_t thread)->bool {
+                    return static_cast<RawActivity *>(pObj.get())->moveToThread(thread);
                 };
             }
         }
 
-        ~TA_ActivityProxy()
-        {
-            if(m_pDestructorExp)
-                m_pDestructorExp(m_pActivity);
-        }
+        ~TA_ActivityProxy() = default;
 
         TA_ActivityProxy(const TA_ActivityProxy &other) = delete;
-        TA_ActivityProxy(TA_ActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pDestructorExp(std::exchange(other.m_pDestructorExp, nullptr)), m_pAffinityThreadExp(std::exchange(other.m_pAffinityThreadExp, nullptr)), m_pIdExp(std::exchange(other.m_pIdExp, nullptr)), m_pMoveThreadExp(std::exchange(other.m_pMoveThreadExp, nullptr)), m_future(std::move(other.m_future))
+        TA_ActivityProxy(TA_ActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pAffinityThreadExp(std::exchange(other.m_pAffinityThreadExp, nullptr)), m_pIdExp(std::exchange(other.m_pIdExp, nullptr)), m_pMoveThreadExp(std::exchange(other.m_pMoveThreadExp, nullptr)), m_future(std::move(other.m_future))
         {
 
         }
@@ -101,7 +63,6 @@ namespace CoreAsync
             {
                 m_pActivity = std::exchange(other.m_pActivity, nullptr);
                 m_pExecuteExp = std::exchange(other.m_pExecuteExp, nullptr);
-                m_pDestructorExp = std::exchange(other.m_pDestructorExp, nullptr);
                 m_pAffinityThreadExp = std::exchange(other.m_pAffinityThreadExp, nullptr);   
                 m_pIdExp = std::exchange(other.m_pIdExp, nullptr);
                 m_pMoveThreadExp = std::exchange(other.m_pMoveThreadExp, nullptr);
@@ -143,12 +104,11 @@ namespace CoreAsync
         }
 
     private:
-        void *m_pActivity;
-        void (*m_pExecuteExp)(void *&, std::promise<TA_Variant> &&promise);
-        void (*m_pDestructorExp)(void *&);
-        std::size_t (*m_pAffinityThreadExp)(void * const &);
-        int64_t (*m_pIdExp)(void * const &);
-        bool (*m_pMoveThreadExp)(void *&, std::size_t);
+        std::unique_ptr<void, void(*)(void *)> m_pActivity;
+        void (*m_pExecuteExp)(std::unique_ptr<void, void(*)(void *)> &, std::promise<TA_Variant> &&promise);
+        std::size_t (*m_pAffinityThreadExp)(std::unique_ptr<void, void(*)(void *)> const &);
+        int64_t (*m_pIdExp)(std::unique_ptr<void, void(*)(void *)> const &);
+        bool (*m_pMoveThreadExp)(std::unique_ptr<void, void(*)(void *)> &, std::size_t);
         std::shared_future<TA_Variant> m_future {};
 
     };
