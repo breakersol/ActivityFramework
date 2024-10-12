@@ -83,7 +83,16 @@ namespace CoreAsync
 
         void operator()()
         { 
-            m_pExecuteExp(m_pActivity, std::forward<std::promise<TA_Variant>>(m_promise));
+            if (!m_isExecuted.load(std::memory_order_acquire))
+            {
+                m_pExecuteExp(m_pActivity, std::forward<std::promise<TA_Variant>>(m_promise));
+                m_isExecuted.store(true, std::memory_order_release);
+            }    
+        }
+
+        bool isExecuted() const
+        {
+            return m_isExecuted.load(std::memory_order_acquire);
         }
 
         std::size_t affinityThread() const
@@ -109,10 +118,11 @@ namespace CoreAsync
         bool (*m_pMoveThreadExp)(std::unique_ptr<void, void(*)(void *)> &, std::size_t);
         std::promise<TA_Variant> m_promise{};
         std::shared_future<TA_Variant> m_future { m_promise.get_future().share()};
+        std::atomic_bool m_isExecuted{ false };
 
     };
 
-    struct ActivityResultFetcher
+    struct TA_ActivityResultFetcher
     {
         std::shared_ptr<TA_ActivityProxy> pProxy{nullptr};
 

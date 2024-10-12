@@ -140,6 +140,7 @@ namespace CoreAsync {
     private:
         std::atomic<State> m_state {State::Waiting};
         std::atomic<unsigned int> m_startIndex {0};
+        std::list<TA_ActivityResultFetcher> m_fetcherList;
 
     TA_Signals:
         void stateChanged(TA_BasicPipeline::State st) { std::ignore = st; };

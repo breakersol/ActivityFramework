@@ -63,7 +63,7 @@ TEST_F(TA_ThreadPoolTest, postActivityTest)
 TEST_F(TA_ThreadPoolTest, notifyResultTest)
 {
     CoreAsync::TA_ThreadPool threadPool;
-    std::vector<CoreAsync::ActivityResultFetcher> testVec;
+    std::vector<CoreAsync::TA_ActivityResultFetcher> testVec;
     std::vector<int> validVec(1024);
     for(int i = 0;i < activities.size();++i)
     {

@@ -16,6 +16,9 @@
 
 #include "gtest/gtest.h"
 #include "MetaTest.h"
+#include "ITA_ActivityCreator.h"
+#include "ITA_PipelineCreator.h"
+#include "Components/TA_BasicPipeline.h"
 
 int main(int argc, char *argv[])
 {

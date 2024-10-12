@@ -78,7 +78,7 @@ namespace CoreAsync {
         }
 
         template <ActivityType Activity>
-        auto postActivity(Activity *pActivity, bool autoDelete = false)->ActivityResultFetcher
+        [[nodiscard]] auto postActivity(Activity *pActivity, bool autoDelete = false)->TA_ActivityResultFetcher
         {
             if(!pActivity)
                 throw std::invalid_argument("Activity is null");
@@ -92,7 +92,7 @@ namespace CoreAsync {
             return {pProxy};
         }
 
-        auto postActivity(TA_ActivityProxy *&pActivity)->ActivityResultFetcher
+        [[nodiscard]] auto postActivity(TA_ActivityProxy *&pActivity)->TA_ActivityResultFetcher
         {
             if(!pActivity)
                 throw std::invalid_argument("Activity proxy is null");

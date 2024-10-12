@@ -37,7 +37,7 @@ namespace CoreAsync {
         void run() override final;
 
     private:
-        std::vector<ActivityResultFetcher> m_resultFetchers {};
+        std::vector<TA_ActivityResultFetcher> m_resultFetchers {};
 
     };
 

@@ -57,7 +57,7 @@ TEST_F(TA_ActivityQueueTest, getFront)
     auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
     (*queue.front())();
-    CoreAsync::ActivityResultFetcher fetcher {queue.front()};
+    CoreAsync::TA_ActivityResultFetcher fetcher {queue.front()};
     int res = fetcher().get<int>();
     EXPECT_EQ(3,res);
 }
