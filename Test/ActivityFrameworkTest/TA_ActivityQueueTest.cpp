@@ -108,11 +108,10 @@ TEST_F(TA_ActivityQueueTest, emptyTest)
 
 TEST_F(TA_ActivityQueueTest, fullTest)
 {
-    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
+    CoreAsync::TA_ActivityQueue<int, 10240> queue;
     for(int i = 0;i < queue.capacity();++i)
     {
-        std::string str {"321"};
-        queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::ITA_ActivityCreator::create(&MetaTest::getStr,str)));
+        queue.push(i);
     }
     EXPECT_EQ(queue.isFull(), true);
 }

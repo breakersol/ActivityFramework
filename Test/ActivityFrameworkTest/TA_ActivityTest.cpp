@@ -141,3 +141,16 @@ TEST_F(TA_ActivityTest, createLambdaWithoutArgActivity)
     auto res = var.get<int>();
     EXPECT_EQ(0,res);
 }
+
+TEST_F(TA_ActivityTest, createMetaActivity)
+{
+    auto activity = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, 3, 9);
+    auto var = (*activity)();
+    delete activity;
+    EXPECT_EQ(var,-6);
+
+    // auto activity_2 = CoreAsync::ITA_ActivityCreator::create(META_STRING("getStr"), m_pTest, "321");
+    // auto var_2 = (*activity_2)();
+    // delete activity;
+    // EXPECT_EQ(var_2, "123321");
+}

@@ -66,12 +66,17 @@ namespace CoreAsync {
             return new CoreAsync::TA_SingleActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>(std::move(func),std::forward<FuncPara>(para)...);
         }
 
-        template <typename MethodName, typename ...FuncPara>
-        static constexpr auto create(MethodName = {}, const FuncPara &...paras)
+        template <Method MethodName, typename ...FuncPara>
+        static constexpr auto create(MethodName , const FuncPara &...paras, std::size_t affinityThread)
+        {
+            return new TA_MetaActivity(MethodName {}, paras..., affinityThread);
+        }
+
+        template <Method MethodName, typename ...FuncPara>
+        static constexpr auto create(MethodName , const FuncPara &...paras)
         {
             return new TA_MetaActivity(MethodName {}, paras...);
         }
-
     };
 }
 

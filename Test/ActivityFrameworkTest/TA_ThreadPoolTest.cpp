@@ -55,19 +55,17 @@ void TA_ThreadPoolTest::TearDown()
 
 TEST_F(TA_ThreadPoolTest, postActivityTest)
 {
-    CoreAsync::TA_ThreadPool threadPool;
-    auto ft = threadPool.postActivity(activities[0]);
+    auto ft = CoreAsync::TA_ThreadHolder::get().postActivity(activities[0]);
     EXPECT_EQ(0, ft().get<int>());
 }
 
 TEST_F(TA_ThreadPoolTest, notifyResultTest)
 {
-    CoreAsync::TA_ThreadPool threadPool;
     std::vector<CoreAsync::TA_ActivityResultFetcher> testVec;
     std::vector<int> validVec(1024);
     for(int i = 0;i < activities.size();++i)
     {
-        testVec.emplace_back(threadPool.postActivity(activities[i]));
+        testVec.emplace_back(CoreAsync::TA_ThreadHolder::get().postActivity(activities[i]));
         validVec[i] = i;
     }
     EXPECT_EQ(testVec.size(), validVec.size());
@@ -79,6 +77,5 @@ TEST_F(TA_ThreadPoolTest, notifyResultTest)
 
 TEST_F(TA_ThreadPoolTest, threadSizeTest)
 {
-    CoreAsync::TA_ThreadPool threadPool;
-    EXPECT_EQ(std::thread::hardware_concurrency(), threadPool.size());
+    EXPECT_EQ(std::thread::hardware_concurrency(), CoreAsync::TA_ThreadHolder::get().size());
 }
