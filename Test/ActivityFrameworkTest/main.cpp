@@ -19,6 +19,8 @@
 #include "ITA_ActivityCreator.h"
 #include "ITA_PipelineCreator.h"
 #include "Components/TA_BasicPipeline.h"
+#include "Components/TA_MetaReflex.h"
+#include "Components/TA_MetaActivity.h"
 
 int main(int argc, char *argv[])
 {

@@ -22,8 +22,9 @@ namespace CoreAsync
         {
             using Instance = std::remove_cvref_t<Ins>;
             static constexpr auto exp {Reflex::TA_TypeInfo<Instance>::findType(Method {})};
-           using Func = std::decay_t<decltype(exp)>;
-            static_assert(std::is_same_v<std::nullptr_t, Func>, "Cannot find the method from the class.");
+            using Func = std::decay_t<decltype(exp)>;
+            static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
+            static_assert(!std::is_same_v<std::nullptr_t, Func>, "Cannot find the method from the class.");
             static constexpr auto lambdaExp {[](Instance &ins, const RemainedParas &...paras)->FunctionTypeInfo<Func>::RetType {
                 if constexpr(IsStaticMethod<Func>::value)
                 {
@@ -49,6 +50,7 @@ namespace CoreAsync
             static constexpr auto exp {Reflex::TA_TypeInfo<Instance>::findType(Method {})};
             static_assert(!std::is_same_v<std::nullptr_t, std::decay_t<decltype(exp)>>, "Cannot find the method from the class.");
             using Func = std::decay_t<decltype(exp)>;
+            static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
             static constexpr auto lambdaExp {[](Instance *pIns, const RemainedParas &...paras)->FunctionTypeInfo<Func>::RetType {
                 if constexpr(IsStaticMethod<Func>::value)
                 {
@@ -73,7 +75,8 @@ namespace CoreAsync
             using Instance = std::remove_cvref_t<Ins>;
             static constexpr auto exp {Reflex::TA_TypeInfo<Instance>::findType(Method {})};
             using Func = std::decay_t<decltype(exp)>;
-            static_assert(std::is_same_v<std::nullptr_t, Func>, "Cannot find the method from the class.");
+            static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
+            static_assert(!std::is_same_v<std::nullptr_t, Func>, "Cannot find the method from the class.");
             static constexpr auto lambdaExp {[](std::shared_ptr<Instance> &pIns, const RemainedParas &...paras)->FunctionTypeInfo<Func>::RetType {
                 if constexpr(IsStaticMethod<Func>::value)
                 {
@@ -85,9 +88,9 @@ namespace CoreAsync
                 else
                 {
                     if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
-                        (pIns->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
+                        (pIns.get()->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
-                        return (pIns->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
+                        return (pIns.get()->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                 }
             }};
         };
@@ -98,6 +101,8 @@ namespace CoreAsync
             using Instance = std::remove_cvref_t<Ins>;
             static constexpr auto exp {Reflex::TA_TypeInfo<Instance>::findType(Method {})};
             using Func = std::decay_t<decltype(exp)>;
+            static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
+            static_assert(!std::is_same_v<std::nullptr_t, Func>, "Cannot find the method from the class.");
             static constexpr auto lambdaExp {[](std::unique_ptr<Instance> &pIns, const RemainedParas &...paras)->FunctionTypeInfo<Func>::RetType {
                 if constexpr(IsStaticMethod<Func>::value)
                 {
@@ -109,9 +114,9 @@ namespace CoreAsync
                 else
                 {
                     if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
-                        (pIns->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
+                        (pIns.get()->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
-                        return (pIns->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
+                        return (pIns.get()->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                 }
             }};
         };
@@ -136,7 +141,12 @@ namespace CoreAsync
 
         decltype(auto) operator()()
         {
-            return std::apply(ExpParser<MethodName, Paras...>::exp, m_paras);
+            if constexpr(ExpParser<MethodName, Paras...>::isStaticMethod)
+            {
+                return std::apply(ExpParser<MethodName, Paras...>::exp, getStaticMethodParas(m_paras, std::make_index_sequence<sizeof...(Paras)> {}));
+            }
+            else
+                return std::apply(ExpParser<MethodName, Paras...>::exp, m_paras);
         }
 
         std::size_t affinityThread() const
@@ -152,6 +162,16 @@ namespace CoreAsync
         std::int64_t id() const
         {
             return m_id.id();
+        }
+
+    private:
+        template <std::size_t Idx, std::size_t ...Idxs>
+        static constexpr auto getStaticMethodParas(const std::tuple<const Paras &...> &paras, std::index_sequence<Idx, Idxs...>)
+        {
+            if constexpr(sizeof...(Idxs) != 0)
+                return std::make_tuple(std::get<Idxs>(paras)...);
+            else
+                return std::make_tuple();
         }
 
     private:

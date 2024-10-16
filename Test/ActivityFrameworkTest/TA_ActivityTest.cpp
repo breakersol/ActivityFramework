@@ -149,8 +149,21 @@ TEST_F(TA_ActivityTest, createMetaActivity)
     delete activity;
     EXPECT_EQ(var,-6);
 
-    // auto activity_2 = CoreAsync::ITA_ActivityCreator::create(META_STRING("getStr"), m_pTest, "321");
-    // auto var_2 = (*activity_2)();
-    // delete activity;
-    // EXPECT_EQ(var_2, "123321");
+    std::shared_ptr<MetaTest> pSharedTest = std::make_shared<MetaTest>();
+    auto activity_3 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), pSharedTest, 3, 9);
+    auto var_3 = (*activity_3)();
+    delete activity_3;
+    EXPECT_EQ(var_3,-6);
+
+    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(META_STRING("getStr"), MetaTest {}, "321");
+    auto var_2 = (*activity_2)();
+    delete activity_2;
+    EXPECT_EQ(var_2, "123321");
+
+    std::unique_ptr<MetaTest> pUniqueTest = std::make_unique<MetaTest>();
+    auto activity_4 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), pUniqueTest, 3, 9);
+    auto var_4 = (*activity_4)();
+    delete activity_4;
+    EXPECT_EQ(var_4,-6);
+
 }
