@@ -117,7 +117,7 @@ namespace CoreAsync
     {
         if(!pActivity)
             return false;
-        TA_ThreadHolder::get().postActivity(pActivity);
+        auto fetcher = TA_ThreadHolder::get().postActivity(pActivity);
         return true;
     }
 

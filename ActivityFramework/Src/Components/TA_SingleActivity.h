@@ -752,7 +752,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
-            m_funcActivity = [this,&para...]()->Ret{return (*m_funcPtr)(para...);};
+            m_funcActivity = [func,&para...]()->Ret{return (*func)(para...);};
         }
 
         TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
@@ -787,7 +787,7 @@ namespace CoreAsync {
         TA_Variant caller() const
         {
             TA_Variant caller;
-            caller.template set<nullptr_t>(nullptr);
+            caller.template set<std::nullptr_t>(nullptr);
             return caller;
         }
 
@@ -836,7 +836,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
-            m_funcActivity = [this,&para...]()->void{(m_funcPtr)(para...);};
+            m_funcActivity = [func, &para...]()->void{(func)(para...);};
         }
 
         TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
@@ -871,7 +871,7 @@ namespace CoreAsync {
         TA_Variant caller() const
         {
             TA_Variant caller;
-            caller.template set<nullptr_t>(nullptr);
+            caller.template set<std::nullptr_t>(nullptr);
             return caller;
         }
 
@@ -956,7 +956,7 @@ namespace CoreAsync {
         TA_Variant caller() const
         {
             TA_Variant caller;
-            caller.template set<nullptr_t>(nullptr);
+            caller.template set<std::nullptr_t>(nullptr);
             return caller;
         }
 
@@ -1040,7 +1040,7 @@ namespace CoreAsync {
         TA_Variant caller() const
         {
             TA_Variant caller;
-            caller.template set<nullptr_t>(nullptr);
+            caller.template set<std::nullptr_t>(nullptr);
             return caller;
         }
 
@@ -1106,7 +1106,7 @@ namespace CoreAsync {
         TA_Variant caller() const
         {
             TA_Variant caller;
-            caller.template set<nullptr_t>(nullptr);
+            caller.template set<std::nullptr_t>(nullptr);
             return caller;
         }
 
@@ -1169,7 +1169,7 @@ namespace CoreAsync {
         TA_Variant caller() const
         {
             TA_Variant caller;
-            caller.template set<nullptr_t>(nullptr);
+            caller.template set<std::nullptr_t>(nullptr);
             return caller;
         }
 

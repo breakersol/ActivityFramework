@@ -343,7 +343,7 @@ struct TA_MetaTypeInfo :  TA_MetaTypeAttribute<T>
     {
         constexpr auto target = findType(NAME {});
         using CF = decltype(target);
-        if constexpr(std::is_same_v<nullptr_t, CF>)
+        if constexpr(std::is_same_v<std::nullptr_t, CF>)
         {
             return nullptr;
         }

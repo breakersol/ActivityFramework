@@ -2,6 +2,7 @@
 #define TA_ACTIVITYPROXY_H
 
 #include <future>
+#include <utility>
 
 #include "TA_TypeFilter.h"
 #include "TA_Variant.h"
