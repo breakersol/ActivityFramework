@@ -20,23 +20,14 @@
 
 namespace CoreAsync
 {
-TA_MetaObject::TA_MetaObject() : m_pRegister(new TA_ConnectionsRegister()), m_pRecorder(new TA_ConnectionsRecorder(this)), m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
+    TA_MetaObject::TA_MetaObject() : m_pRegister(std::make_shared<TA_ConnectionsRegister>()), m_pRecorder(std::make_shared<TA_ConnectionsRecorder>(this)), m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
     {
 
     }
 
     TA_MetaObject::~TA_MetaObject()
     {
-        if (m_pRegister)
-        {
-            delete m_pRegister;
-            m_pRegister = nullptr;
-        }
-        if(m_pRecorder)
-        {
-            delete m_pRecorder;
-            m_pRecorder = nullptr;
-        }
+
     }
 
     TA_MetaObject::TA_MetaObject(const TA_MetaObject &object) : m_pRegister(object.m_pRegister), m_pRecorder(object.m_pRecorder), m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
@@ -47,6 +38,28 @@ TA_MetaObject::TA_MetaObject() : m_pRegister(new TA_ConnectionsRegister()), m_pR
     TA_MetaObject::TA_MetaObject(TA_MetaObject &&object) : m_pRegister(std::move(object.m_pRegister)), m_pRecorder(std::move(object.m_pRecorder)), m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
     {
 
+    }
+
+    TA_MetaObject & TA_MetaObject::operator = (const TA_MetaObject &object)
+    {
+        if(this != &object)
+        {
+            m_pRegister = object.m_pRegister;
+            m_pRecorder = object.m_pRecorder;
+            m_affinityThreadIdx.store(object.affinityThread(), std::memory_order_release);
+        }
+        return *this;
+    }
+
+    TA_MetaObject & TA_MetaObject::operator = (TA_MetaObject &&object)
+    {
+        if(this != &object)
+        {
+            m_pRegister = std::move(object.m_pRegister);
+            m_pRecorder = std::move(object.m_pRecorder);
+            m_affinityThreadIdx.store(std::move(object.affinityThread()), std::memory_order_release);
+        }
+        return *this;
     }
 
     bool TA_MetaObject::registConnection(std::string_view &&object, TA_ConnectionUnit &&unit)

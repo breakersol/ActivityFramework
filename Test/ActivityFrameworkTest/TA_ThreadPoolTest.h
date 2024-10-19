@@ -33,7 +33,7 @@ public:
     void SetUp() override;
     void TearDown() override;
 
-    std::array<CoreAsync::TA_BasicActivity *, 1024> activities;
+    std::array<CoreAsync::TA_ActivityProxy *, 1024> activities;
 
 };
 

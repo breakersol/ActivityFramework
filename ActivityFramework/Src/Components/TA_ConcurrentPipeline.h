@@ -19,8 +19,6 @@
 
 #include "TA_BasicPipeline.h"
 
-#include <future>
-
 namespace CoreAsync {
     class ACTIVITY_FRAMEWORK_EXPORT TA_ConcurrentPipeline : public TA_BasicPipeline
     {
@@ -39,7 +37,7 @@ namespace CoreAsync {
         void run() override final;
 
     private:
-        std::vector<std::pair<std::future<TA_Variant>, std::size_t>> m_activityIds;
+        std::vector<TA_ActivityResultFetcher> m_resultFetchers {};
 
     };
 

@@ -148,7 +148,7 @@ namespace CoreAsync
     public:
         ACTIVITY_FRAMEWORK_EXPORT static TA_ConnectionResponder & GetIns();
 
-        ACTIVITY_FRAMEWORK_EXPORT bool response(TA_BasicActivity *&pActivity);
+        ACTIVITY_FRAMEWORK_EXPORT bool response(TA_ActivityProxy *&pActivity);
 
     private:
         TA_ConnectionResponder();

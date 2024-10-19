@@ -46,37 +46,38 @@ void TA_ActivityQueueTest::TearDown()
 TEST_F(TA_ActivityQueueTest, capacityTest)
 {
 //    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
-    CoreAsync::ActivityQueue queue;
+    CoreAsync::TA_ActivityQueue<int, 10240> queue;
     EXPECT_EQ(10240,queue.capacity());
 }
 
 
 TEST_F(TA_ActivityQueueTest, getFront)
 {
-    CoreAsync::ActivityQueue queue;
+    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
     auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
-    queue.push(activity);
-    auto var =  (*queue.front())();
-    int res = var.get<int>();
+    queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
+    (*queue.front())();
+    CoreAsync::TA_ActivityResultFetcher fetcher {queue.front()};
+    int res = fetcher().get<int>();
     EXPECT_EQ(3,res);
 }
 
 TEST_F(TA_ActivityQueueTest, getRear)
 {
-    CoreAsync::ActivityQueue queue;
+    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
     auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
-    queue.push(activity);
-    CoreAsync::TA_BasicActivity *pActivity =  queue.rear();
+    queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
+    auto pActivity =  queue.rear();
     EXPECT_EQ(pActivity, nullptr);
 }
 
 TEST_F(TA_ActivityQueueTest, multiThreadTest)
 {
-    CoreAsync::ActivityQueue queue;
+    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
     std::function<bool()> func_1 = [&]() {
         for(int i = 0;i < 150;++i)
         {
-            queue.push(CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, i,3));
+            queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, i,3)));
         }
         return true;
     };
@@ -85,7 +86,7 @@ TEST_F(TA_ActivityQueueTest, multiThreadTest)
         for(int i = 0;i < 150;++i)
         {
             std::string str {"321"};
-            queue.push(CoreAsync::ITA_ActivityCreator::create(&MetaTest::getStr,str));
+            queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::ITA_ActivityCreator::create(&MetaTest::getStr,str)));
         }
         return true;
     };
@@ -101,17 +102,16 @@ TEST_F(TA_ActivityQueueTest, multiThreadTest)
 
 TEST_F(TA_ActivityQueueTest, emptyTest)
 {
-    CoreAsync::ActivityQueue queue;
+    CoreAsync::TA_ActivityQueue<int, 10240> queue;
     EXPECT_EQ(queue.isEmpty(), true);
 }
 
 TEST_F(TA_ActivityQueueTest, fullTest)
 {
-    CoreAsync::ActivityQueue queue;
+    CoreAsync::TA_ActivityQueue<int, 10240> queue;
     for(int i = 0;i < queue.capacity();++i)
     {
-        std::string str {"321"};
-        queue.push(CoreAsync::ITA_ActivityCreator::create(&MetaTest::getStr,str));
+        queue.push(i);
     }
     EXPECT_EQ(queue.isFull(), true);
 }

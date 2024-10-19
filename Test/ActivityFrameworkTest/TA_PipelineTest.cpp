@@ -122,35 +122,6 @@ TEST_F(TA_PipelineTest, clearTest)
     EXPECT_EQ(0,line->activitySize());
 }
 
-TEST_F(TA_PipelineTest, switchBranchTest)
-{
-    std::function<int()> func_1 = [&]()->int {return m_pTest->sub(5,5);};
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create(func_1);
-    std::function<int()> func_2 = [&]()->int {return m_pTest->sub(1,2);};
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
-    std::function<int()> func_3 = [&]()->int {return m_pTest->sub(99,1);};
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create(func_3);
-    std::function<int()> func_4 = [&]()->int {return m_pTest->sub(58,33);};
-    auto activity_4 = CoreAsync::ITA_ActivityCreator::create(func_4);
-    std::function<std::string()> func_5 = [&]()->std::string {return MetaTest::getStr("321");};
-    auto activity_5 = CoreAsync::ITA_ActivityCreator::create(func_5);
-
-    activity_3->branch(activity_4,activity_5);
-    activity_1->branch(activity_2,activity_3);
-
-    auto line = CoreAsync::ITA_PipelineCreator::createAutoChainPipeline();
-    line->add(activity_1);
-    line->switchActivityBranch(0,{2,2});
-
-    line->execute();
-    std::string res {};
-    if(line->waitingComplete())
-    {
-        line->result(0,res);
-    }
-    EXPECT_EQ("123321",res);
-}
-
 TEST_F(TA_PipelineTest, stateTest)
 {
     auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);

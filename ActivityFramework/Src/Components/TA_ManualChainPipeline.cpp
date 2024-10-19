@@ -28,10 +28,11 @@ namespace CoreAsync {
         auto curIndex {m_currentIndex.load(std::memory_order_acquire)};
         if(!m_pActivityList.empty() && curIndex <= m_pActivityList.size() - 1)
         {
-            auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, curIndex);
+            auto pActivity = TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, curIndex);
             if(pActivity)
             {
-                TA_Variant var = (*pActivity)();
+                (*pActivity)();
+                auto var {pActivity->result()};
                 TA_CommonTools::replace(m_resultList, curIndex, var);
                 TA_Connection::active(this, &TA_ManualChainPipeline::activityCompleted, curIndex, var);
             }

@@ -37,7 +37,7 @@ void TA_ThreadPoolTest::SetUp()
     for(int i = 0;i < activities.size();++i)
     {
         auto activity = CoreAsync::ITA_ActivityCreator::create(func,std::move(i));
-        activities[i] = activity;
+        activities[i] = new CoreAsync::TA_ActivityProxy(activity);
     }
 }
 
@@ -55,30 +55,27 @@ void TA_ThreadPoolTest::TearDown()
 
 TEST_F(TA_ThreadPoolTest, postActivityTest)
 {
-    CoreAsync::TA_ThreadPool threadPool;
-    auto ft = threadPool.postActivity(activities[0]);
-    EXPECT_EQ(0, ft.first.get().get<int>());
+    auto ft = CoreAsync::TA_ThreadHolder::get().postActivity(activities[0]);
+    EXPECT_EQ(0, ft().get<int>());
 }
 
 TEST_F(TA_ThreadPoolTest, notifyResultTest)
 {
-    CoreAsync::TA_ThreadPool threadPool;
-    std::vector<std::future<CoreAsync::TA_Variant>> testVec;
+    std::vector<CoreAsync::TA_ActivityResultFetcher> testVec;
     std::vector<int> validVec(1024);
     for(int i = 0;i < activities.size();++i)
     {
-        testVec.emplace_back(threadPool.postActivity(activities[i]).first);
+        testVec.emplace_back(CoreAsync::TA_ThreadHolder::get().postActivity(activities[i]));
         validVec[i] = i;
     }
     EXPECT_EQ(testVec.size(), validVec.size());
     for(int i = 0;i < testVec.size();++i)
     {
-        EXPECT_EQ(testVec[i].get().get<int>(), validVec[i]);
+        EXPECT_EQ(testVec[i]().get<int>(), validVec[i]);
     }
 }
 
 TEST_F(TA_ThreadPoolTest, threadSizeTest)
 {
-    CoreAsync::TA_ThreadPool threadPool;
-    EXPECT_EQ(std::thread::hardware_concurrency(), threadPool.size());
+    EXPECT_EQ(std::thread::hardware_concurrency(), CoreAsync::TA_ThreadHolder::get().size());
 }

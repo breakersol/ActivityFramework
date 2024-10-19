@@ -20,8 +20,9 @@
 #include <functional>
 #include <mutex>
 
-#include "TA_BasicActivity.h"
 #include "TA_TypeFilter.h"
+#include "TA_Variant.h"
+#include "TA_ActivityComponments.h"
 
 namespace CoreAsync {
     template <typename T>
@@ -36,16 +37,16 @@ namespace CoreAsync {
     template <typename Ret>
     using LambdaTypeWithoutPara = std::function<Ret()>;
 
-    struct INVALID_INS {};
-
     template <typename Fn>
     using SupportMemberFunction = typename std::enable_if<std::is_member_function_pointer<Fn>::value,Fn>::type;
 
     template <typename Fn>
     using SupportNonMemberFunction = typename std::enable_if<!std::is_member_function_pointer<Fn>::value,Fn>::type;
 
+    struct INVALID_INS {};
+
     template <typename Fn,typename Ins, typename Ret,typename... FuncPara>
-    class TA_SingleActivity : public TA_BasicActivity
+    class TA_SingleActivity
     {
     public:
         TA_SingleActivity() = delete;
@@ -53,12 +54,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :  m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&ins,func,&para...]()->Ret{return (ins.*func)(para...);};
         }
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
@@ -82,16 +83,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object.*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<Ins>(m_object);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -110,10 +126,13 @@ namespace CoreAsync {
         Fn &m_funcPtr;
         Ins &m_object;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
+
     };
 
     template <typename Fn,typename Ins, typename Ret,typename... FuncPara>
-    class TA_SingleActivity<Fn,Ins *,Ret,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<Fn,Ins *,Ret,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -121,12 +140,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&ins,func,&para...]()->Ret{return (ins->*func)(para...);};
         }
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
@@ -150,16 +169,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<std::decay_t<Ins> *>(const_cast<std::decay_t<Ins> *>(m_object));
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -178,10 +212,12 @@ namespace CoreAsync {
         Fn &m_funcPtr;
         Ins *&m_object;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Fn,typename Ins,typename... FuncPara>
-    class TA_SingleActivity<Fn,Ins,void,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<Fn,Ins,void,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -189,12 +225,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {   
             m_funcActivity = [&ins,func,&para...]()->void{(ins.*func)(para...);};
         }
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
@@ -218,16 +254,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object.*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<Ins>(m_object);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -247,10 +298,12 @@ namespace CoreAsync {
         Fn &m_funcPtr;
         Ins &m_object;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Fn,typename Ins,typename... FuncPara>
-    class TA_SingleActivity<Fn,Ins *,void,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<Fn,Ins *,void,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -258,12 +311,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&ins,func,&para...]()->void{(ins->*func)(para...);};
         }
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
@@ -287,16 +340,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<std::decay_t<Ins> *>(const_cast<std::decay_t<Ins> *>(m_object));
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -316,10 +384,12 @@ namespace CoreAsync {
         Fn &m_funcPtr;
         Ins *&m_object;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Fn,typename Ins, typename Ret,typename... FuncPara>
-    class TA_SingleActivity<Fn,std::shared_ptr<Ins>,Ret,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<Fn,std::shared_ptr<Ins>,Ret,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -327,12 +397,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&ins,func,&para...]()->Ret{return (ins.get()->*func)(para...);};
         }
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
@@ -357,16 +427,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object.get()->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<Ins *>(m_object.get());
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -385,10 +470,12 @@ namespace CoreAsync {
         Fn &m_funcPtr;
         std::shared_ptr<Ins> &m_object;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Fn,typename Ins,typename... FuncPara>
-    class TA_SingleActivity<Fn,std::shared_ptr<Ins>,void,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<Fn,std::shared_ptr<Ins>,void,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -396,12 +483,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&ins,func,&para...]()->void{(ins.get()->*func)(para...);};
         }
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_object(ins)
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
         }
@@ -425,16 +512,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object.get()->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<Ins *>(m_object.get());
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -454,10 +556,12 @@ namespace CoreAsync {
         Fn &m_funcPtr;
         std::shared_ptr<Ins> &m_object;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Fn,typename Ins, typename Ret,typename... FuncPara>
-    class TA_SingleActivity<Fn,std::unique_ptr<Ins>,Ret,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<Fn,std::unique_ptr<Ins>,Ret,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -465,12 +569,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
         {
             m_funcActivity = [this,func,&para...]()->Ret{return (m_pObject->*func)(para...);};
         }
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),m_pObject,std::forward<FuncPara>(para)...);
         }
@@ -499,16 +603,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_pObject->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<Ins *>(m_pObject);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -527,10 +646,12 @@ namespace CoreAsync {
         Fn &m_funcPtr;
         Ins *m_pObject;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Fn,typename Ins,typename... FuncPara>
-    class TA_SingleActivity<Fn,std::unique_ptr<Ins>,void,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<Fn,std::unique_ptr<Ins>,void,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -538,12 +659,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
         {
             m_funcActivity = [this,func,&para...]()->void{return (m_pObject->*func)(para...);};
         }
 
-        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release())
+        TA_SingleActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),m_pObject,std::forward<FuncPara>(para)...);
         }
@@ -572,16 +693,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{return (m_pObject->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<Ins *>(m_pObject);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -601,10 +737,12 @@ namespace CoreAsync {
         Fn &m_funcPtr;
         Ins *m_pObject;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Ret,typename... FuncPara>
-    class TA_SingleActivity<NonMemberFunctionPtr<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<NonMemberFunctionPtr<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -612,12 +750,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func)
+        TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
             m_funcActivity = [this,&para...]()->Ret{return (*m_funcPtr)(para...);};
         }
 
-        TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func)
+        TA_SingleActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
         }
@@ -641,16 +779,31 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<nullptr_t>(nullptr);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -668,10 +821,12 @@ namespace CoreAsync {
 
         NonMemberFunctionPtr<Ret,FuncPara...> &m_funcPtr;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename... FuncPara>
-    class TA_SingleActivity<NonMemberFunctionPtr<void,FuncPara...>,INVALID_INS,void,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<NonMemberFunctionPtr<void,FuncPara...>,INVALID_INS,void,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -679,12 +834,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func)
+        TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
             m_funcActivity = [this,&para...]()->void{(m_funcPtr)(para...);};
         }
 
-        TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func)
+        TA_SingleActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
         }
@@ -708,16 +863,31 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<nullptr_t>(nullptr);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -736,10 +906,12 @@ namespace CoreAsync {
 
         NonMemberFunctionPtr<void,FuncPara...> &m_funcPtr;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Ret,typename... FuncPara>
-    class TA_SingleActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -747,12 +919,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func)
+        TA_SingleActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&,func]()->Ret{return func(para...);};
         }
 
-        TA_SingleActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func)
+        TA_SingleActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
         }
@@ -776,16 +948,31 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<nullptr_t>(nullptr);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -803,10 +990,12 @@ namespace CoreAsync {
 
         LambdaType<Ret,FuncPara...> m_funcPtr;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename... FuncPara>
-    class TA_SingleActivity<LambdaType<void,FuncPara...>,INVALID_INS,void,FuncPara...> : public TA_BasicActivity
+    class TA_SingleActivity<LambdaType<void,FuncPara...>,INVALID_INS,void,FuncPara...>
     {
     public:
         TA_SingleActivity() = delete;
@@ -814,12 +1003,12 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func)
+        TA_SingleActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&,func]()->void{func(para...);};
         }
 
-        TA_SingleActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr),m_funcPtr(func)
+        TA_SingleActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
         {
             m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
         }
@@ -843,16 +1032,31 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<nullptr_t>(nullptr);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -871,10 +1075,12 @@ namespace CoreAsync {
 
         std::function<void(FuncPara...)> m_funcPtr;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <typename Ret>
-    class TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS> : public TA_BasicActivity
+    class TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>
     {
     public:
         TA_SingleActivity() = delete;
@@ -882,7 +1088,7 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(LambdaTypeWithoutPara<Ret> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr)
+        TA_SingleActivity(LambdaTypeWithoutPara<Ret> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&,func]()->Ret{return func();};
         }
@@ -892,16 +1098,31 @@ namespace CoreAsync {
 
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<nullptr_t>(nullptr);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -917,10 +1138,12 @@ namespace CoreAsync {
         std::function<Ret()> m_funcActivity;
         std::mutex m_mutex;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
     template <>
-    class TA_SingleActivity<LambdaTypeWithoutPara<void>,INVALID_INS,void,INVALID_INS> : public TA_BasicActivity
+    class TA_SingleActivity<LambdaTypeWithoutPara<void>,INVALID_INS,void,INVALID_INS>
     {
     public:
         TA_SingleActivity() = delete;
@@ -928,7 +1151,7 @@ namespace CoreAsync {
         TA_SingleActivity(TA_SingleActivity &&activity) = delete;
         TA_SingleActivity & operator = (const TA_SingleActivity &) = delete;
 
-        TA_SingleActivity(LambdaTypeWithoutPara<void> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : TA_BasicActivity(affinityThread), m_funcActivity(nullptr)
+        TA_SingleActivity(LambdaTypeWithoutPara<void> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr), m_affinityThread(affinityThread)
         {
             m_funcActivity = [&,func]()->void{func();};
         }
@@ -938,16 +1161,31 @@ namespace CoreAsync {
 
         }
 
-        TA_Variant operator()() override
+        TA_Variant operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const override
+        TA_Variant caller() const
         {
             TA_Variant caller;
             caller.template set<nullptr_t>(nullptr);
             return caller;
+        }
+
+        std::size_t affinityThread() const
+        {
+            return m_affinityThread.affinityThread();
+        }
+
+        bool moveToThread(std::size_t thread)
+        {
+            return m_affinityThread.moveToThread(thread);
+        }
+
+        std::int64_t id() const
+        {
+            return m_id.id();
         }
 
     protected:
@@ -964,6 +1202,8 @@ namespace CoreAsync {
         std::function<void()> m_funcActivity;
         std::mutex m_mutex;
 
+        TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 
 }

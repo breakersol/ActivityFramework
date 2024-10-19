@@ -113,11 +113,11 @@ namespace CoreAsync
         TA_CommonTools::debugInfo(META_STRING("Destroy Responder!\n"));
     }
 
-    bool TA_ConnectionResponder::response(TA_BasicActivity *&pActivity)
+    bool TA_ConnectionResponder::response(TA_ActivityProxy *&pActivity)
     {
         if(!pActivity)
             return false;
-        TA_ThreadHolder::get().postActivity(pActivity, true);
+        TA_ThreadHolder::get().postActivity(pActivity);
         return true;
     }
 

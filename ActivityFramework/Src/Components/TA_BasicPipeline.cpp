@@ -33,7 +33,7 @@ namespace CoreAsync {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         if(index < m_pActivityList.size())
         {
-            TA_CommonTools::remove<TA_BasicActivity *>(m_pActivityList, index);
+            TA_CommonTools::remove<TA_ActivityProxy *>(m_pActivityList, index);
             return true;
         }
         return false;
@@ -107,7 +107,7 @@ namespace CoreAsync {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         if(type == ExecuteType::Async)
         {
-            auto handle = TA_ThreadHolder::get().postActivity(new TA_LinkedActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS>([this]()->void{this->run();}), true);
+            m_fetcherList.emplace_back(TA_ThreadHolder::get().postActivity(new TA_SingleActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS>([this]()->void{this->run();}), true));
         }
         else
         {
@@ -153,16 +153,6 @@ namespace CoreAsync {
             return;
         }
         m_startIndex.store(index,std::memory_order_release);
-    }
-
-    bool TA_BasicPipeline::switchActivityBranch(int activityIndex, std::deque<unsigned int> branches)
-    {
-        if(State::Waiting != m_state.load(std::memory_order_consume) || activityIndex >= m_pActivityList.size())
-            return false;
-        auto pActivity = TA_CommonTools::at<TA_BasicActivity *>(m_pActivityList, activityIndex);
-        if(!pActivity)
-            return false;
-        return pActivity->selectBranch(branches);
     }
 
     unsigned int TA_BasicPipeline::startIndex() const

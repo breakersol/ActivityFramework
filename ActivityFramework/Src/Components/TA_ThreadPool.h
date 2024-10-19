@@ -17,21 +17,19 @@
 #ifndef TA_THREADPOOL_H
 #define TA_THREADPOOL_H
 
-#include "TA_MetaObject.h"
 #include "TA_ActivityQueue.h"
-#include "TA_LinkedActivity.h"
-#include "TA_Connection.h"
+#include "TA_ActivityProxy.h"
+#include "TA_CommonTools.h"
+#include "TA_MetaStringView.h"
 
 #include <thread>
 #include <vector>
 #include <semaphore>
-#include <future>
-#include <numeric>
 
 namespace CoreAsync {
     class TA_ThreadPool
     {
-        using SharedPromise = std::shared_ptr<std::promise<TA_Variant> >;
+        using ActivityQueue = TA_ActivityQueue<std::weak_ptr<TA_ActivityProxy>, 10240>;
 
         struct ThreadState
         {
@@ -79,29 +77,34 @@ namespace CoreAsync {
             return lowIdx;
         }
 
-        auto postActivity(TA_BasicActivity *pActivity, bool autoDelete = false)
+        template <ActivityType Activity>
+        [[nodiscard]] auto postActivity(Activity *pActivity, bool autoDelete = false)->TA_ActivityResultFetcher
         {
             if(!pActivity)
-                return std::make_pair(std::future<TA_Variant> {}, std::size_t {});           
-            SharedPromise pr {std::make_shared<std::promise<TA_Variant>>()};
-            std::future<TA_Variant> ft {pr->get_future()};
-            auto wrapperActivity = new TA_LinkedActivity<LambdaType<TA_Variant,SharedPromise>,INVALID_INS,TA_Variant,SharedPromise>([pActivity, autoDelete](SharedPromise pr)->TA_Variant {
-                std::unique_ptr<TA_BasicActivity> pSmartActivity {};
-                if(autoDelete)
-                {
-                    pSmartActivity.reset(pActivity);
-                }
-                TA_Variant var = (*pActivity)();
-                pr->set_value(var);
-                return var;
-            }, std::move(pr));
-            auto activityId {wrapperActivity->id()};
+                throw std::invalid_argument("Activity is null");
+            std::shared_ptr<TA_ActivityProxy> pProxy {std::make_shared<TA_ActivityProxy>(pActivity, autoDelete)};
+            auto activityId {pActivity->id()};
             auto affinityId {pActivity->affinityThread()};
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
-            if(!m_activityQueues[idx].push(wrapperActivity))
-                return std::make_pair(std::future<TA_Variant> {}, std::size_t {});
+            if(!m_activityQueues[idx].push(pProxy))
+                throw std::runtime_error("Failed to push activity to queue");
             m_states[idx].resource.release();
-            return std::make_pair(std::move(ft), activityId);
+            return {pProxy};
+        }
+
+        [[nodiscard]] auto postActivity(TA_ActivityProxy *&pActivity)->TA_ActivityResultFetcher
+        {
+            if(!pActivity)
+                throw std::invalid_argument("Activity proxy is null");
+            std::shared_ptr<TA_ActivityProxy> pProxy {pActivity};
+            auto activityId {pActivity->id()};
+            auto affinityId {pActivity->affinityThread()};
+            pActivity = nullptr;
+            std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
+            if(!m_activityQueues[idx].push(pProxy))
+                throw std::runtime_error("Failed to push activity to queue");
+            m_states[idx].resource.release();
+            return {pProxy};
         }
 
         std::size_t size() const
@@ -117,23 +120,19 @@ namespace CoreAsync {
                 m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
                 m_threads.emplace_back(
                     [&, idx](const std::stop_token &st) {
-                        TA_BasicActivity *pActivity {nullptr};
+                        std::weak_ptr<TA_ActivityProxy> pActivity {};
                         while (!st.stop_requested()) {
                             m_states[idx].resource.acquire();
                             while (!m_activityQueues[idx].isEmpty())
                             {
-                                if(m_activityQueues[idx].pop(pActivity) && pActivity)
+                                if(m_activityQueues[idx].pop(pActivity) && !pActivity.expired())
                                 {
-                                    TA_Variant var = (*pActivity)();
-                                    delete pActivity;
-                                    pActivity = nullptr;
+                                    (*pActivity.lock())();
                                 }
                             }
-                            if(trySteal(pActivity, idx) && pActivity)
+                            if(trySteal(pActivity, idx) && !pActivity.expired())
                             {
-                                TA_Variant var = (*pActivity)();
-                                delete pActivity;
-                                pActivity = nullptr;
+                                (*pActivity.lock())();
                             }
                         }
                         TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
@@ -142,7 +141,7 @@ namespace CoreAsync {
             }
         }
 
-        bool trySteal(TA_BasicActivity *&stolenActivity, std::size_t excludedIdx)
+        bool trySteal(std::weak_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx)
         {
             std::size_t startIdx {m_stealIdxs[excludedIdx]};
             std::size_t idx {(startIdx + 1) % m_threads.size()};
@@ -169,8 +168,6 @@ namespace CoreAsync {
 
     struct TA_ThreadHolder
     {
-        using Handle = std::pair<std::future<TA_Variant>, std::size_t>;
-
         static TA_ThreadPool & get()
         {
             static TA_ThreadPool pool;

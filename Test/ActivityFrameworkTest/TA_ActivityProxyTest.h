@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2024] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +14,22 @@
  * limitations under the License.
  */
 
+#ifndef TA_ACTIVITYPROXYTEST_H
+#define TA_ACTIVITYPROXYTEST_H
+
 #include "gtest/gtest.h"
 #include "MetaTest.h"
-#include "ITA_ActivityCreator.h"
-#include "ITA_PipelineCreator.h"
-#include "Components/TA_BasicPipeline.h"
-#include "Components/TA_MetaReflex.h"
-#include "Components/TA_MetaActivity.h"
 
-int main(int argc, char *argv[])
+class TA_ActivityProxyTest : public :: testing :: Test
 {
-    ::testing::InitGoogleTest(&argc,argv);
+public:
+    TA_ActivityProxyTest();
+    ~TA_ActivityProxyTest();
 
-    return RUN_ALL_TESTS();
-}
+    void SetUp() override;
+    void TearDown() override;
+
+    MetaTest *m_pTest;
+};
+
+#endif // TA_ACTIVITYPROXYTEST_H

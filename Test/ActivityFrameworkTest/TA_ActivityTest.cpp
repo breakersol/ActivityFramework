@@ -142,51 +142,28 @@ TEST_F(TA_ActivityTest, createLambdaWithoutArgActivity)
     EXPECT_EQ(0,res);
 }
 
-TEST_F(TA_ActivityTest, linkAnotherActivity)
+TEST_F(TA_ActivityTest, createMetaActivity)
 {
+    auto activity = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, 3, 9);
+    auto var = (*activity)();
+    delete activity;
+    EXPECT_EQ(var,-6);
 
-    std::function<int()> func_1 = [&]()->int {return m_pTest->sub(5,5);};
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create(func_1);
-    std::function<int()> func_2 = [&]()->int {return m_pTest->sub(2,1);};
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
-    activity_1->link(activity_2);
-    auto var = (*activity_1)();
-    auto res = var.get<int>();
-    EXPECT_EQ(1,res);
-}
+    std::shared_ptr<MetaTest> pSharedTest = std::make_shared<MetaTest>();
+    auto activity_3 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), pSharedTest, 3, 9);
+    auto var_3 = (*activity_3)();
+    delete activity_3;
+    EXPECT_EQ(var_3,-6);
 
-TEST_F(TA_ActivityTest, parallelAnotherActivity)
-{
+    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(META_STRING("getStr"), MetaTest {}, "321");
+    auto var_2 = (*activity_2)();
+    delete activity_2;
+    EXPECT_EQ(var_2, "123321");
 
-    std::function<int()> func_1 = [&]()->int {return m_pTest->sub(5,5);};
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create(func_1);
-    std::function<int()> func_2 = [&]()->int {return m_pTest->sub(8,1);};
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
-    activity_1->parallel(activity_2);
-    auto var = (*activity_1)();
-    auto res = var.get<int>();
-    EXPECT_EQ(7,res);
-}
+    std::unique_ptr<MetaTest> pUniqueTest = std::make_unique<MetaTest>();
+    auto activity_4 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), pUniqueTest, 3, 9);
+    auto var_4 = (*activity_4)();
+    delete activity_4;
+    EXPECT_EQ(var_4,-6);
 
-TEST_F(TA_ActivityTest, switchActivityBranch)
-{
-
-    std::function<int()> func_1 = [&]()->int {return m_pTest->sub(5,5);};
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create(func_1);
-    std::function<int()> func_2 = [&]()->int {return m_pTest->sub(1,2);};
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
-    std::function<int()> func_3 = [&]()->int {return m_pTest->sub(99,1);};
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create(func_3);
-    std::function<int()> func_4 = [&]()->int {return m_pTest->sub(58,33);};
-    auto activity_4 = CoreAsync::ITA_ActivityCreator::create(func_4);
-    std::function<std::string()> func_5 = [&]()->std::string {return MetaTest::getStr("321");};
-    auto activity_5 = CoreAsync::ITA_ActivityCreator::create(func_5);
-
-    activity_3->branch(activity_4,activity_5);
-    activity_1->branch(activity_2,activity_3);
-
-    activity_1->selectBranch({2,2});
-    auto var = (*activity_1)();
-    auto res = var.get<std::string>();
-    EXPECT_EQ("123321",res);
 }

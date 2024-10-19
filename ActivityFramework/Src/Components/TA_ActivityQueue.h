@@ -22,8 +22,6 @@
 
 namespace CoreAsync
 {
-    class TA_BasicActivity;
-
     template <typename T, std::size_t N>
     class TA_ActivityQueue
     {
@@ -132,8 +130,6 @@ namespace CoreAsync
         std::atomic<std::size_t> m_frontIndex {0}, m_rearIndex {0};
 
     };
-
-    using ActivityQueue = TA_ActivityQueue<TA_BasicActivity *, 10240>;
 }
 
 #endif // TA_ACTIVITYQUEUE_H
