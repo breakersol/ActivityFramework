@@ -18,7 +18,6 @@
 #ifndef TA_BUFFER_H
 #define TA_BUFFER_H
 
-#include <sstream>
 #include <fstream>
 #include <vector>
 

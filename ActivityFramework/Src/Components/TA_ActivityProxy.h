@@ -32,7 +32,13 @@ namespace CoreAsync
             {
                 m_pExecuteExp = [](auto &pObj, std::promise<TA_Variant> &&promise)->void {
                     TA_Variant var;
-                    var.set(static_cast<RawActivity *>(pObj.get())->operator()());
+                    if constexpr (std::is_void_v<decltype(static_cast<RawActivity *>(pObj.get())->operator()())>)
+                    {
+                        static_cast<RawActivity *>(pObj.get())->operator()();
+                        var.set(nullptr);
+                    }
+                    else
+                        var.set(static_cast<RawActivity *>(pObj.get())->operator()());
                     promise.set_value(std::move(var));
                 };
                 m_pAffinityThreadExp = [](auto const &pObj)->std::size_t {

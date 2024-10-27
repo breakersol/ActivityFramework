@@ -21,7 +21,6 @@
 #include <mutex>
 
 #include "TA_TypeFilter.h"
-#include "TA_Variant.h"
 #include "TA_ActivityComponments.h"
 
 namespace CoreAsync {
@@ -83,16 +82,14 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object.*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        decltype(auto) caller() const
         {
-            TA_Variant caller;
-            caller.template set<Ins>(m_object);
-            return caller;
+            return m_object;
         }
 
         std::size_t affinityThread() const
@@ -111,12 +108,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            TA_Variant var;
-            var.template set<Ret>(m_funcActivity());
-            return var;
+            return m_funcActivity();
         }
 
     protected:
@@ -169,16 +164,14 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        decltype(auto) caller() const
         {
-            TA_Variant caller;
-            caller.template set<std::decay_t<Ins> *>(const_cast<std::decay_t<Ins> *>(m_object));
-            return caller;
+            return m_object;
         }
 
         std::size_t affinityThread() const
@@ -197,12 +190,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            TA_Variant var;
-            var.template set<Ret>(m_funcActivity());
-            return var;
+            return m_funcActivity();
         }
 
     protected:
@@ -254,16 +245,15 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object.*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
+            std::lock_guard<std::mutex> locker(m_mutex);
             return run();
         }
 
-        TA_Variant caller() const
+        decltype(auto) caller() const
         {
-            TA_Variant caller;
-            caller.template set<Ins>(m_object);
-            return caller;
+            return m_object;
         }
 
         std::size_t affinityThread() const
@@ -282,13 +272,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
-            TA_Variant var;
-            var.template set<std::nullptr_t>(nullptr);
-            return var;
         }
 
     protected:
@@ -340,16 +327,14 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        decltype(auto) caller() const
         {
-            TA_Variant caller;
-            caller.template set<std::decay_t<Ins> *>(const_cast<std::decay_t<Ins> *>(m_object));
-            return caller;
+            return m_object;
         }
 
         std::size_t affinityThread() const
@@ -368,13 +353,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            m_funcActivity();
-            TA_Variant var;
-            var.template set<std::nullptr_t>(nullptr);
-            return var;
+            return m_funcActivity();
         }
 
     protected:
@@ -427,16 +409,14 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_object.get()->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        decltype(auto) caller() const
         {
-            TA_Variant caller;
-            caller.template set<Ins *>(m_object.get());
-            return caller;
+            return m_object.get();
         }
 
         std::size_t affinityThread() const
@@ -455,12 +435,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            TA_Variant var;
-            var.template set<Ret>(m_funcActivity());
-            return var;
+            return m_funcActivity();
         }
 
     protected:
@@ -512,16 +490,14 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(m_object.get()->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        decltype(auto) caller() const
         {
-            TA_Variant caller;
-            caller.template set<Ins *>(m_object.get());
-            return caller;
+            return m_object.get();
         }
 
         std::size_t affinityThread() const
@@ -540,13 +516,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
-            TA_Variant var;
-            var.template set<std::nullptr_t>(nullptr);
-            return var;
         }
 
     protected:
@@ -603,16 +576,14 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->Ret{return (m_pObject->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        decltype(auto) caller() const
         {
-            TA_Variant caller;
-            caller.template set<Ins *>(m_pObject);
-            return caller;
+            return m_pObject;
         }
 
         std::size_t affinityThread() const
@@ -631,12 +602,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            TA_Variant var;
-            var.template set<Ret>(m_funcActivity());
-            return var;
+            return m_funcActivity();
         }
 
     protected:
@@ -693,16 +662,14 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{return (m_pObject->*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        decltype(auto) caller() const
         {
-            TA_Variant caller;
-            caller.template set<Ins *>(m_pObject);
-            return caller;
+            return m_pObject;
         }
 
         std::size_t affinityThread() const
@@ -721,13 +688,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {      
             std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
-            TA_Variant var;
-            var.template set<std::nullptr_t>(nullptr);
-            return var;
         }
 
     protected:
@@ -779,16 +743,9 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
-        }
-
-        TA_Variant caller() const
-        {
-            TA_Variant caller;
-            caller.template set<std::nullptr_t>(nullptr);
-            return caller;
         }
 
         std::size_t affinityThread() const
@@ -807,12 +764,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            TA_Variant var;
-            var.template set<Ret>(m_funcActivity());
-            return var;
+            return m_funcActivity();
         }
 
     protected:
@@ -863,16 +818,14 @@ namespace CoreAsync {
             m_funcActivity.swap([this,para...]()->void{(*m_funcPtr)(para...);});
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        std::int64_t id() const
         {
-            TA_Variant caller;
-            caller.template set<std::nullptr_t>(nullptr);
-            return caller;
+            return m_id.id();
         }
 
         std::size_t affinityThread() const
@@ -885,19 +838,11 @@ namespace CoreAsync {
             return m_affinityThread.moveToThread(thread);
         }
 
-        std::int64_t id() const
-        {
-            return m_id.id();
-        }
-
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
-            TA_Variant var;
-            var.template set<std::nullptr_t>(nullptr);
-            return var;
         }
 
     protected:
@@ -948,16 +893,14 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
         }
 
-        TA_Variant caller() const
+        std::int64_t id() const
         {
-            TA_Variant caller;
-            caller.template set<std::nullptr_t>(nullptr);
-            return caller;
+            return m_id.id();
         }
 
         std::size_t affinityThread() const
@@ -970,18 +913,11 @@ namespace CoreAsync {
             return m_affinityThread.moveToThread(thread);
         }
 
-        std::int64_t id() const
-        {
-            return m_id.id();
-        }
-
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            TA_Variant var;
-            var.template set<Ret>(m_funcActivity());
-            return var;
+            return m_funcActivity();
         }
 
     protected:
@@ -1032,16 +968,9 @@ namespace CoreAsync {
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
-        }
-
-        TA_Variant caller() const
-        {
-            TA_Variant caller;
-            caller.template set<std::nullptr_t>(nullptr);
-            return caller;
         }
 
         std::size_t affinityThread() const
@@ -1060,13 +989,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
-            TA_Variant var;
-            var.template set<std::nullptr_t>(nullptr);
-            return var;
         }
 
     protected:
@@ -1098,16 +1024,9 @@ namespace CoreAsync {
 
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
             return run();
-        }
-
-        TA_Variant caller() const
-        {
-            TA_Variant caller;
-            caller.template set<std::nullptr_t>(nullptr);
-            return caller;
         }
 
         std::size_t affinityThread() const
@@ -1126,12 +1045,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        decltype(auto) run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            TA_Variant var;
-            var.template set<Ret>(m_funcActivity());
-            return var;
+            return m_funcActivity();
         }
 
     protected:
@@ -1161,16 +1078,9 @@ namespace CoreAsync {
 
         }
 
-        TA_Variant operator()()
+        decltype(auto) operator()()
         {
-            return run();
-        }
-
-        TA_Variant caller() const
-        {
-            TA_Variant caller;
-            caller.template set<std::nullptr_t>(nullptr);
-            return caller;
+            run();
         }
 
         std::size_t affinityThread() const
@@ -1189,13 +1099,10 @@ namespace CoreAsync {
         }
 
     protected:
-        virtual TA_Variant run()
+        void run()
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
-            TA_Variant var;
-            var.template set<std::nullptr_t>(nullptr);
-            return var;
         }
 
     protected:
