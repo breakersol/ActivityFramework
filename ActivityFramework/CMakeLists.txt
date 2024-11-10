@@ -46,7 +46,6 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_SingleActivity.h
     Src/Components/TA_TypeFilter.h
     Src/Components/TA_TypeList.h
-    Src/Components/TA_Variant.cpp
     Src/Components/TA_Variant.h
     Src/Components/TA_Connection.h
     Src/Components/TA_ConnectionUtils.cpp

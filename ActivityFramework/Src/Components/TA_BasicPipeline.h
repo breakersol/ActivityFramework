@@ -98,7 +98,7 @@ namespace CoreAsync {
             std::lock_guard<std::recursive_mutex> locker(m_mutex);
             if(m_resultList.size() > index)
             {
-                auto var = m_resultList.at(index);
+                decltype(auto) var = m_resultList.at(index);
                 res = var.template get<Res>();
                 return true;
             }
