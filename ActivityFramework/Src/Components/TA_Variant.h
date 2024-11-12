@@ -20,6 +20,9 @@
 #include <typeinfo>
 #include <memory>
 
+#include "TA_CommonTools.h"
+#include "TA_MetaStringView.h"
+
 namespace CoreAsync {
     class TA_Variant
     {
@@ -42,8 +45,8 @@ namespace CoreAsync {
             }
             else
             {
-                m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(value), std::forward<Args>(args)...);
-                m_destroySSOExp = nullptr;
+                m_storage.m_ptr = new (&m_storage.m_ptr) RawType(std::forward<RawType>(value), std::forward<Args>(args)...);
+                m_destroySSOExp = [](void *ptr) {std::destroy_at(reinterpret_cast<RawType *>(ptr));};
                 m_isSmallObject = false;
             }
         }
@@ -55,30 +58,30 @@ namespace CoreAsync {
 
         TA_Variant(const TA_Variant &var) : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject)
         {
+            destroy();
             if(m_isSmallObject)
-            {
-                destroy();
-                m_destroySSOExp = var.m_destroySSOExp;
+            {      
                 std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
             }
             else
             {
                 m_storage.m_ptr = var.m_storage.m_ptr;
             }
+            m_destroySSOExp = var.m_destroySSOExp;
         }
 
         TA_Variant(TA_Variant &&var) : m_typeId(std::move(var.m_typeId)), m_isSmallObject(std::move(var.m_isSmallObject))
         {
+            destroy();
             if(m_isSmallObject)
-            {
-                destroy();
-                m_destroySSOExp = std::exchange(var.m_destroySSOExp, nullptr);
+            { 
                 std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
             }
             else
             {
                 m_storage.m_ptr = std::exchange(var.m_storage.m_ptr, nullptr);
             }
+            m_destroySSOExp = std::exchange(var.m_destroySSOExp, nullptr);
         }
 
         TA_Variant & operator = (const TA_Variant &var)
@@ -87,16 +90,16 @@ namespace CoreAsync {
             {
                 m_typeId = var.m_typeId;
                 m_isSmallObject = var.m_isSmallObject;
+                destroy();
                 if(m_isSmallObject)
-                {
-                    destroy();
-                    m_destroySSOExp = var.m_destroySSOExp;
+                {       
                     std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
                 }
                 else
                 {
                     m_storage.m_ptr = var.m_storage.m_ptr;
                 }
+                m_destroySSOExp = var.m_destroySSOExp;
             }
             return *this;
         }
@@ -106,17 +109,17 @@ namespace CoreAsync {
             if(this != &var)
             {
                 m_typeId = std::exchange(var.m_typeId, 0);
-                m_isSmallObject = std::exchange(var.m_isSmallObject, false); 
+                m_isSmallObject = std::exchange(var.m_isSmallObject, false);
+                destroy();
                 if(m_isSmallObject)
-                {
-                    destroy();
-                    m_destroySSOExp = std::exchange(var.m_destroySSOExp, nullptr);
+                {                       
                     std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
                 }
                 else
                 {
                     m_storage.m_ptr = std::exchange(var.m_storage.m_ptr, nullptr);
                 }
+                m_destroySSOExp = std::exchange(var.m_destroySSOExp, nullptr);
             }
             return *this;
         }
@@ -141,8 +144,8 @@ namespace CoreAsync {
                 }
                 else
                 {
-                    m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(obj));
-                    m_destroySSOExp = nullptr;
+                    m_storage.m_ptr = new (&m_storage.m_ptr) RawType(std::forward<RawType>(obj));
+                    m_destroySSOExp = [](void *ptr) {std::destroy_at(reinterpret_cast<RawType *>(ptr));};
                     m_isSmallObject = false;
                 }
             }
@@ -159,10 +162,11 @@ namespace CoreAsync {
                 }
                 else
                 {
-                    return *static_cast<VAR *>(m_storage.m_ptr.get());
+                    return *reinterpret_cast<VAR *>(m_storage.m_ptr);
                 }
             }
-            return VAR();
+            TA_CommonTools::debugInfo(META_STRING("Input type is not matched."));
+            return VAR {};
         }
 
         bool isValid() const
@@ -184,8 +188,13 @@ namespace CoreAsync {
     private:
         void destroy()
         {
-            if(m_isSmallObject && m_typeId != 0 && m_destroySSOExp)
-                m_destroySSOExp(m_storage.m_data);
+            if(m_typeId != 0 && m_destroySSOExp)
+            {
+                if(m_isSmallObject)
+                    m_destroySSOExp(m_storage.m_data);
+                else
+                    m_destroySSOExp(m_storage.m_ptr);
+            }
             m_destroySSOExp = nullptr;
         }
 
@@ -198,12 +207,7 @@ namespace CoreAsync {
         union Storage
         {
             std::byte m_data[ms_smallObjSize];
-            std::shared_ptr<void> m_ptr {nullptr};
-
-            ~Storage()
-            {
-
-            }
+            void *m_ptr {nullptr};
         } m_storage;
 
         bool m_isSmallObject {false};
