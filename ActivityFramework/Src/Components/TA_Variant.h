@@ -24,6 +24,7 @@
 #include "TA_MetaStringView.h"
 
 namespace CoreAsync {
+    // template <std::size_t SSO_SIZE = 64>
     class TA_Variant
     {
     public:
@@ -45,7 +46,7 @@ namespace CoreAsync {
             }
             else
             {
-                m_storage.m_ptr = new (&m_storage.m_ptr) RawType(std::forward<RawType>(value), std::forward<Args>(args)...);
+                m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(value), std::forward<Args>(args)...);
                 m_destroySSOExp = [](void *ptr) {std::destroy_at(reinterpret_cast<RawType *>(ptr));};
                 m_isSmallObject = false;
             }
@@ -144,7 +145,7 @@ namespace CoreAsync {
                 }
                 else
                 {
-                    m_storage.m_ptr = new (&m_storage.m_ptr) RawType(std::forward<RawType>(obj));
+                    m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(obj));
                     m_destroySSOExp = [](void *ptr) {std::destroy_at(reinterpret_cast<RawType *>(ptr));};
                     m_isSmallObject = false;
                 }
@@ -152,7 +153,7 @@ namespace CoreAsync {
         }
 
         template <typename VAR>
-        VAR get() const requires (!std::is_pointer<VAR>::value)
+        VAR get() const/* requires (!std::is_pointer<VAR>::value)*/
         {
             if(m_typeId == typeid (VAR).hash_code())
             {
@@ -162,7 +163,7 @@ namespace CoreAsync {
                 }
                 else
                 {
-                    return *reinterpret_cast<VAR *>(m_storage.m_ptr);
+                    return *reinterpret_cast<VAR *>(m_storage.m_ptr.get());
                 }
             }
             TA_CommonTools::debugInfo(META_STRING("Input type is not matched."));
@@ -192,8 +193,8 @@ namespace CoreAsync {
             {
                 if(m_isSmallObject)
                     m_destroySSOExp(m_storage.m_data);
-                else
-                    m_destroySSOExp(m_storage.m_ptr);
+                else if(m_storage.m_ptr.use_count() == 1)
+                    m_destroySSOExp(m_storage.m_ptr.get());
             }
             m_destroySSOExp = nullptr;
         }
@@ -207,7 +208,12 @@ namespace CoreAsync {
         union Storage
         {
             std::byte m_data[ms_smallObjSize];
-            void *m_ptr {nullptr};
+            std::shared_ptr<void> m_ptr {nullptr};
+
+            ~Storage()
+            {
+
+            }
         } m_storage;
 
         bool m_isSmallObject {false};
