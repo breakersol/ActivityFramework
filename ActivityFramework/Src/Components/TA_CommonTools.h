@@ -26,7 +26,6 @@
 #include <ranges>
 #include <sstream>
 
-#include "TA_MarcoDefine.h"
 #include "TA_ActivityFramework_global.h"
 
 namespace CoreAsync

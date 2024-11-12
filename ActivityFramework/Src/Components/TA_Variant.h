@@ -61,7 +61,7 @@ namespace CoreAsync {
             destroy();
             if(m_isSmallObject)
             {      
-                std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
+                memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
             }
             else
             {
