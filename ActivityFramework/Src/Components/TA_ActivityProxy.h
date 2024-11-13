@@ -30,8 +30,8 @@ namespace CoreAsync
             using RawActivity = std::remove_cvref_t<Activity>;
             if(pActivity)
             {
-                m_pExecuteExp = [](auto &pObj, std::promise<TA_Variant> &&promise)->void {
-                    TA_Variant var;
+                m_pExecuteExp = [](auto &pObj, std::promise<TA_DefaultVariant> &&promise)->void {
+                    TA_DefaultVariant var;
                     if constexpr (std::is_void_v<decltype(static_cast<RawActivity *>(pObj.get())->operator()())>)
                     {
                         static_cast<RawActivity *>(pObj.get())->operator()();
@@ -83,7 +83,7 @@ namespace CoreAsync
             return m_future.valid();
         }
 
-        TA_Variant result() const
+        TA_DefaultVariant result() const
         {
             return m_future.get();
         }
@@ -92,7 +92,7 @@ namespace CoreAsync
         { 
             if (!m_isExecuted.load(std::memory_order_acquire))
             {
-                m_pExecuteExp(m_pActivity, std::forward<std::promise<TA_Variant>>(m_promise));
+                m_pExecuteExp(m_pActivity, std::forward<std::promise<TA_DefaultVariant>>(m_promise));
                 m_isExecuted.store(true, std::memory_order_release);
             }    
         }
@@ -119,12 +119,12 @@ namespace CoreAsync
 
     private:
         std::unique_ptr<void, void(*)(void *)> m_pActivity;
-        void (*m_pExecuteExp)(std::unique_ptr<void, void(*)(void *)> &, std::promise<TA_Variant> &&promise);
+        void (*m_pExecuteExp)(std::unique_ptr<void, void(*)(void *)> &, std::promise<TA_DefaultVariant> &&promise);
         std::size_t (*m_pAffinityThreadExp)(std::unique_ptr<void, void(*)(void *)> const &);
         int64_t (*m_pIdExp)(std::unique_ptr<void, void(*)(void *)> const &);
         bool (*m_pMoveThreadExp)(std::unique_ptr<void, void(*)(void *)> &, std::size_t);
-        std::promise<TA_Variant> m_promise{};
-        std::shared_future<TA_Variant> m_future { m_promise.get_future().share()};
+        std::promise<TA_DefaultVariant> m_promise{};
+        std::shared_future<TA_DefaultVariant> m_future { m_promise.get_future().share()};
         std::atomic_bool m_isExecuted{ false };
 
     };
@@ -133,7 +133,7 @@ namespace CoreAsync
     {
         std::shared_ptr<TA_ActivityProxy> pProxy{nullptr};
 
-        TA_Variant operator()()
+        TA_DefaultVariant operator()()
         {
             return pProxy->result();
         }

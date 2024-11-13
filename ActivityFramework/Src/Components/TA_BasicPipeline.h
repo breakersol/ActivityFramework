@@ -134,7 +134,7 @@ namespace CoreAsync {
 
     protected:
         std::list<TA_ActivityProxy *> m_pActivityList;
-        std::vector<TA_Variant> m_resultList;
+        std::vector<TA_DefaultVariant> m_resultList;
         std::recursive_mutex m_mutex;
 
     private:
@@ -144,7 +144,7 @@ namespace CoreAsync {
 
     TA_Signals:
         void stateChanged(TA_BasicPipeline::State st) { std::ignore = st; };
-        void activityCompleted(unsigned int index, TA_Variant res) { std::ignore = index; std::ignore = res;};
+        void activityCompleted(unsigned int index, TA_DefaultVariant res) { std::ignore = index; std::ignore = res;};
 
     };
 

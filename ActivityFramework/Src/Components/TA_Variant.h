@@ -24,7 +24,7 @@
 #include "TA_MetaStringView.h"
 
 namespace CoreAsync {
-    // template <std::size_t SSO_SIZE = 64>
+    template <std::size_t SSO_SIZE = 64>
     class TA_Variant
     {
     public:
@@ -202,7 +202,7 @@ namespace CoreAsync {
     private:
         std::size_t m_typeId {typeid (std::nullptr_t).hash_code()};
 
-        static constexpr std::size_t ms_smallObjSize {64};
+        static constexpr std::size_t ms_smallObjSize {SSO_SIZE};
         static constexpr std::size_t ms_alignment {std::alignment_of_v<std::max_align_t>};
 
         union Storage
@@ -218,8 +218,9 @@ namespace CoreAsync {
 
         bool m_isSmallObject {false};
         void (*m_destroySSOExp)(void *) {nullptr};
-
     };
+
+    using TA_DefaultVariant = TA_Variant<>;
 }
 
 #endif // TA_VARIANT_H

@@ -39,7 +39,7 @@ namespace CoreAsync {
             for(auto &fetcher : m_resultFetchers)
             {
                 m_resultList[idx] = fetcher();
-                TA_Connection::active(this, &TA_ConcurrentPipeline::activityCompleted, idx, std::forward<TA_Variant>(m_resultList[idx]));
+                TA_Connection::active(this, &TA_ConcurrentPipeline::activityCompleted, idx, std::forward<TA_DefaultVariant>(m_resultList[idx]));
                 idx++;
             }
             setState(State::Ready);
