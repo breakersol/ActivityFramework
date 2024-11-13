@@ -19,6 +19,7 @@
 
 #include <typeinfo>
 #include <memory>
+#include <cstring>
 
 #include "TA_CommonTools.h"
 #include "TA_MetaStringView.h"
@@ -61,8 +62,8 @@ namespace CoreAsync {
         {
             destroy();
             if(m_isSmallObject)
-            {      
-                memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
+            {
+                std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
             }
             else
             {
