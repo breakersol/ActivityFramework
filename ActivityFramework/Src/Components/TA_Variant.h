@@ -42,7 +42,7 @@ namespace CoreAsync {
             if constexpr(sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment)
             {
                 new (m_storage.m_data) RawType(std::forward<RawType>(value), std::forward<Args>(args)...);
-                m_destroySSOExp = [](void *&data) {std::destroy_at(reinterpret_cast<RawType *>(data));};
+                m_destroySSOExp = [](void *data) {std::destroy_at(reinterpret_cast<RawType *>(data));};
                 m_isSmallObject = true;
             }
             else
