@@ -20,7 +20,7 @@ namespace CoreAsync
         template <typename Method, typename Ins, typename ...RemainedParas>
         struct ExpParser
         {
-            using Instance = std::remove_cvref_t<Ins>;
+            using Instance = std::decay_t<Ins>;
             static constexpr auto exp {Reflex::TA_TypeInfo<Instance>::findType(Method {})};
             using Func = std::decay_t<decltype(exp)>;
             static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
@@ -129,24 +129,24 @@ namespace CoreAsync
         TA_MetaActivity & operator = (const TA_MetaActivity &activity) = delete;
         TA_MetaActivity & operator = (TA_MetaActivity &&activity) = delete;
 
-        TA_MetaActivity(MethodName, const Paras &...para) : m_paras(para...), m_affinityThread(TA_ThreadHolder::get().topPriorityThread())
+        TA_MetaActivity(MethodName, Paras &&...para) : m_paras(std::forward<Paras>(para)...), m_affinityThread(TA_ThreadHolder::get().topPriorityThread())
         {
 
         }
 
-        TA_MetaActivity(MethodName, const Paras &...para, std::size_t affinityThread) : m_paras(para...), m_affinityThread(affinityThread)
+        TA_MetaActivity(MethodName, Paras &&...para, std::size_t affinityThread) : m_paras(std::forward<Paras>(para)...), m_affinityThread(affinityThread)
         {
 
         }
 
         decltype(auto) operator()()
         {
-            if constexpr(ExpParser<MethodName, Paras...>::isStaticMethod)
+            if constexpr(ExpParser<MethodName, std::remove_reference_t<Paras>...>::isStaticMethod)
             {
-                return std::apply(ExpParser<MethodName, Paras...>::exp, getStaticMethodParas(m_paras, std::make_index_sequence<sizeof...(Paras)> {}));
+                return std::apply(ExpParser<MethodName, std::remove_reference_t<Paras>...>::exp, getStaticMethodParas(m_paras, std::make_index_sequence<sizeof...(Paras)> {}));
             }
             else
-                return std::apply(ExpParser<MethodName, Paras...>::exp, m_paras);
+                return std::apply(ExpParser<MethodName, std::remove_reference_t<Paras>...>::exp, m_paras);
         }
 
         std::size_t affinityThread() const
@@ -165,8 +165,11 @@ namespace CoreAsync
         }
 
     private:
+        template<typename T>
+        using StorageType = std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>;
+
         template <std::size_t Idx, std::size_t ...Idxs>
-        static constexpr auto getStaticMethodParas(const std::tuple<const Paras &...> &paras, std::index_sequence<Idx, Idxs...>)
+        static constexpr auto getStaticMethodParas(const std::tuple<StorageType<Paras>...> &paras, std::index_sequence<Idx, Idxs...>)
         {
             if constexpr(sizeof...(Idxs) != 0)
                 return std::make_tuple(std::get<Idxs>(paras)...);
@@ -175,7 +178,7 @@ namespace CoreAsync
         }
 
     private:
-        const std::tuple<const Paras &...> m_paras;
+        const std::tuple<StorageType<Paras>...> m_paras;
         TA_ActivityAffinityThread m_affinityThread {};
         TA_ActivityId m_id {};
 

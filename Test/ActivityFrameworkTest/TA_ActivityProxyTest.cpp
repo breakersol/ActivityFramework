@@ -27,7 +27,7 @@ void TA_ActivityProxyTest::TearDown()
 
 TEST_F(TA_ActivityProxyTest, MetaActivityTest)
 {
-    decltype(auto) pActivity = new CoreAsync::TA_MetaActivity(META_STRING("sub"), m_pTest, 9, 8);
+    decltype(auto) pActivity = new CoreAsync::TA_MetaActivity<decltype(META_STRING("sub")), MetaTest *&, int, int>(META_STRING("sub"), m_pTest, 9, 8);
     CoreAsync::TA_ActivityProxy *pProxy = new CoreAsync::TA_ActivityProxy(pActivity);
     auto fetcher = CoreAsync::TA_ThreadHolder::get().postActivity(pProxy);
     EXPECT_EQ(fetcher().get<int>(), 1);
