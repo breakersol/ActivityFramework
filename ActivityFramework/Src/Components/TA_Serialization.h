@@ -85,7 +85,7 @@ namespace CoreAsync
         TA_Serializer & operator << (const T &t)
         {
             static_assert(std::is_same_v<BufferWriter, OType> , "The operation type isn't Serialization ");
-            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size> {});
+            extractProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size> {});
             return *this;
         }
 
@@ -93,7 +93,7 @@ namespace CoreAsync
         TA_Serializer & operator >> (T &t)
         {
             static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
-            callProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size> {});
+            extractProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size> {});
             return *this;
         }
 
@@ -369,13 +369,13 @@ namespace CoreAsync
 
     private:
         template <typename T>
-        constexpr void callProperty(const T &t, std::index_sequence<> = {})
+        constexpr void extractProperty(const T &t, std::index_sequence<> = {})
         {
             return;
         }
 
         template <typename T, std::size_t IDX0, std::size_t ...IDXS>
-        constexpr void callProperty (T &t, std::index_sequence<IDX0, IDXS...> = std::make_index_sequence<Reflex::TA_TypeInfo<std::remove_cvref_t<T>>::TA_PropertyInfos::size> {})
+        constexpr void extractProperty (T &t, std::index_sequence<IDX0, IDXS...> = std::make_index_sequence<Reflex::TA_TypeInfo<std::remove_cvref_t<T>>::TA_PropertyInfos::size> {})
         {
             using Rt = std::remove_cvref_t<T>;
             using Properties = Reflex::TA_TypeInfo<Rt>::TA_PropertyInfos::List;
@@ -398,7 +398,7 @@ namespace CoreAsync
                     Reflex::TA_TypeInfo<Rt>::update(t, std::move(val), std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type> {});
                 }
             }
-            callProperty(t, std::index_sequence<IDXS...> {});
+            extractProperty(t, std::index_sequence<IDXS...> {});
         }
 
         void destroy()
