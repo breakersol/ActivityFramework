@@ -90,14 +90,13 @@ protected:
 
 };
 
-
 class TA_BufferReader : public TA_BasicBufferOperator<TA_BufferReader>
 {
 public:
     TA_BufferReader() = delete;
-    TA_BufferReader(const std::string &file, std::size_t size) : CoreAsync::TA_BasicBufferOperator<TA_BufferReader>(file, size)
+    TA_BufferReader(const std::string &file, std::size_t size, std::size_t pos = 0) : CoreAsync::TA_BasicBufferOperator<TA_BufferReader>(file, size)
     {
-        init(file);
+        init(file, pos);
     }
 
     ~TA_BufferReader()
@@ -122,9 +121,10 @@ public:
     }
 
 private:
-    void init(const std::string &file)
+    void init(const std::string &file, std::size_t pos)
     {
         m_fileStream.open(file, std::ios::binary | std::ios::in);
+        m_offset = pos;
     }
 
     bool isEnd() const
