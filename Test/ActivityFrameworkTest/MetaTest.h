@@ -233,82 +233,75 @@ private:
 
 namespace CoreAsync::Reflex {
 
-template <>
-struct TA_TypeInfo<TestA> : TA_MetaTypeInfo<TestA>
+DEFINE_TYPE_INFO(TestA)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::print, META_STRING("print")},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(print)
+    )
 };
 
-template <>
-struct TA_TypeInfo<TestB> : TA_MetaTypeInfo<TestB>
+DEFINE_TYPE_INFO(TestB)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::deduct, META_STRING("deduct")},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(deduct)
+    )
 };
 
-template <>
-struct TA_TypeInfo<BaseTest> : TA_MetaTypeInfo<BaseTest,TestA>
+DEFINE_TYPE_INFO(BaseTest, TestA)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::sub, META_STRING("sub")},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(sub)
+        )
 };
 
-template <>
-struct TA_TypeInfo<OtherTest> : TA_MetaTypeInfo<OtherTest,TestB>
+DEFINE_TYPE_INFO(OtherTest, TestB)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::product, META_STRING("product")},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(product)
+    )
 };
 
-template <>
-struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest,BaseTest,OtherTest>
+DEFINE_TYPE_INFO(MetaTest, BaseTest, OtherTest)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {Raw::META_RED, META_STRING("META_RED")},
-        TA_MetaField {Raw::META_GREEN, META_STRING("META_GREEN")},
-        TA_MetaField {Raw::META_BLUE, META_STRING("META_BLUE")},
-        TA_MetaField {static_cast<float(Raw::*)()const>(&Raw::Sum), META_STRING("sum_0")},
-        TA_MetaField {static_cast<float(Raw::*)(float)const>(&Raw::Sum),META_STRING("sum_1")},
-        TA_MetaField {static_cast<bool(Raw::*)(int)const>(&Raw::contains), META_STRING("contains_0")},
-        TA_MetaField {static_cast<bool(Raw::*)(std::string)const>(&Raw::contains),META_STRING("contains_1")},
-        TA_MetaField {&Raw::productMM, META_STRING("productMM")},
-        TA_MetaField {&Raw::str, META_STRING("str")},
-        TA_MetaField {&Raw::getStr, META_STRING("getStr")},
-        TA_MetaField {&Raw::startTest, META_STRING("startTest")},
-        TA_MetaField {&Raw::printTest, META_STRING("printTest")}
-    };
+    AUTO_META_FIELDS(
+        REGISTER_ENUM(META_RED),
+        REGISTER_ENUM(META_GREEN),
+        REGISTER_ENUM(META_BLUE),
+        REGISTER_METHOD_OVERLOAD_GENERIC(Sum, const, float, float),
+        REGISTER_METHOD_OVERLOAD_GENERIC(Sum, const, float),
+        REGISTER_METHOD_OVERLOAD_GENERIC(contains, const, bool, int),
+        REGISTER_METHOD_OVERLOAD_GENERIC(contains, const, bool, std::string),
+        REGISTER_FIELD(productMM),
+        REGISTER_FIELD(str),
+        REGISTER_FIELD(getStr),
+        REGISTER_FIELD(startTest),
+        REGISTER_FIELD(printTest),
+        )
 };
 
-template <>
-struct TA_TypeInfo<M2Test> : TA_MetaTypeInfo<M2Test>
+DEFINE_TYPE_INFO(M2Test)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::m_vec, META_STRING("m_vec"),TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::mx, META_STRING("mx"), TA_PROPERTY(2)},
-        TA_MetaField {&Raw::my, META_STRING("my")},
-        TA_MetaField {&Raw::px, META_STRING("px")},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(m_vec, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(mx, TA_PROPERTY(2)),
+        REGISTER_FIELD(my, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(px),
+        )
 };
 
-template <>
-struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test, M2Test>
+DEFINE_TYPE_INFO(M3Test, M2Test)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::vec, META_STRING("vec"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_array, META_STRING("m_array"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::pFloatPtr, META_STRING("pFloatPtr"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_list, META_STRING("m_list"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_forwardList, META_STRING("m_forwardList"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_deque, META_STRING("m_deque"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_stack, META_STRING("m_stack"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_queue, META_STRING("m_queue"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_prioritQueue, META_STRING("m_prioritQueue"), TA_DEFAULT_PROPERTY},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(vec, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_array, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(pFloatPtr, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_list, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_forwardList, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_deque, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_stack, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_queue, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_prioritQueue, TA_DEFAULT_PROPERTY),
+    )
 };
 
 }

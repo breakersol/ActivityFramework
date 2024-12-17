@@ -45,7 +45,7 @@ void TA_MetaReflexTest::TearDown()
 TEST_F(TA_MetaReflexTest, findMemberFunctionName)
 {
     std::string_view name = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findName(static_cast<float(MetaTest::*)(float)const>(&MetaTest::Sum));
-    EXPECT_EQ("sum_1" == name,true);
+    EXPECT_EQ("Sum<float>" == name,true);
 }
 
 TEST_F(TA_MetaReflexTest, findNonMemberFunctionName)
@@ -74,7 +74,7 @@ TEST_F(TA_MetaReflexTest, findEnumName)
 
 TEST_F(TA_MetaReflexTest, findMemberFunction)
 {
-    auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("sum_1"),m_pTest,1.5);
+    auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("Sum<float>"),m_pTest,1.5);
     EXPECT_EQ(res == 4.5, true);
 }
 

@@ -620,8 +620,6 @@ private:
     }
 };
 
-}
-
 #define ENABLE_REFLEX \
 template <typename T> friend struct CoreAsync::Reflex::TA_TypeInfo;
 
@@ -630,5 +628,34 @@ CoreAsync::Reflex::TA_MetaPropertyParameters<decltype(META_STRING("Property")), 
 
 #define TA_PROPERTY(VALUE) \
 CoreAsync::Reflex::TA_MetaPropertyParameters<decltype(META_STRING("Property")), TA_MetaRoleVersion<VALUE>> {}
+
+#define REGISTER_FIELD(FIELD, ...) \
+TA_MetaField {&Raw::FIELD, META_STRING(#FIELD), ##__VA_ARGS__}
+
+#define REGISTER_ENUM(FIELD, ...) \
+TA_MetaField {Raw::FIELD, META_STRING(#FIELD), ##__VA_ARGS__}
+
+#define REGISTER_METHOD_OVERLOAD(FIELD, RET, ...) \
+TA_MetaField {static_cast<RET(Raw::*)(__VA_ARGS__)>(&Raw::FIELD), META_STRING(#FIELD"<" #__VA_ARGS__ ">")}
+
+#define REGISTER_METHOD_OVERLOAD_CONST(FIELD, RET, ...) \
+TA_MetaField {static_cast<RET(Raw::*)(__VA_ARGS__) const>(&Raw::FIELD), META_STRING(#FIELD"<" #__VA_ARGS__ ">")}
+
+#define REGISTER_METHOD_OVERLOAD_GENERIC(FIELD, CONST_QUAL, RET, ...) \
+    TA_MetaField { \
+                  static_cast<RET(MetaTest::*)(__VA_ARGS__) CONST_QUAL>(&MetaTest::FIELD), \
+                  META_STRING(#FIELD"<"#__VA_ARGS__ ">") \
+    }
+
+#define DEFINE_TYPE_INFO(CLASS_TYPE, ...) \
+template<> \
+    struct TA_TypeInfo<CLASS_TYPE> : public TA_MetaTypeInfo<CLASS_TYPE, ##__VA_ARGS__>
+
+#define AUTO_META_FIELDS(...) \
+static constexpr TA_MetaFieldList fields = {__VA_ARGS__};
+}
+
+#define PRINT_FIELD(...) \
+std::cout << "<" #__VA_ARGS__ ">" << std::endl;
 
 #endif // TA_METAREFLEX_H

@@ -129,40 +129,36 @@ class MetaTest : public BaseTest, public OtherTest
 
 namespace CoreAsync::Reflex {
 
-template <>
-struct TA_TypeInfo<BaseTest> : TA_MetaTypeInfo<BaseTest>
+DEFINE_TYPE_INFO(BaseTest)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::sub, META_STRING("sub")},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(sub)
+        )
 };
 
-template <>
-struct TA_TypeInfo<OtherTest> : TA_MetaTypeInfo<OtherTest>
+DEFINE_TYPE_INFO(OtherTest)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::product, META_STRING("product")},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(product)
+    )
 };
 
-template <>
-struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest,BaseTest,OtherTest>
+DEFINE_TYPE_INFO(MetaTest, BaseTest, OtherTest)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {Raw::META_RED, META_STRING("META_RED")},
-        TA_MetaField {Raw::META_GREEN, META_STRING("META_GREEN")},
-        TA_MetaField {Raw::META_BLUE, META_STRING("META_BLUE")},
-        TA_MetaField {static_cast<float(Raw::*)()const>(&Raw::Sum), META_STRING("sum_0")},
-        TA_MetaField {static_cast<float(Raw::*)(float)const>(&Raw::Sum),META_STRING("sum_1")},
-        TA_MetaField {static_cast<bool(Raw::*)(int)const>(&Raw::contains), META_STRING("contains_0")},
-        TA_MetaField {static_cast<bool(Raw::*)(std::string)const>(&Raw::contains),META_STRING("contains_1")},
-        TA_MetaField {&Raw::productMM, META_STRING("productMM")},
-        TA_MetaField {&Raw::str, META_STRING("str")},
-        TA_MetaField {&Raw::xx, META_STRING("xx")},
-        TA_MetaField {&Raw::getStr, META_STRING("getStr")},
-        TA_MetaField {&Raw::startTest, META_STRING("startTest")},
-        TA_MetaField {&Raw::printTest, META_STRING("printTest")}
-    };
+    AUTO_META_FIELDS(
+        REGISTER_ENUM(META_RED),
+        REGISTER_ENUM(META_GREEN),
+        REGISTER_ENUM(META_BLUE),
+        REGISTER_METHOD_OVERLOAD_GENERIC(Sum, const, float, float),
+        REGISTER_METHOD_OVERLOAD_GENERIC(Sum, const, float),
+        REGISTER_METHOD_OVERLOAD_GENERIC(contains, const, bool, int),
+        REGISTER_METHOD_OVERLOAD_GENERIC(contains, const, bool, std::string),
+        REGISTER_FIELD(productMM),
+        REGISTER_FIELD(str),
+        REGISTER_FIELD(getStr),
+        REGISTER_FIELD(startTest),
+        REGISTER_FIELD(printTest),
+        )
 };
 }
 
@@ -355,20 +351,19 @@ private:
 
 };
 
-template <>
-struct TA_TypeInfo<M3Test> : TA_MetaTypeInfo<M3Test, M2Test>
+DEFINE_TYPE_INFO(M3Test, M2Test)
 {
-    static constexpr TA_MetaFieldList fields = {
-        TA_MetaField {&Raw::vec, META_STRING("vec"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_array, META_STRING("m_array"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::pFloatPtr, META_STRING("pFloatPtr"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_list, META_STRING("m_list"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_forwardList, META_STRING("m_forwardList"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_deque, META_STRING("m_deque"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_stack, META_STRING("m_stack"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_queue, META_STRING("m_queue"), TA_DEFAULT_PROPERTY},
-        TA_MetaField {&Raw::m_prioritQueue, META_STRING("m_prioritQueue"), TA_DEFAULT_PROPERTY},
-    };
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(vec, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_array, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(pFloatPtr, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_list, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_forwardList, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_deque, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_stack, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_queue, TA_DEFAULT_PROPERTY),
+        REGISTER_FIELD(m_prioritQueue, TA_DEFAULT_PROPERTY),
+    )
 };
 ```
 From the snippet above, it is evident that **TA_DEFAULT_PROPERTY** is passed into *TA_MetaField*. The corresponding class member variable is defined as a property within the domain, which allows it to be automatically identified by the serialization module. Consequently, serialization and deserialization processes are applied to this property. Any class member variables not defined as properties are automatically excluded during serialization and deserialization.
@@ -405,19 +400,15 @@ TA_Signals:
 
 };
 
-namespace CoreAsync::Reflex 
+DEFINE_TYPE_INFO(MetaTest)
 {
-    template <>
-    struct TA_TypeInfo<MetaTest> : TA_MetaTypeInfo<MetaTest>
-    {
-        static constexpr TA_MetaFieldList fields = {
-            TA_MetaField {&Raw::printSlot, META_STRING("printSlot")},
-            TA_MetaField {&Raw::printNums, META_STRING("printNums")},
-            TA_MetaField {&Raw::startTest, META_STRING("startTest")},
-            TA_MetaField {&Raw::printTest, META_STRING("printTest")}
-        };
-    };
-}
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(printSlot),
+        REGISTER_FIELD(printNums),
+        REGISTER_FIELD(startTest),
+        REGISTER_FIELD(printTest)
+    )
+};
 ```
 <br/>From the code above, you can see there are two signal function _void startTest(int,int)_ and _void printTest()_ have been defined, and they have been filled into the type info. Note that the signal function does not require any implementation, and its return type must be **void**.
 
