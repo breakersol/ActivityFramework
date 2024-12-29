@@ -96,7 +96,11 @@ namespace CoreAsync {
                     }
                     else
                     {
-                        void **pArgs = new void *[sizeof...(para)] {static_cast<void *>(new std::decay_t<FuncPara>(para))...};
+                        void **pArgs {nullptr};
+                        if constexpr(sizeof...(para) != 0)
+                        {
+                            pArgs = new void *[sizeof...(para)] {static_cast<void *>(new std::decay_t<FuncPara>(para))...};
+                        }
                         CoreAsync::TA_ActivityProxy *pActivity = std::get<0>(rObj)->active(pReceiver, std::forward<std::string_view>(std::get<2>(rObj)), pArgs);
                         if(connectType == TA_ConnectionType::Direct && pSender->affinityThread() != pReceiver->affinityThread())
                         {

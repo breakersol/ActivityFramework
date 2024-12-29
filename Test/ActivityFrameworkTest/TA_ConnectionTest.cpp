@@ -61,14 +61,15 @@ TEST_F(TA_ConnectionTest, disconnectTest)
     EXPECT_FALSE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,2,3));
 }
 
-//TEST_F(TA_ConnectionTest, activeTest)
-//{
-//    EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-//    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,5,5));
-//}
-//
-//TEST_F(TA_ConnectionTest, asyncActiveTest)
-//{
-//    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-//    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,5,5));
-//}
+TEST_F(TA_ConnectionTest, activeTest)
+{
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,5,5));
+}
+
+TEST_F(TA_ConnectionTest, asyncActiveTest)
+{
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
+    CoreAsync::TA_ThreadHolder::get().setThreadDetached(CoreAsync::TA_ThreadHolder::get().topPriorityThread());
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,6,6)); 
+}

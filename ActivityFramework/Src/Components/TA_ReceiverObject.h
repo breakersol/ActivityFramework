@@ -45,7 +45,7 @@ namespace CoreAsync
                 using FuncType = std::decay_t<decltype(value)>;
                 if constexpr(std::is_member_function_pointer_v<FuncType>)
                 {
-                    auto pObj = reinterpret_cast<typename FunctionTypeInfo<FuncType>::ParentClass *>(pReceiver);
+                    auto pObj = dynamic_cast<typename FunctionTypeInfo<FuncType>::ParentClass *>(pReceiver);
                     return wrapper(pObj, std::forward<std::decay_t<decltype(value)>>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::paraSize> {}, args);
                 }
                 else

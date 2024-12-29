@@ -88,11 +88,11 @@ namespace CoreAsync {
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
             if(!m_activityQueues[idx].push(pProxy))
                 throw std::runtime_error("Failed to push activity to queue");
-            m_states[idx].resource.release();
+            m_states[idx].resource.release();  
             return {pProxy};
         }
 
-        [[nodiscard]] auto postActivity(TA_ActivityProxy *&pActivity)->TA_ActivityResultFetcher
+        [[nodiscard]] auto postActivity(TA_ActivityProxy *pActivity)->TA_ActivityResultFetcher
         {
             if(!pActivity)
                 throw std::invalid_argument("Activity proxy is null");
@@ -101,15 +101,24 @@ namespace CoreAsync {
             auto affinityId {pActivity->affinityThread()};
             pActivity = nullptr;
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
-            if(!m_activityQueues[idx].push(pProxy))
+            if(!m_activityQueues[idx].push(pProxy))             //shared_ptr is not trial copyable type cause it is converted to weak_ptr
                 throw std::runtime_error("Failed to push activity to queue");
-            m_states[idx].resource.release();
-            return {pProxy};
+            m_states[idx].resource.release(); 
+            return {pProxy};                //Life-time management failed
         }
 
         std::size_t size() const
         {
             return m_threads.size();
+        }
+
+        void setThreadDetached(std::size_t idx)
+        {
+            if (idx >= m_threads.size())
+            {
+                throw std::invalid_argument("Idx is out of the range of thread size");
+            }
+            m_threads[idx].detach();
         }
 
     private:

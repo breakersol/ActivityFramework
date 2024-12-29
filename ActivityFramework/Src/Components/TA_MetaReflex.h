@@ -649,13 +649,14 @@ TA_MetaField {static_cast<RET(Raw::*)(__VA_ARGS__) const>(&Raw::FIELD), META_STR
 
 #define DEFINE_TYPE_INFO(CLASS_TYPE, ...) \
 template<> \
-    struct TA_TypeInfo<CLASS_TYPE> : public TA_MetaTypeInfo<CLASS_TYPE, ##__VA_ARGS__>
+    struct CoreAsync::Reflex::TA_TypeInfo<CLASS_TYPE> : public TA_MetaTypeInfo<CLASS_TYPE, ##__VA_ARGS__>
 
 #define AUTO_META_FIELDS(...) \
 static constexpr TA_MetaFieldList fields = {__VA_ARGS__};
-}
 
 #define PRINT_FIELD(...) \
 std::cout << "<" #__VA_ARGS__ ">" << std::endl;
+
+}
 
 #endif // TA_METAREFLEX_H
