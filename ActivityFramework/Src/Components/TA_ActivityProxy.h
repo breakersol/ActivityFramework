@@ -46,9 +46,10 @@ namespace CoreAsync
             using RawActivity = std::remove_cvref_t<Activity>;
             if(pActivity)
             {
+                using Ret = std::invoke_result_t<decltype(&RawActivity::operator()), RawActivity>;
                 m_pExecuteExp = [](auto &pObj, std::promise<TA_DefaultVariant> &&promise)->void {
                     TA_DefaultVariant var;
-                    if constexpr (std::is_void_v<decltype(static_cast<RawActivity *>(pObj.get())->operator()())>)
+                    if constexpr (std::is_void_v<Ret>)
                     {
                         static_cast<RawActivity *>(pObj.get())->operator()();
                         var.set(nullptr);
