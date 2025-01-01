@@ -69,7 +69,8 @@ TEST_F(TA_ConnectionTest, activeTest)
 
 TEST_F(TA_ConnectionTest, asyncActiveTest)
 {
-    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    CoreAsync::TA_ThreadHolder::get().setThreadDetached(CoreAsync::TA_ThreadHolder::get().topPriorityThread());
-    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,6,6)); 
+    MetaTest *pTempTest = new MetaTest();
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(pTempTest, &MetaTest::startTest, pTempTest, &MetaTest::productMM));
+    //CoreAsync::TA_ThreadHolder::get().setThreadDetached(CoreAsync::TA_ThreadHolder::get().topPriorityThread());
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest,&MetaTest::startTest, 6, 6));
 }
