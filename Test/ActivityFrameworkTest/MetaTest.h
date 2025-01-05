@@ -231,8 +231,6 @@ private:
 
 };
 
-namespace CoreAsync::Reflex {
-
 DEFINE_TYPE_INFO(TestA)
 {
     AUTO_META_FIELDS(
@@ -303,7 +301,5 @@ DEFINE_TYPE_INFO(M3Test, M2Test)
         REGISTER_FIELD(m_prioritQueue, TA_DEFAULT_PROPERTY),
     )
 };
-
-}
 
 #endif // METATEST_H

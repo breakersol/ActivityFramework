@@ -29,7 +29,7 @@
 namespace CoreAsync {
     class TA_ThreadPool
     {
-        using ActivityQueue = TA_ActivityQueue<std::weak_ptr<TA_ActivityProxy>, 10240>;
+        using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
 
         struct ThreadState
         {
@@ -88,7 +88,7 @@ namespace CoreAsync {
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
             if(!m_activityQueues[idx].push(pProxy))
                 throw std::runtime_error("Failed to push activity to queue");
-            m_states[idx].resource.release();
+            m_states[idx].resource.release();  
             return {pProxy};
         }
 
@@ -101,15 +101,24 @@ namespace CoreAsync {
             auto affinityId {pActivity->affinityThread()};
             pActivity = nullptr;
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
-            if(!m_activityQueues[idx].push(pProxy))
+            if(!m_activityQueues[idx].push(pProxy))             //shared_ptr is not trial copyable type cause it is converted to weak_ptr
                 throw std::runtime_error("Failed to push activity to queue");
-            m_states[idx].resource.release();
-            return {pProxy};
+            m_states[idx].resource.release(); 
+            return {pProxy};                //Life-time management failed
         }
 
         std::size_t size() const
         {
             return m_threads.size();
+        }
+
+        void setThreadDetached(std::size_t idx)
+        {
+            if (idx >= m_threads.size())
+            {
+                throw std::invalid_argument("Idx is out of the range of thread size");
+            }
+            m_threads[idx].detach();
         }
 
     private:
@@ -120,19 +129,19 @@ namespace CoreAsync {
                 m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
                 m_threads.emplace_back(
                     [&, idx](const std::stop_token &st) {
-                        std::weak_ptr<TA_ActivityProxy> pActivity {};
+                        std::shared_ptr<TA_ActivityProxy> pActivity {nullptr};
                         while (!st.stop_requested()) {
                             m_states[idx].resource.acquire();
                             while (!m_activityQueues[idx].isEmpty())
                             {
-                                if(m_activityQueues[idx].pop(pActivity) && !pActivity.expired())
+                                if(m_activityQueues[idx].pop(pActivity) && pActivity)
                                 {
-                                    (*pActivity.lock())();
+                                    (*pActivity)();
                                 }
                             }
-                            if(trySteal(pActivity, idx) && !pActivity.expired())
+                            if(trySteal(pActivity, idx) && pActivity)
                             {
-                                (*pActivity.lock())();
+                                (*pActivity)();
                             }
                         }
                         TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
@@ -141,7 +150,7 @@ namespace CoreAsync {
             }
         }
 
-        bool trySteal(std::weak_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx)
+        bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx)
         {
             std::size_t startIdx {m_stealIdxs[excludedIdx]};
             std::size_t idx {(startIdx + 1) % m_threads.size()};
