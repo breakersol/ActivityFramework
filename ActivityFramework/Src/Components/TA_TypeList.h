@@ -37,6 +37,7 @@ namespace CoreAsync {
     struct TA_MetaTypelist
     {
         using Variant = typename std::variant<T...>;
+        using Tuple = typename std::tuple<std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>...>;
         static constexpr std::size_t size = sizeof...(T);
     };
 

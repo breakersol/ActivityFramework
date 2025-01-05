@@ -180,6 +180,11 @@ namespace CoreAsync
             return m_id.id();
         }
 
+        void setParas(Paras &&...paras)
+        {
+            m_paras = std::make_tuple(std::forward<Paras>(paras)...);
+        }
+
     private:
         template<typename T>
         using StorageType = std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>;

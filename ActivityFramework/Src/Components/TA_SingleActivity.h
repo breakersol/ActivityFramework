@@ -1016,7 +1016,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(LambdaTypeWithoutPara<Ret> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr), m_affinityThread(affinityThread)
         {
-            m_funcActivity = [&,func]()->Ret{return func();};
+            m_funcActivity = func;
         }
 
         virtual ~TA_SingleActivity()
@@ -1070,7 +1070,7 @@ namespace CoreAsync {
 
         TA_SingleActivity(LambdaTypeWithoutPara<void> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr), m_affinityThread(affinityThread)
         {
-            m_funcActivity = [&,func]()->void{func();};
+            m_funcActivity = func;
         }
 
         virtual ~TA_SingleActivity()

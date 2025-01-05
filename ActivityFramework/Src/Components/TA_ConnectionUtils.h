@@ -17,6 +17,7 @@
 #ifndef TA_CONNECTIONUTILS_H
 #define TA_CONNECTIONUTILS_H
 
+#include <any>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -44,6 +45,75 @@ namespace CoreAsync
         Direct,
         Queued
     };
+
+    namespace TA_ConnectionUtils
+    {
+        template <typename ...Args>
+        using Executor = void(*)(void *, Args...);
+
+        class TA_ConnectionObject
+        {
+        public:
+            TA_ConnectionObject() = default;
+            template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
+            TA_ConnectionObject(Sender *pSender, Signal signal, Receiver *pReceiver, Slot slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_type(type)
+            {
+                using SlotParaTuple = typename FunctionTypeInfo<Slot>::ParaGroup::Tuple;
+                using Ret = typename FunctionTypeInfo<Slot>::Ret;
+                m_para = SlotParaTuple {};
+                m_slot = [&,slot]()->void {
+                    decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
+                    if constexpr(std::is_invocable_v<Slot>)
+                        std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj), std::any_cast<SlotParaTuple &>(m_para))));
+                };
+                {
+                    auto activity = new TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::forward<decltype(m_slot)>(m_slot), pReceiver->affinityThread());
+                    m_pSlotProxy = new TA_ActivityProxy(activity);
+                }
+
+            }
+
+            ~TA_ConnectionObject()
+            {
+                if(m_pSlotProxy)
+                {
+                    delete m_pSlotProxy;
+                    m_pSlotProxy = nullptr;
+                }
+            }
+
+            template <typename ...Args>
+            void setPara(Args &&...args)
+            {
+                if constexpr(sizeof...(Args) != 0)
+                    m_para.emplace(std::move(std::make_tuple(std::forward<Args>(args)...)));
+            }
+
+            void callSlot()
+            {
+                if(m_slot)
+                {
+                    TA_MetaObject *pSender = reinterpret_cast<TA_MetaObject *>(m_pSender);
+                    TA_MetaObject *pReceiver = reinterpret_cast<TA_MetaObject *>(m_pReceiver);
+                    if(pReceiver->sourceThread() == pSender->sourceThread() && (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto))
+                    {
+                        m_slot();
+                    }
+                    else
+                    {
+                        auto fetcher = TA_ThreadHolder::get().postActivity(m_pSlotProxy);
+                    }
+                }
+            }
+
+        private:
+            TA_MetaObject *m_pSender {nullptr}, *m_pReceiver {nullptr};
+            TA_ConnectionType m_type;
+            std::function<void()> m_slot;
+            std::any m_para;
+            TA_ActivityProxy *m_pSlotProxy {nullptr};
+        };
+    }
 
     class TA_ConnectionUnit
     {

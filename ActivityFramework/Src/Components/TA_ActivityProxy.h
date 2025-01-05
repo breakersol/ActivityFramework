@@ -135,6 +135,13 @@ namespace CoreAsync
         }
 
     private:
+        template <typename ...Paras>
+        void setParas(Paras &&...paras)
+        {
+
+        }
+
+    private:
         std::unique_ptr<void, void(*)(void *)> m_pActivity;
         void (*m_pExecuteExp)(std::unique_ptr<void, void(*)(void *)> &, std::promise<TA_DefaultVariant> &&promise);
         std::size_t (*m_pAffinityThreadExp)(std::unique_ptr<void, void(*)(void *)> const &);

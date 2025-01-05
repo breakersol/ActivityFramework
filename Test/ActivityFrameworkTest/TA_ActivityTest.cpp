@@ -165,5 +165,18 @@ TEST_F(TA_ActivityTest, createMetaActivity)
     auto var_6 = (*activity_6)();
     delete activity_6;
     EXPECT_EQ(var_6,-6);
+}
 
+TEST_F(TA_ActivityTest, setParaTest_MetaActivity)
+{
+    int a = 3, b = 9;
+    auto activity_6 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b);
+    auto var_6 = (*activity_6)();
+    EXPECT_EQ(var_6,-6);
+
+    int c {8}, d {9};
+    activity_6->setParas(m_pTest, c, d);
+    auto var_7 = (*activity_6)();
+    delete activity_6;
+    EXPECT_EQ(var_7,-1);
 }
