@@ -48,9 +48,6 @@ namespace CoreAsync
 
     namespace TA_ConnectionUtils
     {
-        template <typename ...Args>
-        using Executor = void(*)(void *, Args...);
-
         class TA_ConnectionObject
         {
         public:

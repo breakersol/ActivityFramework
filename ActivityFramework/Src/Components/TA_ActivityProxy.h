@@ -37,6 +37,8 @@ namespace CoreAsync
 
     class TA_ActivityProxy
     {
+        template <typename Ret, typename ...Args>
+        using Executor = Ret(*)(Args...);
     public:
         TA_ActivityProxy() = delete;
 
@@ -135,18 +137,11 @@ namespace CoreAsync
         }
 
     private:
-        template <typename ...Paras>
-        void setParas(Paras &&...paras)
-        {
-
-        }
-
-    private:
         std::unique_ptr<void, void(*)(void *)> m_pActivity;
-        void (*m_pExecuteExp)(std::unique_ptr<void, void(*)(void *)> &, std::promise<TA_DefaultVariant> &&promise);
-        std::size_t (*m_pAffinityThreadExp)(std::unique_ptr<void, void(*)(void *)> const &);
-        int64_t (*m_pIdExp)(std::unique_ptr<void, void(*)(void *)> const &);
-        bool (*m_pMoveThreadExp)(std::unique_ptr<void, void(*)(void *)> &, std::size_t);
+        Executor<void, std::unique_ptr<void, void(*)(void *)> &, std::promise<TA_DefaultVariant> &&> m_pExecuteExp;
+        Executor<std::size_t,  std::unique_ptr<void, void(*)(void *)> const &> m_pAffinityThreadExp;
+        Executor<std::int64_t, std::unique_ptr<void, void(*)(void *)> const &> m_pIdExp;
+        Executor<bool, std::unique_ptr<void, void(*)(void *)> &, std::size_t> m_pMoveThreadExp;
         std::promise<TA_DefaultVariant> m_promise{};
         std::shared_future<TA_DefaultVariant> m_future { m_promise.get_future().share()};
         std::atomic_bool m_isExecuted{ false };
