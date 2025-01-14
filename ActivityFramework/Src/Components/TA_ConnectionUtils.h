@@ -58,17 +58,23 @@ namespace CoreAsync
                 using SlotParaTuple = typename FunctionTypeInfo<Slot>::ParaGroup::Tuple;
                 using Ret = typename FunctionTypeInfo<Slot>::Ret;
                 m_para = SlotParaTuple {};
-                m_slot = [&,slot]()->void {
+                decltype(auto) slotExp = [&,slot]()->void {
                     decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
                     if constexpr(std::is_invocable_v<Slot>)
                         std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj), std::any_cast<SlotParaTuple &>(m_para))));
                 };
                 {
-                    auto activity = new TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::forward<decltype(m_slot)>(m_slot), pReceiver->affinityThread());
-                    m_pSlotProxy = new TA_ActivityProxy(activity);
+                    m_pActivity = new TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::forward<decltype(slotExp)>(slotExp), pReceiver->affinityThread());
+                    m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                 }
 
             }
+
+            TA_ConnectionObject(const TA_ConnectionObject &object) = delete;
+            TA_ConnectionObject(TA_ConnectionObject &&object) = delete;
+
+            TA_ConnectionObject & operator = (const TA_ConnectionObject &object) = delete;
+            TA_ConnectionObject & operator = (TA_ConnectionObject &&object) = delete;
 
             ~TA_ConnectionObject()
             {
@@ -76,6 +82,11 @@ namespace CoreAsync
                 {
                     delete m_pSlotProxy;
                     m_pSlotProxy = nullptr;
+                }
+                if(m_pActivity)
+                {
+                    delete m_pActivity;
+                    m_pActivity = nullptr;
                 }
             }
 
@@ -88,17 +99,18 @@ namespace CoreAsync
 
             void callSlot()
             {
-                if(m_slot)
+                if(m_pActivity)
                 {
                     TA_MetaObject *pSender = reinterpret_cast<TA_MetaObject *>(m_pSender);
                     TA_MetaObject *pReceiver = reinterpret_cast<TA_MetaObject *>(m_pReceiver);
                     if(pReceiver->sourceThread() == pSender->sourceThread() && (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto))
                     {
-                        m_slot();
+                        m_pActivity->operator()();
                     }
                     else
                     {
                         auto fetcher = TA_ThreadHolder::get().postActivity(m_pSlotProxy);
+                        m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                     }
                 }
             }
@@ -106,8 +118,8 @@ namespace CoreAsync
         private:
             TA_MetaObject *m_pSender {nullptr}, *m_pReceiver {nullptr};
             TA_ConnectionType m_type;
-            std::function<void()> m_slot;
             std::any m_para;
+            TA_SingleActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS> *m_pActivity {nullptr};
             TA_ActivityProxy *m_pSlotProxy {nullptr};
         };
     }

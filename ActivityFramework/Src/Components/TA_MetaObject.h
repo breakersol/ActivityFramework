@@ -22,18 +22,17 @@
 #include <string_view>
 #include <thread>
 #include <memory>
+#include <unordered_map>
 
 namespace CoreAsync
 {
-    class TA_ConnectionUnit;
-    class TA_ConnectionsRegister;
-    class TA_ConnectionsRecorder;
+    namespace TA_ConnectionUtils
+    {
+        class TA_ConnectionObject;
+    }
 
     class ACTIVITY_FRAMEWORK_EXPORT TA_MetaObject
     {
-        friend class TA_Connection;
-        friend class TA_ConnectionsRegister;
-        friend class TA_ConnectionsRecorder;
     public:
         TA_MetaObject();
         virtual ~TA_MetaObject();
@@ -56,10 +55,11 @@ namespace CoreAsync
         bool removeSender(TA_MetaObject *pSender);
 
     private:
-        std::shared_ptr<TA_ConnectionsRegister> m_pRegister;
-        std::shared_ptr<TA_ConnectionsRecorder> m_pRecorder;
         const std::thread::id m_sourceThread;
         std::atomic_size_t m_affinityThreadIdx;
+
+        std::unordered_multimap<void *, TA_ConnectionUtils::TA_ConnectionObject *> m_outputConnections;
+        std::unordered_multimap<void *, TA_ConnectionUtils::TA_ConnectionObject *> m_inputConnections;
 
     };
 }

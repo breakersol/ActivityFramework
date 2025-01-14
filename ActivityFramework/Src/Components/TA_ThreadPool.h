@@ -101,10 +101,10 @@ namespace CoreAsync {
             auto affinityId {pActivity->affinityThread()};
             pActivity = nullptr;
             std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
-            if(!m_activityQueues[idx].push(pProxy))             //shared_ptr is not trial copyable type cause it is converted to weak_ptr
+            if(!m_activityQueues[idx].push(pProxy))
                 throw std::runtime_error("Failed to push activity to queue");
             m_states[idx].resource.release(); 
-            return {pProxy};                //Life-time management failed
+            return {pProxy};
         }
 
         std::size_t size() const
