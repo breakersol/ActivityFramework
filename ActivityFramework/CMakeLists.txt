@@ -56,7 +56,6 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_ManualKeyActivityChainPipeline.h
     Src/Components/TA_ManualStepsChainPipeline.cpp
     Src/Components/TA_ManualStepsChainPipeline.h
-    Src/Components/TA_MetaObject.cpp
     Src/Components/TA_MetaObject.h
     Src/Components/TA_MetaReflex.h
     Src/Components/TA_MetaStringView.h

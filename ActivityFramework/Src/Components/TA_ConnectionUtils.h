@@ -53,7 +53,7 @@ namespace CoreAsync
         public:
             TA_ConnectionObject() = default;
             template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
-            TA_ConnectionObject(Sender *pSender, Signal signal, Receiver *pReceiver, Slot slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_type(type)
+            TA_ConnectionObject(Sender *pSender, Signal signal, Receiver *pReceiver, Slot slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_senderFunc(signal), m_receiverFunc(slot), m_type(type)
             {
                 using SlotParaTuple = typename FunctionTypeInfo<Slot>::ParaGroup::Tuple;
                 using Ret = typename FunctionTypeInfo<Slot>::Ret;
@@ -115,8 +115,16 @@ namespace CoreAsync
                 }
             }
 
+            TA_MetaObject * sender() const {return m_pSender;}
+            TA_MetaObject * receiver() const {return m_pReceiver;}
+
+            auto signal() const {return m_senderFunc;}
+            auto slot() const {return m_receiverFunc;}
+
+            using FuncAddr = void *;
         private:
             TA_MetaObject *m_pSender {nullptr}, *m_pReceiver {nullptr};
+            FuncAddr m_senderFunc {nullptr}, m_receiverFunc {nullptr};
             TA_ConnectionType m_type;
             std::any m_para;
             TA_SingleActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS> *m_pActivity {nullptr};
