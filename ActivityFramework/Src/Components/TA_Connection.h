@@ -17,9 +17,10 @@
 #ifndef TA_CONNECTION_H
 #define TA_CONNECTION_H
 
-#include "TA_ConnectionUtils.h"
+#include "TA_MetaObject.h"
 
 namespace CoreAsync {
+
     class TA_Connection
     {
     public:

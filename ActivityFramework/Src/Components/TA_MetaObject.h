@@ -17,23 +17,34 @@
 #ifndef TA_METAOBJECT_H
 #define TA_METAOBJECT_H
 
-#include "TA_ActivityFramework_global.h"
-#include "Components/TA_ConnectionUtils.h"
-#include "Components/TA_ThreadPool.h"
-
 #include <string_view>
 #include <thread>
 #include <memory>
 #include <unordered_map>
+#include <any>
+
+#include "TA_ThreadPool.h"
+#include "TA_SingleActivity.h"
+#include "TA_MetaReflex.h"
 
 namespace CoreAsync
 {
-    namespace TA_ConnectionUtils
-    {
-        class TA_ConnectionObject;
-    }
+    class TA_MetaObject;
 
-    class ACTIVITY_FRAMEWORK_EXPORT TA_MetaObject
+    template <typename T>
+    concept EnableConnectObjectType = requires (T *t)
+    {
+        {t}->std::convertible_to<TA_MetaObject *>;
+    };
+
+    enum class TA_ConnectionType
+    {
+        Auto,
+        Direct,
+        Queued
+    };
+
+    class TA_MetaObject
     {
     public:
         TA_MetaObject() : m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
@@ -80,6 +91,7 @@ namespace CoreAsync
 
         const std::thread::id & sourceThread() const {return m_sourceThread;}
         std::size_t affinityThread() const {return m_affinityThreadIdx.load(std::memory_order_acquire);}
+
         bool moveToThread(std::size_t idx)
         {
             if(idx >= TA_ThreadHolder::get().size())
@@ -110,9 +122,9 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            auto &&conn = new TA_ConnectionUtils::TA_ConnectionObject(pSender, signal, pReceiver, slot, type);
-            pSender->m_outputConnections.emplace(signal, conn);
-            pReceiver->m_inputConnections.emplace(slot, conn);
+            auto &&conn = new TA_ConnectionObject(pSender, signal, pReceiver, slot, type);
+            pSender->m_outputConnections.emplace({signal, conn});
+            pReceiver->m_inputConnections.emplace({slot, conn});
             return true;
         }
 
@@ -126,7 +138,7 @@ namespace CoreAsync
             auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
             if(startSendIter == endSendIter)
                 return false;
-            TA_ConnectionUtils::TA_ConnectionObject *pConnecton {nullptr};
+            TA_ConnectionObject *pConnecton {nullptr};
             while(startSendIter != endSendIter)
             {
                 if(startSendIter->second->receiver() == pReceiver && startSendIter->second->slot() == slot)
@@ -156,6 +168,89 @@ namespace CoreAsync
             }
             return true;
         }
+    private:
+        class TA_ConnectionObject
+        {
+        public:
+            TA_ConnectionObject() = default;
+            template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
+            TA_ConnectionObject(Sender *pSender, Signal signal, Receiver *pReceiver, Slot slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_senderFunc(signal), m_receiverFunc(slot), m_type(type)
+            {
+                using SlotParaTuple = typename FunctionTypeInfo<Slot>::ParaGroup::Tuple;
+                using Ret = typename FunctionTypeInfo<Slot>::Ret;
+                m_para = SlotParaTuple {};
+                decltype(auto) slotExp = [&,slot]()->void {
+                    decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
+                    if constexpr(std::is_invocable_v<Slot>)
+                        std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj), std::any_cast<SlotParaTuple &>(m_para))));
+                };
+                {
+                    m_pActivity = new TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::forward<decltype(slotExp)>(slotExp), pReceiver->affinityThread());
+                    m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
+                }
+
+            }
+
+            TA_ConnectionObject(const TA_ConnectionObject &object) = delete;
+            TA_ConnectionObject(TA_ConnectionObject &&object) = delete;
+
+            TA_ConnectionObject & operator = (const TA_ConnectionObject &object) = delete;
+            TA_ConnectionObject & operator = (TA_ConnectionObject &&object) = delete;
+
+            ~TA_ConnectionObject()
+            {
+                if(m_pSlotProxy)
+                {
+                    delete m_pSlotProxy;
+                    m_pSlotProxy = nullptr;
+                }
+                if(m_pActivity)
+                {
+                    delete m_pActivity;
+                    m_pActivity = nullptr;
+                }
+            }
+
+            template <typename ...Args>
+            void setPara(Args &&...args)
+            {
+                if constexpr(sizeof...(Args) != 0)
+                    m_para.emplace(std::move(std::make_tuple(std::forward<Args>(args)...)));
+            }
+
+            void callSlot()
+            {
+                if(m_pActivity)
+                {
+                    TA_MetaObject *pSender = reinterpret_cast<TA_MetaObject *>(m_pSender);
+                    TA_MetaObject *pReceiver = reinterpret_cast<TA_MetaObject *>(m_pReceiver);
+                    if(pReceiver->sourceThread() == pSender->sourceThread() && (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto))
+                    {
+                        m_pActivity->operator()();
+                    }
+                    else
+                    {
+                        auto fetcher = TA_ThreadHolder::get().postActivity(m_pSlotProxy);
+                        m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
+                    }
+                }
+            }
+
+            TA_MetaObject * sender() const {return m_pSender;}
+            TA_MetaObject * receiver() const {return m_pReceiver;}
+
+            auto signal() const {return m_senderFunc;}
+            auto slot() const {return m_receiverFunc;}
+
+            using FuncAddr = void *;
+        private:
+            TA_MetaObject *m_pSender {nullptr}, *m_pReceiver {nullptr};
+            FuncAddr m_senderFunc {nullptr}, m_receiverFunc {nullptr};
+            TA_ConnectionType m_type;
+            std::any m_para;
+            TA_SingleActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS> *m_pActivity {nullptr};
+            TA_ActivityProxy *m_pSlotProxy {nullptr};
+        };
 
     private:
         void destroyConnections()
@@ -199,8 +294,8 @@ namespace CoreAsync
         const std::thread::id m_sourceThread;
         std::atomic_size_t m_affinityThreadIdx;
 
-        std::unordered_multimap<TA_ConnectionUtils::TA_ConnectionObject::FuncAddr, TA_ConnectionUtils::TA_ConnectionObject *> m_outputConnections {};
-        std::unordered_multimap<TA_ConnectionUtils::TA_ConnectionObject::FuncAddr, TA_ConnectionUtils::TA_ConnectionObject *> m_inputConnections {};
+        std::unordered_multimap<TA_ConnectionObject::FuncAddr, TA_ConnectionObject *> m_outputConnections {};
+        std::unordered_multimap<TA_ConnectionObject::FuncAddr, TA_ConnectionObject *> m_inputConnections {};
 
     };
 }

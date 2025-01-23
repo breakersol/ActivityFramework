@@ -48,8 +48,6 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_TypeList.h
     Src/Components/TA_Variant.h
     Src/Components/TA_Connection.h
-    Src/Components/TA_ConnectionUtils.cpp
-    Src/Components/TA_ConnectionUtils.h
     Src/Components/TA_ManualChainPipeline.cpp
     Src/Components/TA_ManualChainPipeline.h
     Src/Components/TA_ManualKeyActivityChainPipeline.cpp
