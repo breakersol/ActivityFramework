@@ -25,7 +25,6 @@
 
 #include "Components/TA_MetaReflex.h"
 #include "Components/TA_MetaObject.h"
-#include "Components/TA_ConnectionUtils.h"
 
 class TestA : public virtual CoreAsync::TA_MetaObject
 {

@@ -19,7 +19,6 @@
 
 #include <string_view>
 #include <thread>
-#include <memory>
 #include <unordered_map>
 #include <any>
 
@@ -29,6 +28,8 @@
 
 namespace CoreAsync
 {
+    #define TA_Signals  public
+
     class TA_MetaObject;
 
     template <typename T>
@@ -103,45 +104,75 @@ namespace CoreAsync
         }
 
         template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
-        static bool registerConnection(Sender *pSender, Signal signal, Receiver *pReceiver, Slot slot, TA_ConnectionType type)
+        static constexpr bool registerConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot, TA_ConnectionType type)
         {
+            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !Reflex::TA_MemberTypeTrait<Slot>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value)
+            {
+                return false;
+            }
+            if constexpr(FunctionTypeInfo<Signal>::paraSize != FunctionTypeInfo<Slot>::paraSize)
+            {
+                return false;
+            }
+            if constexpr(FunctionTypeInfo<Signal>::paraSize != 0 && FunctionTypeInfo<Slot>::paraSize != 0)
+            {
+                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ParaGroup, typename FunctionTypeInfo<Slot>::ParaGroup>::value)
+                {
+                    return false;
+                }
+            }
             if(!pSender || !pReceiver)
             {
                 return false;
             }
-            if constexpr(!Reflex::TA_TypeInfo<std::decay_t<Sender> >::containsValue(signal) || !Reflex::TA_TypeInfo<std::decay_t<Receiver> >::containsValue(slot))
-            {
-                return false;
-            }
-            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
+            TA_ConnectionObject::FuncMark signalMark {Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))};
+            TA_ConnectionObject::FuncMark slotMark {Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<Slot>(slot))};
+            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
             while(startSendIter != endSendIter)
             {
-                if(startSendIter->second->receiver() == pReceiver && startSendIter->second->slot() == slot)
+                if(startSendIter->second->receiver() == pReceiver && startSendIter->second->slotMark() == slotMark)
                 {
                     return false;
                 }
                 startSendIter++;
             }
-            auto &&conn = new TA_ConnectionObject(pSender, signal, pReceiver, slot, type);
-            pSender->m_outputConnections.emplace({signal, conn});
-            pReceiver->m_inputConnections.emplace({slot, conn});
+            auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), pReceiver, std::forward<Slot>(slot), type);
+            pSender->m_outputConnections.emplace(signalMark, conn);
+            pReceiver->m_inputConnections.emplace(slotMark, conn);
             return true;
         }
 
         template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
-        static bool unregisterConnection(Sender *pSender, Signal signal, Receiver *pReceiver, Slot slot)
+        static constexpr bool unregisterConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot)
         {
+            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !Reflex::TA_MemberTypeTrait<Slot>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value)
+            {
+                return false;
+            }
+            if constexpr(FunctionTypeInfo<Signal>::paraSize != FunctionTypeInfo<Slot>::paraSize)
+            {
+                return false;
+            }
+            if constexpr(FunctionTypeInfo<Signal>::paraSize != 0 && FunctionTypeInfo<Slot>::paraSize != 0)
+            {
+                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ParaGroup, typename FunctionTypeInfo<Slot>::ParaGroup>::value)
+                {
+                    return false;
+                }
+            }
             if(!pSender || !pReceiver)
             {
                 return false;
             }
-            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
+            TA_ConnectionObject::FuncMark signalMark {Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))};
+            TA_ConnectionObject::FuncMark slotMark {Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<Slot>(slot))};
+            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
             if(startSendIter == endSendIter)
                 return false;
             TA_ConnectionObject *pConnecton {nullptr};
             while(startSendIter != endSendIter)
             {
-                if(startSendIter->second->receiver() == pReceiver && startSendIter->second->slot() == slot)
+                if(startSendIter->second->receiver() == pReceiver && startSendIter->second->slotMark() == slotMark)
                 {
                     pConnecton = startSendIter->second;
                     pSender->m_outputConnections.erase(startSendIter);
@@ -149,7 +180,7 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            auto &&[startRecIter, endRecIter] = pReceiver->m_inputConnections.equal_range(slot);
+            auto &&[startRecIter, endRecIter] = pReceiver->m_inputConnections.equal_range(slotMark);
             if(startRecIter == endRecIter)
                 return false;
             while(startRecIter != endRecIter)
@@ -168,19 +199,81 @@ namespace CoreAsync
             }
             return true;
         }
+
+        template <EnableConnectObjectType Sender, typename Signal, typename ...Args>
+        static constexpr bool emitSignal(Sender *pSender, Signal &&signal, Args &&...args)
+        {
+            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value)
+            {
+                return false;
+            }
+            if constexpr(!std::is_convertible_v<std::decay_t<Sender *>, typename FunctionTypeInfo<Signal>::ParentClass *>)
+            {
+                return false;
+            }
+            if(!pSender)
+            {
+                return false;
+            }
+            auto &&[startIter, endIter] = pSender->m_outputConnections.equal_range(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal)));
+            if(startIter == endIter)
+                return false;
+            while(startIter != endIter)
+            {
+                startIter->second->setPara(std::forward<Args>(args)...);
+                startIter->second->callSlot();
+                startIter++;
+            }
+            return true;
+        }
+
+        template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
+        static constexpr bool isConnectionExisted(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot)
+        {
+            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !Reflex::TA_MemberTypeTrait<Slot>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value)
+            {
+                return false;
+            }
+            if constexpr(FunctionTypeInfo<Signal>::paraSize != FunctionTypeInfo<Slot>::paraSize)
+            {
+                return false;
+            }
+            if constexpr(FunctionTypeInfo<Signal>::paraSize != 0 && FunctionTypeInfo<Slot>::paraSize != 0)
+            {
+                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ParaGroup, typename FunctionTypeInfo<Slot>::ParaGroup>::value)
+                {
+                    return false;
+                }
+            }
+            if(!pSender || !pReceiver)
+            {
+                return false;
+            }
+            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal)));
+            while(startSendIter != endSendIter)
+            {
+                if(startSendIter->second->receiver() == pReceiver && startSendIter->second->slotMark() == Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<Slot>(slot)))
+                {
+                    return true;
+                }
+                startSendIter++;
+            }
+            return false;
+        }
+
     private:
         class TA_ConnectionObject
         {
         public:
             TA_ConnectionObject() = default;
             template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
-            TA_ConnectionObject(Sender *pSender, Signal signal, Receiver *pReceiver, Slot slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_senderFunc(signal), m_receiverFunc(slot), m_type(type)
+            TA_ConnectionObject(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<Slot>(slot))), m_type(type)
             {
                 using SlotParaTuple = typename FunctionTypeInfo<Slot>::ParaGroup::Tuple;
-                using Ret = typename FunctionTypeInfo<Slot>::Ret;
+                using Ret = typename FunctionTypeInfo<Slot>::RetType;
                 m_para = SlotParaTuple {};
                 decltype(auto) slotExp = [&,slot]()->void {
-                    decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
+                    decltype(auto) rObj {static_cast<std::decay_t<Receiver> *>(m_pReceiver)};
                     if constexpr(std::is_invocable_v<Slot>)
                         std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj), std::any_cast<SlotParaTuple &>(m_para))));
                 };
@@ -188,7 +281,6 @@ namespace CoreAsync
                     m_pActivity = new TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::forward<decltype(slotExp)>(slotExp), pReceiver->affinityThread());
                     m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                 }
-
             }
 
             TA_ConnectionObject(const TA_ConnectionObject &object) = delete;
@@ -214,8 +306,9 @@ namespace CoreAsync
             template <typename ...Args>
             void setPara(Args &&...args)
             {
+                using ArgsTypes = std::tuple<std::decay_t<Args>...>;
                 if constexpr(sizeof...(Args) != 0)
-                    m_para.emplace(std::move(std::make_tuple(std::forward<Args>(args)...)));
+                    m_para.emplace<ArgsTypes>(std::move(std::make_tuple(std::forward<Args>(args)...)));
             }
 
             void callSlot()
@@ -230,6 +323,10 @@ namespace CoreAsync
                     }
                     else
                     {
+                        if(m_type == TA_ConnectionType::Direct && pSender->affinityThread() != pReceiver->affinityThread())
+                        {
+                            m_pSlotProxy->moveToThread(pSender->affinityThread());
+                        }
                         auto fetcher = TA_ThreadHolder::get().postActivity(m_pSlotProxy);
                         m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                     }
@@ -239,13 +336,18 @@ namespace CoreAsync
             TA_MetaObject * sender() const {return m_pSender;}
             TA_MetaObject * receiver() const {return m_pReceiver;}
 
-            auto signal() const {return m_senderFunc;}
-            auto slot() const {return m_receiverFunc;}
+            auto signalMark() const {return m_senderFunc;}
+            auto slotMark() const {return m_receiverFunc;}
 
-            using FuncAddr = void *;
+            bool isSync() const
+            {
+                return m_pSender->sourceThread() == m_pReceiver->sourceThread() && (m_type == TA_ConnectionType::Auto || m_type == TA_ConnectionType::Direct);
+            }
+
+            using FuncMark = std::string_view;
         private:
             TA_MetaObject *m_pSender {nullptr}, *m_pReceiver {nullptr};
-            FuncAddr m_senderFunc {nullptr}, m_receiverFunc {nullptr};
+            FuncMark m_senderFunc {}, m_receiverFunc {};
             TA_ConnectionType m_type;
             std::any m_para;
             TA_SingleActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS> *m_pActivity {nullptr};
@@ -257,7 +359,7 @@ namespace CoreAsync
         {
             for(auto &&[signal, obj] : m_outputConnections)
             {
-                auto &&[start, end] = obj->receiver()->m_inputConnections.equal_range(obj->slot());
+                auto &&[start, end] = obj->receiver()->m_inputConnections.equal_range(obj->slotMark());
                 while(start != end)
                 {
                     if(start->second == obj)
@@ -274,7 +376,7 @@ namespace CoreAsync
 
             for(auto &&[slot, obj] : m_inputConnections)
             {
-                auto &&[start, end] = obj->sender()->m_outputConnections.equal_range(obj->signal());
+                auto &&[start, end] = obj->sender()->m_outputConnections.equal_range(obj->signalMark());
                 while(start != end)
                 {
                     if(start->second == obj)
@@ -294,8 +396,8 @@ namespace CoreAsync
         const std::thread::id m_sourceThread;
         std::atomic_size_t m_affinityThreadIdx;
 
-        std::unordered_multimap<TA_ConnectionObject::FuncAddr, TA_ConnectionObject *> m_outputConnections {};
-        std::unordered_multimap<TA_ConnectionObject::FuncAddr, TA_ConnectionObject *> m_inputConnections {};
+        std::unordered_multimap<TA_ConnectionObject::FuncMark, TA_ConnectionObject *> m_outputConnections {};
+        std::unordered_multimap<TA_ConnectionObject::FuncMark, TA_ConnectionObject *> m_inputConnections {};
 
     };
 }

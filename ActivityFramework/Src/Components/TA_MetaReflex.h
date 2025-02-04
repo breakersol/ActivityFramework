@@ -580,7 +580,7 @@ private:
     {
         if constexpr(std::is_same_v<decltype(std::get<IDX0>(aggregate()).value()),VALUE>)
         {
-            if(v == std::get<IDX0>(aggregate()).value())
+            if constexpr(v == std::get<IDX0>(aggregate()).value())
                 return true;
         }
         return containsField(std::forward<VALUE>(v), std::index_sequence<IDXS...> {});
