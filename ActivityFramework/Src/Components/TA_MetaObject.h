@@ -53,7 +53,7 @@ namespace CoreAsync
 
         }
 
-        ~TA_MetaObject()
+        virtual ~TA_MetaObject()
         {
             destroyConnections();
         }
@@ -273,7 +273,7 @@ namespace CoreAsync
                 using Ret = typename FunctionTypeInfo<Slot>::RetType;
                 m_para = SlotParaTuple {};
                 decltype(auto) slotExp = [&,slot]()->void {
-                    decltype(auto) rObj {static_cast<std::decay_t<Receiver> *>(m_pReceiver)};
+                    decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
                     if constexpr(std::is_invocable_v<Slot>)
                         std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj), std::any_cast<SlotParaTuple &>(m_para))));
                 };
