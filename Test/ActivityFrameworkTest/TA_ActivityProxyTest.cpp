@@ -18,6 +18,7 @@
 #include "Components/TA_ActivityProxy.h"
 #include "Components/TA_MetaActivity.h"
 #include "Components/TA_ThreadPool.h"
+#include "ITA_ActivityCreator.h"
 
 TA_ActivityProxyTest::TA_ActivityProxyTest()
 {
@@ -55,4 +56,13 @@ TEST_F(TA_ActivityProxyTest, SingleActivityTest)
     CoreAsync::TA_ActivityProxy *pProxy = new CoreAsync::TA_ActivityProxy(pActivity);
     auto fetcher = CoreAsync::TA_ThreadHolder::get().postActivity(pProxy);
     EXPECT_EQ(fetcher().get<int>(), 1);
+}
+
+TEST_F(TA_ActivityProxyTest, LambdaActivityTest)
+{
+    std::function<int()> func = [&]()->int {return m_pTest->sub(5, 5); };
+    auto activity = CoreAsync::ITA_ActivityCreator::create(func);
+    CoreAsync::TA_ActivityProxy *pProxy = new CoreAsync::TA_ActivityProxy(activity);
+    auto fetcher = CoreAsync::TA_ThreadHolder::get().postActivity(pProxy);
+    EXPECT_EQ(fetcher().get<int>(), 0);
 }

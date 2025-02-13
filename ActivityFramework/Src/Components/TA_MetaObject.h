@@ -274,11 +274,11 @@ namespace CoreAsync
                 m_para = SlotParaTuple {};
                 decltype(auto) slotExp = [&,slot]()->void {
                     decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
-                    if constexpr(std::is_invocable_v<Slot>)
-                        std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj), std::any_cast<SlotParaTuple &>(m_para))));
+                    if constexpr(IsInstanceMethod<Slot>::value)
+                        std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj), std::any_cast<SlotParaTuple>(m_para))));
                 };
                 {
-                    m_pActivity = new TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::forward<decltype(slotExp)>(slotExp), pReceiver->affinityThread());
+                    m_pActivity = new TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::move(slotExp), pReceiver->affinityThread());
                     m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                 }
             }
