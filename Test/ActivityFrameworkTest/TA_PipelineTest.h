@@ -20,6 +20,15 @@
 #include "gtest/gtest.h"
 #include "MetaTest.h"
 
+namespace CoreAsync
+{
+    class TA_AutoChainPipeline;
+    class TA_ManualChainPipeline;
+    class TA_ManualKeyActivityChainPipeline;
+    class TA_ManualStepsChainPipeline;
+    class TA_ConcurrentPipeline;
+}
+
 class TA_PipelineTest : public :: testing :: Test
 {
 public:
@@ -30,6 +39,11 @@ public:
     void TearDown() override;
 
     MetaTest *m_pTest;
+    CoreAsync::TA_AutoChainPipeline *m_pAutoChainPipeline {nullptr};
+    CoreAsync::TA_ManualChainPipeline *m_pManualChainPipeline {nullptr};
+    CoreAsync::TA_ManualKeyActivityChainPipeline *m_pManualKeyActivityChainPipeline {nullptr};
+    CoreAsync::TA_ManualStepsChainPipeline *m_pManualStepsChainPipeline {nullptr};
+    CoreAsync::TA_ConcurrentPipeline *m_pConcurrentPipeline {nullptr};
 };
 
 #endif // TA_PIPELINETEST_H

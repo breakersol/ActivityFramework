@@ -42,6 +42,7 @@ namespace CoreAsync {
                 TA_Connection::active(this, &TA_ConcurrentPipeline::activityCompleted, idx, std::forward<TA_DefaultVariant>(m_resultList[idx]));
                 idx++;
             }
+            m_pActivityList.clear();
             setState(State::Ready);
         }  
     }

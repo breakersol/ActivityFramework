@@ -36,7 +36,7 @@ namespace CoreAsync {
         virtual void clear() override;
         virtual void reset() override;
 
-        virtual bool waitingComplete() override final;
+        virtual bool ACTIVITY_FRAMEWORK_EXPORT waitingComplete() override final;
 
         void setStartIndex(unsigned int index) override;
 
