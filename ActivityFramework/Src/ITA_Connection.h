@@ -27,19 +27,19 @@ namespace CoreAsync
     {
     public:
         template <ConnectionType ct = TA_ConnectionType::Auto, class Sender, typename SenderFunc, typename Receiver, typename ReceiverFunc>
-        static constexpr bool connect(Sender *&pSender, SenderFunc &&sFunc, Receiver *&pReceiver, ReceiverFunc &&rFunc)
+        static constexpr bool connect(Sender *pSender, SenderFunc &&sFunc, Receiver *pReceiver, ReceiverFunc &&rFunc)
         {
             return TA_Connection::connect<ct>(pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc));
         }
 
         template <class Sender, typename SenderFunc, class Receiver, typename ReceiverFunc>
-        static constexpr bool disconnect(Sender *&pSender, SenderFunc &&sFunc, Receiver *&pReceiver, ReceiverFunc &&rFunc)
+        static constexpr bool disconnect(Sender *pSender, SenderFunc &&sFunc, Receiver *pReceiver, ReceiverFunc &&rFunc)
         {
             return TA_Connection::disconnect(pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc));
         }
 
         template <class Sender, typename SenderFunc, typename ...FuncPara>
-        static constexpr bool active(Sender *&pSender, SenderFunc &&sFunc, FuncPara &&...para)
+        static constexpr bool active(Sender *pSender, SenderFunc &&sFunc, FuncPara &&...para)
         {
             return TA_Connection::active(pSender, std::forward<SenderFunc>(sFunc), std::forward<FuncPara>(para)...);
         }
