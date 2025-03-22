@@ -65,6 +65,7 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_MetaActivity.h
     Src/Components/TA_ActivityComponments.h
     Src/Components/TA_ActivityProxy.h
+    Src/Components/TA_Coroutine.h
 
 )
 
