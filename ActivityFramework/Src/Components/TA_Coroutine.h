@@ -23,7 +23,7 @@ namespace CoreAsync
     template <typename T, CorotuineBehavior = Lazy>
     struct TA_CoroutineTask
     {
-        using handle_type = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineTask, T>::promise_type>;
+        using HandleType = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineTask, T>::promise_type>;
 
         struct promise_type
         {
@@ -49,9 +49,9 @@ namespace CoreAsync
             }
         };
 
-        handle_type m_coroutineHandle;
+        HandleType m_coroutineHandle;
 
-        explicit TA_CoroutineTask(handle_type handle) : m_coroutineHandle(handle) {}
+        explicit TA_CoroutineTask(HandleType handle) : m_coroutineHandle(handle) {}
 
         TA_CoroutineTask(const TA_CoroutineTask &) = delete;
 
@@ -62,7 +62,7 @@ namespace CoreAsync
             task.m_coroutineHandle = nullptr;
         }
 
-        TA_CoroutineTask &operator = (TA_CoroutineTask &&task) noexcept
+        TA_CoroutineTask & operator = (TA_CoroutineTask &&task) noexcept
         {
             if(this != &task)
             {
@@ -102,7 +102,7 @@ namespace CoreAsync
     template <typename T>
     struct TA_CoroutineTask<T, Eager>
     {
-        using handle_type = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineTask, T>::promise_type>;
+        using HandleType = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineTask, T>::promise_type>;
 
         struct promise_type
         {
@@ -128,9 +128,9 @@ namespace CoreAsync
             }
         };
 
-        handle_type m_coroutineHandle;
+        HandleType m_coroutineHandle;
 
-        explicit TA_CoroutineTask(handle_type handle) : m_coroutineHandle(handle) {}
+        explicit TA_CoroutineTask(HandleType handle) : m_coroutineHandle(handle) {}
 
         TA_CoroutineTask(const TA_CoroutineTask &) = delete;
 
@@ -141,7 +141,7 @@ namespace CoreAsync
             task.m_coroutineHandle = nullptr;
         }
 
-        TA_CoroutineTask &operator = (TA_CoroutineTask &&task) noexcept
+        TA_CoroutineTask & operator = (TA_CoroutineTask &&task) noexcept
         {
             if(this != &task)
             {
@@ -175,6 +175,172 @@ namespace CoreAsync
                 std::rethrow_exception(m_coroutineHandle.promise().m_exception);
             }
             return std::move(*m_coroutineHandle.promise().m_result);
+        }
+    };
+
+    template <typename T, CorotuineBehavior = Lazy>
+    struct TA_CoroutineGenerator
+    {
+        using HandleType = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineGenerator, T>::promise_type>;
+
+        struct promise_type
+        {
+            T m_currentValue {};
+            std::exception_ptr m_exception {};
+
+            TA_CoroutineGenerator get_return_object()
+            {
+                return TA_CoroutineGenerator {std::coroutine_handle<promise_type>::from_promise(*this)};
+            }
+
+            std::suspend_always initial_suspend() noexcept {return {};}
+            std::suspend_always final_suspend() noexcept {return {};}
+
+            std::suspend_always yield_value(const T &value)
+            {
+                m_currentValue = value;
+                return {};
+            }
+
+            void return_void() {};
+
+            void unhanded_exception()
+            {
+                m_exception = std::current_exception();
+            }
+        };
+
+        HandleType m_coroutineHandle;
+
+        explicit TA_CoroutineGenerator(HandleType handle) : m_coroutineHandle(handle) {}
+
+        TA_CoroutineGenerator(const TA_CoroutineGenerator &) = delete;
+
+        TA_CoroutineGenerator & operator = (const TA_CoroutineGenerator &) = delete;
+
+        TA_CoroutineGenerator(TA_CoroutineGenerator &&generator) noexcept : m_coroutineHandle(std::move(generator.m_coroutineHandle))
+        {
+            generator.m_coroutineHandle = nullptr;
+        }
+
+        TA_CoroutineGenerator & operator = (TA_CoroutineGenerator &&generator) noexcept
+        {
+            if(this != &generator)
+            {
+                m_coroutineHandle = std::move(generator.m_coroutineHandle);
+                generator.m_coroutineHandle = nullptr;
+            }
+            return *this;
+        }
+
+        ~TA_CoroutineGenerator()
+        {
+            if(m_coroutineHandle)
+            {
+                m_coroutineHandle.destroy();
+            }
+        }
+
+        bool next()
+        {
+            m_coroutineHandle.resume();
+            if(m_coroutineHandle.done())
+            {
+                if(m_coroutineHandle.promise().m_exception)
+                {
+                    std::rethrow_exception(m_coroutineHandle.promise().m_exception);
+                }
+                return false;
+            }
+            return true;
+        }
+
+        T value()
+        {
+            return std::move(m_coroutineHandle.promise().m_currentValue);
+        }
+    };
+
+    template <typename T>
+    struct TA_CoroutineGenerator<T, Eager>
+    {
+        using HandleType = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineGenerator, T>::promise_type>;
+
+        struct promise_type
+        {
+            T m_currentValue {};
+            std::exception_ptr m_exception {};
+
+            TA_CoroutineGenerator get_return_object()
+            {
+                return TA_CoroutineGenerator {std::coroutine_handle<promise_type>::from_promise(*this)};
+            }
+
+            std::suspend_never initial_suspend() noexcept {return {};}
+            std::suspend_always final_suspend() noexcept {return {};}
+
+            std::suspend_always yield_value(const T &value)
+            {
+                m_currentValue = value;
+                return {};
+            }
+
+            void return_void() {};
+
+            void unhanded_exception()
+            {
+                m_exception = std::current_exception();
+            }
+        };
+
+        HandleType m_coroutineHandle;
+
+        explicit TA_CoroutineGenerator(HandleType handle) : m_coroutineHandle(handle) {}
+
+        TA_CoroutineGenerator(const TA_CoroutineGenerator &) = delete;
+
+        TA_CoroutineGenerator & operator = (const TA_CoroutineGenerator &) = delete;
+
+        TA_CoroutineGenerator(TA_CoroutineGenerator &&generator) noexcept : m_coroutineHandle(std::move(generator.m_coroutineHandle))
+        {
+            generator.m_coroutineHandle = nullptr;
+        }
+
+        TA_CoroutineGenerator & operator = (TA_CoroutineGenerator &&generator) noexcept
+        {
+            if(this != &generator)
+            {
+                m_coroutineHandle = std::move(generator.m_coroutineHandle);
+                generator.m_coroutineHandle = nullptr;
+            }
+            return *this;
+        }
+
+        ~TA_CoroutineGenerator()
+        {
+            if(m_coroutineHandle)
+            {
+                m_coroutineHandle.destroy();
+            }
+        }
+
+        bool next()
+        {
+            m_coroutineHandle.resume();
+            if(m_coroutineHandle.done())
+            {
+                if(m_coroutineHandle.promise().m_exception)
+                {
+                    std::rethrow_exception(m_coroutineHandle.promise().m_exception);
+                }
+                return false;
+            }
+            return true;
+        }
+
+        T value()
+        {
+            return std::move(m_coroutineHandle.promise().m_currentValue);
         }
     };
 }
