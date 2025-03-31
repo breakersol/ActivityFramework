@@ -47,6 +47,7 @@ namespace CoreAsync
 
     class TA_MetaObject
     {
+        class TA_ConnectionObject;
     public:
         TA_MetaObject() : m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
         {
@@ -142,6 +143,33 @@ namespace CoreAsync
             return true;
         }
 
+        template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
+        static constexpr TA_ConnectionObject * registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type)
+        {
+            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value)
+            {
+                return nullptr;
+            }
+            if(!pSender)
+            {
+                return nullptr;
+            }
+            TA_ConnectionObject::FuncMark signalMark {Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))};
+            TA_ConnectionObject::FuncMark slotMark {typeid(LambdaExp).name()};
+            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+            while(startSendIter != endSendIter)
+            {
+                if(startSendIter->second->receiver() == pSender && startSendIter->second->slotMark() == slotMark)
+                {
+                    return nullptr;
+                }
+                startSendIter++;
+            }
+            auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type);
+            pSender->m_outputConnections.emplace(signalMark, conn);
+            return conn;
+        }
+
         template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
         static constexpr bool unregisterConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot)
         {
@@ -197,6 +225,33 @@ namespace CoreAsync
                 delete pConnecton;
                 pConnecton = nullptr;
             }
+            return true;
+        }
+
+        static constexpr bool unregisterConnection(TA_ConnectionObject *pConnection)
+        {
+            if(!pConnection)
+            {
+                return false;
+            }
+            auto &&pSender = pConnection->sender();
+            auto &&pReceiver = pConnection->receiver();
+            auto &&signalMark = pConnection->signalMark();
+            auto &&slotMark = pConnection->slotMark();
+            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+            if(startSendIter == endSendIter)
+                return false;
+            while(startSendIter != endSendIter)
+            {
+                if(startSendIter->second == pConnection)
+                {
+                    pSender->m_outputConnections.erase(startSendIter);
+                    break;
+                }
+                startSendIter++;
+            }
+            delete pConnection;
+            pConnection = nullptr;
             return true;
         }
 
@@ -283,6 +338,21 @@ namespace CoreAsync
                 }
             }
 
+            template <EnableConnectObjectType Sender, typename Signal, typename LambdaExp>
+            TA_ConnectionObject(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pSender), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(typeid(LambdaExp).name()), m_type(type)
+            {
+                using SlotParaTuple = typename LambdaExp::ParaGroup::Tuple;
+                using Ret = typename LambdaExp::RetType;
+                m_para = SlotParaTuple {};
+                decltype(auto) slotExp = [&,exp]()->void {
+                    std::apply(exp, std::any_cast<SlotParaTuple>(m_para));
+                };
+                {
+                    m_pActivity = new TA_SingleActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::move(slotExp), pSender->affinityThread());
+                    m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
+                }
+            }
+
             TA_ConnectionObject(const TA_ConnectionObject &object) = delete;
             TA_ConnectionObject(TA_ConnectionObject &&object) = delete;
 
@@ -336,15 +406,16 @@ namespace CoreAsync
             TA_MetaObject * sender() const {return m_pSender;}
             TA_MetaObject * receiver() const {return m_pReceiver;}
 
-            auto signalMark() const {return m_senderFunc;}
-            auto slotMark() const {return m_receiverFunc;}
+            using FuncMark = std::string_view;
+
+            const FuncMark & signalMark() const {return m_senderFunc;}
+            const FuncMark & slotMark() const {return m_receiverFunc;}
 
             bool isSync() const
             {
                 return m_pSender->sourceThread() == m_pReceiver->sourceThread() && (m_type == TA_ConnectionType::Auto || m_type == TA_ConnectionType::Direct);
             }
 
-            using FuncMark = std::string_view;
         private:
             TA_MetaObject *m_pSender {nullptr}, *m_pReceiver {nullptr};
             FuncMark m_senderFunc {}, m_receiverFunc {};

@@ -5,6 +5,8 @@
 #include <optional>
 #include <exception>
 
+#include "TA_MetaObject.h"
+
 namespace CoreAsync
 {
     enum CorotuineBehavior
@@ -13,12 +15,41 @@ namespace CoreAsync
         Eager
     };
 
-    struct TA_BaseAwaitable
+    struct TA_BaseAwaitable : public TA_MetaObject
     {
         virtual bool await_ready() const noexcept = 0;
         virtual void await_suspend(std::coroutine_handle<>) const noexcept = 0;
         virtual void await_resume() const noexcept = 0;
     };
+
+    DEFINE_TYPE_INFO(TA_BaseAwaitable)
+    {
+        AUTO_META_FIELDS(
+            REGISTER_FIELD(await_ready),
+            REGISTER_FIELD(await_suspend),
+            REGISTER_FIELD(await_resume)
+        )
+    };
+
+    struct TA_SignalAwaitable : public TA_BaseAwaitable
+    {
+        virtual bool await_ready() const noexcept override
+        {
+            return true;
+        }
+
+        virtual void await_suspend(std::coroutine_handle<> handle) const noexcept override
+        {
+
+        }
+
+        virtual void await_resume() const noexcept override
+        {
+
+        }
+    };
+
+    DEFINE_TYPE_INFO(TA_SignalAwaitable, TA_BaseAwaitable) {};
 
     template <typename T, CorotuineBehavior = Lazy>
     struct TA_CoroutineTask
@@ -36,7 +67,7 @@ namespace CoreAsync
             }
 
             std::suspend_always initial_suspend() noexcept {return {};}
-            std::suspend_always final_suspend() noexcept {return {};}
+            ::std::suspend_always final_suspend() noexcept {return {};}
 
             void return_value(const T &value)
             {

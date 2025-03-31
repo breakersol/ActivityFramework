@@ -292,6 +292,31 @@ concept StandLayoutType = requires(T t)
     {t}->IsStandLayout;
 };
 
+template <typename T>
+concept LambdaExpType = requires(T t)
+{
+    {t} -> std::invocable;
+    {T::operator()};
+};
+
+template <LambdaExpType T>
+struct LambdaExpTraits
+{
+
+};
+
+template <typename ClassType, typename Ret, typename ...Args>
+struct LambdaExpTraits<Ret(ClassType::*)(Args...)>
+{
+    static constexpr std::size_t argSize {sizeof...(Args)};
+    using ReturnType = Ret;
+    using Class = ClassType;
+    using ArgsType = TA_MetaTypelist<Args...>;
+
+    template <std::size_t Idx>
+    using ArgType = ArgsType::template MetaTypeAt<Idx>;
+};
+
 }
 
 #endif // TA_TYPEFILTER_H
