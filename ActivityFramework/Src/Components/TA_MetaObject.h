@@ -49,6 +49,30 @@ namespace CoreAsync
     {
         class TA_ConnectionObject;
     public:
+        class TA_ConnectionObjectHolder
+        {
+        public:
+            TA_ConnectionObjectHolder() = default;
+            TA_ConnectionObjectHolder(TA_ConnectionObject *pConnection) : m_pConnection(pConnection)
+            {
+
+            }
+
+            ~TA_ConnectionObjectHolder()
+            {
+                m_pConnection = nullptr;
+            }
+
+            decltype(auto) get() const
+            {
+                return m_pConnection;
+            }
+
+        private:
+            TA_ConnectionObject *m_pConnection {nullptr};
+
+        };
+
         TA_MetaObject() : m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread())
         {
 
@@ -144,7 +168,7 @@ namespace CoreAsync
         }
 
         template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
-        static constexpr TA_ConnectionObject * registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type)
+        static constexpr TA_ConnectionObjectHolder registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type)
         {
             if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value)
             {
@@ -167,7 +191,7 @@ namespace CoreAsync
             }
             auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type);
             pSender->m_outputConnections.emplace(signalMark, conn);
-            return conn;
+            return {conn};
         }
 
         template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -228,8 +252,9 @@ namespace CoreAsync
             return true;
         }
 
-        static constexpr bool unregisterConnection(TA_ConnectionObject *pConnection)
+        static bool unregisterConnection(const TA_ConnectionObjectHolder &holder)
         {
+            auto &&pConnection = holder.get();
             if(!pConnection)
             {
                 return false;

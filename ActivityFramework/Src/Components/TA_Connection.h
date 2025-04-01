@@ -30,11 +30,22 @@ namespace CoreAsync {
             return TA_MetaObject::registerConnection(pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc), type);
         }
 
+        template <TA_ConnectionType type = TA_ConnectionType::Auto, EnableConnectObjectType Sender, typename SenderFunc, LambdaExpType LambdaExp>
+        static constexpr auto connect(Sender *pSender, SenderFunc &&sFunc, LambdaExp &&lExp)
+        {
+            return TA_MetaObject::registerConnection(pSender, std::forward<SenderFunc>(sFunc), std::forward<LambdaExp>(lExp), type);
+        }
+
         template<EnableConnectObjectType Sender, typename SenderFunc, EnableConnectObjectType Receiver, typename ReceiverFunc>
         static constexpr bool disconnect(Sender *pSender, SenderFunc &&sFunc, Receiver *pReceiver, ReceiverFunc &&rFunc)
         {
             return TA_MetaObject::unregisterConnection(pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc));
         }
+
+        static bool disconnect(const TA_MetaObject::TA_ConnectionObjectHolder &pConnection)
+        {
+            return TA_MetaObject::unregisterConnection(pConnection);
+        };
 
         template <EnableConnectObjectType Sender, typename SenderFunc, typename ...FuncPara>
         static constexpr bool active(Sender *pSender, SenderFunc &&sFunc, FuncPara &&...para)
