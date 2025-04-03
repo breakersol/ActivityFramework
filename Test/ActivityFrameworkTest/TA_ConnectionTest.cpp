@@ -82,4 +82,5 @@ TEST_F(TA_ConnectionTest, lambdaExpTest)
     auto conn = CoreAsync::ITA_Connection::connect(pTempTest, &MetaTest::startTest, [c](int a, int b){std::printf("The numbers are: %d, %d, %d\n.",a, b, c);});
     EXPECT_TRUE(conn.valid());
     EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest,&MetaTest::startTest, 8, 8));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::disconnect(conn));
 }
