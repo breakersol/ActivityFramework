@@ -46,7 +46,7 @@ namespace CoreAsync
                 if constexpr(std::is_member_function_pointer_v<FuncType>)
                 {
                     auto pObj = dynamic_cast<typename FunctionTypeInfo<FuncType>::ParentClass *>(pReceiver);
-                    return wrapper(pObj, std::forward<std::decay_t<decltype(value)>>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::paraSize> {}, args);
+                    return wrapper(pObj, std::forward<std::decay_t<decltype(value)>>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::argSize> {}, args);
                 }
                 else
                 {
@@ -71,15 +71,15 @@ namespace CoreAsync
                     auto pObj = dynamic_cast<typename FunctionTypeInfo<FuncType>::ParentClass *>(pReceiver);
                     if constexpr(std::is_same_v<void, ReturnType>)
                     {
-                        if constexpr(FunctionTypeInfo<FuncType>::paraSize != 0)
-                            invoke(pObj, std::forward<FuncType>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::paraSize> {}, args);
+                        if constexpr(FunctionTypeInfo<FuncType>::argSize != 0)
+                            invoke(pObj, std::forward<FuncType>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::argSize> {}, args);
                         else
                             invoke(pObj, std::forward<FuncType>(value));
                     }
                     else
                     {
-                        if constexpr(FunctionTypeInfo<FuncType>::paraSize != 0)
-                            invoke(pObj, std::forward<FuncType>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::paraSize> {}, args);
+                        if constexpr(FunctionTypeInfo<FuncType>::argSize != 0)
+                            invoke(pObj, std::forward<FuncType>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::argSize> {}, args);
                         else
                             invoke(pObj, std::forward<FuncType>(value));
                     }
@@ -89,19 +89,19 @@ namespace CoreAsync
         }
 
     private:
-        template <typename Ret, typename RClass, typename ...PARA, typename std::size_t ...IDXS>
-        constexpr auto wrapper(RClass *pReceiver, Ret(RClass::*&&rFunc)(PARA...), std::index_sequence<IDXS...>, void **args)
+        template <typename Ret, typename RClass, typename ...Args, typename std::size_t ...IDXS>
+        constexpr auto wrapper(RClass *pReceiver, Ret(RClass::*&&rFunc)(Args...), std::index_sequence<IDXS...>, void **args)
         {
             auto funcWrapper = [=]()->Ret{
                 if constexpr(std::is_same_v<void, Ret>)
                 {
-                    (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<PARA> *>(args[IDXS])...);
-                    freeParas<sizeof...(PARA)>(args, TA_MetaTypelist<PARA...> {});
+                    (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<Args> *>(args[IDXS])...);
+                    freeParas<sizeof...(Args)>(args, TA_MetaTypelist<Args...> {});
                 }
                 else
                 {
-                    auto res = (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<PARA> *>(args[IDXS])...);
-                    freeParas<sizeof...(PARA)>(args, TA_MetaTypelist<PARA...> {});
+                    auto res = (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<Args> *>(args[IDXS])...);
+                    freeParas<sizeof...(Args)>(args, TA_MetaTypelist<Args...> {});
                     return res;
                 }
 
@@ -109,19 +109,19 @@ namespace CoreAsync
             return new TA_ActivityProxy{new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread())};
         }
 
-        template <typename Ret, typename RClass, typename ...PARA, typename std::size_t ...IDXS>
-        constexpr auto wrapper(RClass *pReceiver, Ret(RClass::*&&rFunc)(PARA...) const, std::index_sequence<IDXS...>, void **args)
+        template <typename Ret, typename RClass, typename ...Args, typename std::size_t ...IDXS>
+        constexpr auto wrapper(RClass *pReceiver, Ret(RClass::*&&rFunc)(Args...) const, std::index_sequence<IDXS...>, void **args)
         {
             auto funcWrapper = [=]()->Ret{
                 if constexpr(std::is_same_v<void, Ret>)
                 {
-                    (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<PARA> *>(args[IDXS])...);
-                    freeParas<sizeof...(PARA)>(args, TA_MetaTypelist<PARA...> {});
+                    (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<Args> *>(args[IDXS])...);
+                    freeParas<sizeof...(Args)>(args, TA_MetaTypelist<Args...> {});
                 }
                 else
                 {
-                    auto res = (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<PARA> *>(args[IDXS])...);
-                    freeParas<sizeof...(PARA)>(args, TA_MetaTypelist<PARA...> {});
+                    auto res = (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<Args> *>(args[IDXS])...);
+                    freeParas<sizeof...(Args)>(args, TA_MetaTypelist<Args...> {});
                     return res;
                 }
 
@@ -129,10 +129,10 @@ namespace CoreAsync
             return new TA_ActivityProxy {new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread())};
         }
 
-        template <typename Ret, typename RClass, typename ...PARA, typename std::size_t ...IDXS>
-        constexpr decltype(auto) invoke(RClass *pReceiver, Ret(RClass::*&&rFunc)(PARA...), std::index_sequence<IDXS...>, void **args)
+        template <typename Ret, typename RClass, typename ...Args, typename std::size_t ...IDXS>
+        constexpr decltype(auto) invoke(RClass *pReceiver, Ret(RClass::*&&rFunc)(Args...), std::index_sequence<IDXS...>, void **args)
         {
-            Ret res = (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<PARA> *>(args[IDXS])...);
+            Ret res = (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<Args> *>(args[IDXS])...);
             return res;
         }
 
@@ -143,10 +143,10 @@ namespace CoreAsync
             return res;
         }
 
-        template <typename RClass, typename ...PARA, typename std::size_t ...IDXS>
-        constexpr void invoke(RClass *pReceiver, void(RClass::*&&rFunc)(PARA...), std::index_sequence<IDXS...>, void **args)
+        template <typename RClass, typename ...Args, typename std::size_t ...IDXS>
+        constexpr void invoke(RClass *pReceiver, void(RClass::*&&rFunc)(Args...), std::index_sequence<IDXS...>, void **args)
         {
-            (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<PARA> *>(args[IDXS])...);
+            (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<Args> *>(args[IDXS])...);
         }
 
         template <typename RClass>
@@ -155,10 +155,10 @@ namespace CoreAsync
             (pReceiver->*rFunc)();
         }
 
-        template <typename Ret, typename RClass, typename ...PARA, typename std::size_t ...IDXS>
-        constexpr decltype(auto) invoke(RClass *pReceiver, Ret(RClass::*&&rFunc)(PARA...) const, std::index_sequence<IDXS...>, void **args)
+        template <typename Ret, typename RClass, typename ...Args, typename std::size_t ...IDXS>
+        constexpr decltype(auto) invoke(RClass *pReceiver, Ret(RClass::*&&rFunc)(Args...) const, std::index_sequence<IDXS...>, void **args)
         {
-            Ret res = (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<PARA> *>(args[IDXS])...);
+            Ret res = (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<Args> *>(args[IDXS])...);
             return res;
         }
 
@@ -169,10 +169,10 @@ namespace CoreAsync
             return res;
         }
 
-        template <typename RClass, typename ...PARA, typename std::size_t ...IDXS>
-        constexpr decltype(auto) invoke(RClass *pReceiver, void(RClass::*&&rFunc)(PARA...) const, std::index_sequence<IDXS...>, void **args)
+        template <typename RClass, typename ...Args, typename std::size_t ...IDXS>
+        constexpr decltype(auto) invoke(RClass *pReceiver, void(RClass::*&&rFunc)(Args...) const, std::index_sequence<IDXS...>, void **args)
         {
-            (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<PARA> *>(args[IDXS])...);
+            (pReceiver->*rFunc)(*reinterpret_cast<std::decay_t<Args> *>(args[IDXS])...);
         }
 
         template <typename RClass>

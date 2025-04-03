@@ -68,6 +68,11 @@ namespace CoreAsync
                 return m_pConnection;
             }
 
+            bool valid() const
+            {
+                return m_pConnection != nullptr;
+            }
+
         private:
             TA_ConnectionObject *m_pConnection {nullptr};
 
@@ -131,17 +136,17 @@ namespace CoreAsync
         template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
         static constexpr bool registerConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot, TA_ConnectionType type)
         {
-            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !Reflex::TA_MemberTypeTrait<Slot>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value)
+            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !Reflex::TA_MemberTypeTrait<Slot>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value || !IsReturnTypeEqual<void,Slot,std::is_same>::value)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::paraSize != FunctionTypeInfo<Slot>::paraSize)
+            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::paraSize != 0 && FunctionTypeInfo<Slot>::paraSize != 0)
+            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ParaGroup, typename FunctionTypeInfo<Slot>::ParaGroup>::value)
+                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -170,11 +175,15 @@ namespace CoreAsync
         template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
         static constexpr TA_ConnectionObjectHolder registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type)
         {
-            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value)
+            if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value || !std::is_same_v<typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType, void>)
             {
                 return nullptr;
             }
             if(!pSender)
+            {
+                return nullptr;
+            }
+            if constexpr(FunctionTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize)
             {
                 return nullptr;
             }
@@ -201,13 +210,13 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::paraSize != FunctionTypeInfo<Slot>::paraSize)
+            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::paraSize != 0 && FunctionTypeInfo<Slot>::paraSize != 0)
+            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ParaGroup, typename FunctionTypeInfo<Slot>::ParaGroup>::value)
+                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -314,13 +323,13 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::paraSize != FunctionTypeInfo<Slot>::paraSize)
+            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::paraSize != 0 && FunctionTypeInfo<Slot>::paraSize != 0)
+            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ParaGroup, typename FunctionTypeInfo<Slot>::ParaGroup>::value)
+                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -349,7 +358,7 @@ namespace CoreAsync
             template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
             TA_ConnectionObject(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<Slot>(slot))), m_type(type)
             {
-                using SlotParaTuple = typename FunctionTypeInfo<Slot>::ParaGroup::Tuple;
+                using SlotParaTuple = typename FunctionTypeInfo<Slot>::ArgGroup::Tuple;
                 using Ret = typename FunctionTypeInfo<Slot>::RetType;
                 m_para = SlotParaTuple {};
                 decltype(auto) slotExp = [&,slot]()->void {
@@ -363,11 +372,11 @@ namespace CoreAsync
                 }
             }
 
-            template <EnableConnectObjectType Sender, typename Signal, typename LambdaExp>
+            template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
             TA_ConnectionObject(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pSender), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(typeid(LambdaExp).name()), m_type(type)
             {
-                using SlotParaTuple = typename LambdaExp::ParaGroup::Tuple;
-                using Ret = typename LambdaExp::RetType;
+                using SlotParaTuple = typename LambdaExpTraits<std::decay_t<LambdaExp>>::ArgGroup::Tuple;
+                using Ret = typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType;
                 m_para = SlotParaTuple {};
                 decltype(auto) slotExp = [&,exp]()->void {
                     std::apply(exp, std::any_cast<SlotParaTuple>(m_para));

@@ -74,3 +74,12 @@ TEST_F(TA_ConnectionTest, asyncActiveTest)
     //CoreAsync::TA_ThreadHolder::get().setThreadDetached(CoreAsync::TA_ThreadHolder::get().topPriorityThread());
     EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest,&MetaTest::startTest, 6, 6));
 }
+
+TEST_F(TA_ConnectionTest, lambdaExpTest)
+{
+    MetaTest *pTempTest = new MetaTest();
+    int c = 9;
+    auto conn = CoreAsync::ITA_Connection::connect(pTempTest, &MetaTest::startTest, [c](int a, int b){std::printf("The numbers are: %d, %d, %d\n.",a, b, c);});
+    EXPECT_TRUE(conn.valid());
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest,&MetaTest::startTest, 8, 8));
+}

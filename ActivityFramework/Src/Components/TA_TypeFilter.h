@@ -85,31 +85,31 @@ concept MethodType = IsInstanceMethod<T>::value || IsStaticMethod<T>::value;
 template <typename ST, typename FUNC, template <typename S, typename D> class FILTER>
 struct IsReturnTypeEqual;
 
-template <typename ST, typename R, typename ...PARA, template <typename S, typename D> class FILTER>
-struct IsReturnTypeEqual<ST,R(*)(PARA...),FILTER>
+template <typename ST, typename R, typename ...Args, template <typename S, typename D> class FILTER>
+struct IsReturnTypeEqual<ST,R(*)(Args...),FILTER>
 {
     using SelectType = ST;
-    using Func = R(*)(PARA...);
+    using Func = R(*)(Args...);
     using RetType = R;
 
     static constexpr bool value = FILTER<SelectType, RetType>::value;
 };
 
-template <typename ST, typename C, typename R ,typename ...PARA, template <typename S, typename D> class FILTER>
-struct IsReturnTypeEqual<ST,R(C::*)(PARA...),FILTER>
+template <typename ST, typename C, typename R ,typename ...Args, template <typename S, typename D> class FILTER>
+struct IsReturnTypeEqual<ST,R(C::*)(Args...),FILTER>
 {
     using SelectType = ST;
-    using Func = R(*)(PARA...);
+    using Func = R(*)(Args...);
     using RetType = R;
 
     static constexpr bool value = FILTER<SelectType, RetType>::value;
 };
 
-template <typename ST, typename C, typename R ,typename ...PARA, template <typename S, typename D> class FILTER>
-struct IsReturnTypeEqual<ST,R(C::*)(PARA...) const, FILTER>
+template <typename ST, typename C, typename R ,typename ...Args, template <typename S, typename D> class FILTER>
+struct IsReturnTypeEqual<ST,R(C::*)(Args...) const, FILTER>
 {
     using SelectType = ST;
-    using Func = R(*)(PARA...);
+    using Func = R(*)(Args...);
     using RetType = R;
 
     static constexpr bool value = FILTER<SelectType, RetType>::value;
@@ -118,14 +118,14 @@ struct IsReturnTypeEqual<ST,R(C::*)(PARA...) const, FILTER>
 template <typename MemberFunc>
 struct ParentObject;
 
-template <typename C, typename R ,typename ...PARA>
-struct ParentObject<R(C::*)(PARA...)>
+template <typename C, typename R ,typename ...Args>
+struct ParentObject<R(C::*)(Args...)>
 {
     using type = C;
 };
 
-template <typename C, typename R ,typename ...PARA>
-struct ParentObject<R(C::*)(PARA...) const>
+template <typename C, typename R ,typename ...Args>
+struct ParentObject<R(C::*)(Args...) const>
 {
     using type = C;
 };
@@ -133,59 +133,77 @@ struct ParentObject<R(C::*)(PARA...) const>
 template <typename Func>
 struct FunctionTypeInfo;
 
-template <typename C, typename R, typename ...PARA>
-struct FunctionTypeInfo<R(C::* &&)(PARA...)>
+template <typename C, typename R, typename ...Args>
+struct FunctionTypeInfo<R(C::* &&)(Args...)>
 {
     using RetType = R;
     using ParentClass = C;
-    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
-    static constexpr std::size_t paraSize = sizeof...(PARA);
+    using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
+    static constexpr std::size_t argSize = sizeof...(Args);
+
+    template <std::size_t Idx>
+    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
 };
 
-template <typename C, typename R, typename ...PARA>
-struct FunctionTypeInfo<R(C::*)(PARA...)>
+template <typename C, typename R, typename ...Args>
+struct FunctionTypeInfo<R(C::*)(Args...)>
 {
     using RetType = R;
     using ParentClass = C;
-    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
-    static constexpr std::size_t paraSize = sizeof...(PARA);
+    using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
+    static constexpr std::size_t argSize = sizeof...(Args);
     static constexpr bool isMemberFunction {true};
+
+    template <std::size_t Idx>
+    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
 };
 
-template <typename C, typename R, typename ...PARA>
-struct FunctionTypeInfo<R(C::* &&)(PARA...) const>
+template <typename C, typename R, typename ...Args>
+struct FunctionTypeInfo<R(C::* &&)(Args...) const>
 {
     using RetType = R;
     using ParentClass = C;
-    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
-    static constexpr std::size_t paraSize = sizeof...(PARA);
+    using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
+    static constexpr std::size_t argSize = sizeof...(Args);
+
+    template <std::size_t Idx>
+    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
 };
 
-template <typename C, typename R, typename ...PARA>
-struct FunctionTypeInfo<R(C::*)(PARA...) const>
+template <typename C, typename R, typename ...Args>
+struct FunctionTypeInfo<R(C::*)(Args...) const>
 {
     using RetType = R;
     using ParentClass = C;
-    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
-    static constexpr std::size_t paraSize = sizeof...(PARA);
+    using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
+    static constexpr std::size_t argSize = sizeof...(Args);
     static constexpr bool isMemberFunction {true};
+
+    template <std::size_t Idx>
+    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
 };
 
-template <typename R, typename ...PARA>
-struct FunctionTypeInfo<R(* &&)(PARA...)>
+template <typename R, typename ...Args>
+struct FunctionTypeInfo<R(* &&)(Args...)>
 {
     using RetType = R;
-    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
-    static constexpr std::size_t paraSize = sizeof...(PARA);
+    using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
+    static constexpr std::size_t argSize = sizeof...(Args);
+
+    template <std::size_t Idx>
+    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
 };
 
-template <typename R, typename ...PARA>
-struct FunctionTypeInfo<R(*)(PARA...)>
+template <typename R, typename ...Args>
+struct FunctionTypeInfo<R(*)(Args...)>
 {
     using RetType = R;
-    using ParaGroup = TA_MetaTypelist<std::decay_t<PARA>...>;
-    static constexpr std::size_t paraSize = sizeof...(PARA);
+    using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
+    static constexpr std::size_t argSize = sizeof...(Args);
     static constexpr bool isMemberFunction {false};
+
+    template <std::size_t Idx>
+    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
 };
 
 template <typename Var>
@@ -295,27 +313,11 @@ concept StandLayoutType = requires(T t)
 template <typename T>
 concept LambdaExpType = requires(T t)
 {
-    {t} -> std::invocable;
-    {T::operator()};
+    {&T::operator()};
 };
 
-template <LambdaExpType T>
-struct LambdaExpTraits
-{
-
-};
-
-template <typename ClassType, typename Ret, typename ...Args>
-struct LambdaExpTraits<Ret(ClassType::*)(Args...)>
-{
-    static constexpr std::size_t argSize {sizeof...(Args)};
-    using ReturnType = Ret;
-    using Class = ClassType;
-    using ArgsType = TA_MetaTypelist<Args...>;
-
-    template <std::size_t Idx>
-    using ArgType = ArgsType::template MetaTypeAt<Idx>;
-};
+template <typename T>
+struct LambdaExpTraits : FunctionTypeInfo<decltype(&T::operator())> {};
 
 }
 
