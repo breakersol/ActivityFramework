@@ -6,6 +6,7 @@
 #include <exception>
 
 #include "TA_MetaObject.h"
+#include "TA_Connection.h"
 
 namespace CoreAsync
 {
@@ -31,8 +32,15 @@ namespace CoreAsync
         )
     };
 
-    struct TA_SignalAwaitable : public TA_BaseAwaitable
+    template <EnableConnectObjectType Sender, typename ...Args>
+    class TA_SignalAwaitable : public TA_BaseAwaitable
     {
+    public:
+        TA_SignalAwaitable(Sender *pObject, void(std::decay_t<Sender>::*signal)(Args...))
+        {
+
+        }
+
         virtual bool await_ready() const noexcept override
         {
             return true;
@@ -40,16 +48,26 @@ namespace CoreAsync
 
         virtual void await_suspend(std::coroutine_handle<> handle) const noexcept override
         {
-
+            m_connectionHolder = TA_Connection::connect(m_pObject, m_signal, [handle](Args... args)
+            {
+                handle.resume();
+            });
         }
 
         virtual void await_resume() const noexcept override
         {
-
+            if(m_connectionHolder.valid())
+            {
+                TA_Connection::disconnect(m_connectionHolder);
+            }
         }
-    };
 
-    DEFINE_TYPE_INFO(TA_SignalAwaitable, TA_BaseAwaitable) {};
+    private:
+        TA_ConnectionObjectHolder m_connectionHolder {nullptr};
+        Sender *m_pObject {nullptr};
+        void (std::decay_t<Sender>::*m_signal)(Args...);
+
+    };
 
     template <typename T, CorotuineBehavior = Lazy>
     struct TA_CoroutineTask
