@@ -13,14 +13,15 @@ namespace CoreAsync
     enum CorotuineBehavior
     {
         Lazy,
-        Eager
+        Eager,
+        Signal
     };
 
     struct TA_BaseAwaitable : public TA_MetaObject
     {
-        virtual bool await_ready() const noexcept = 0;
-        virtual void await_suspend(std::coroutine_handle<>) const noexcept = 0;
-        virtual void await_resume() const noexcept = 0;
+        virtual constexpr bool await_ready() const noexcept = 0;
+        virtual constexpr void await_suspend(std::coroutine_handle<>) const noexcept = 0;
+        virtual constexpr void await_resume() const noexcept = 0;
     };
 
     DEFINE_TYPE_INFO(TA_BaseAwaitable)
@@ -41,25 +42,33 @@ namespace CoreAsync
 
         }
 
-        virtual bool await_ready() const noexcept override
-        {
-            return true;
-        }
-
-        virtual void await_suspend(std::coroutine_handle<> handle) const noexcept override
-        {
-            m_connectionHolder = TA_Connection::connect(m_pObject, m_signal, [handle](Args... args)
-            {
-                handle.resume();
-            });
-        }
-
-        virtual void await_resume() const noexcept override
+        ~TA_SignalAwaitable()
         {
             if(m_connectionHolder.valid())
             {
                 TA_Connection::disconnect(m_connectionHolder);
             }
+        }
+
+        virtual constexpr bool await_ready() const noexcept override
+        {
+            return true;
+        }
+
+        virtual constexpr void await_suspend(std::coroutine_handle<> handle) const noexcept override
+        {
+            if(!m_connectionHolder.valid())
+            {
+                m_connectionHolder = TA_Connection::connect(m_pObject, m_signal, [handle](Args... args)
+                                    {
+                                        handle.resume();
+                                    });
+            }
+        }
+
+        virtual constexpr void await_resume() const noexcept override
+        {
+
         }
 
     private:

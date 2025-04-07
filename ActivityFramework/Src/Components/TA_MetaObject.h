@@ -73,6 +73,11 @@ namespace CoreAsync
                 return m_pConnection != nullptr;
             }
 
+            void reset()
+            {
+                m_pConnection = nullptr;
+            }
+
         private:
             TA_ConnectionObject *m_pConnection {nullptr};
 
@@ -261,7 +266,7 @@ namespace CoreAsync
             return true;
         }
 
-        static bool unregisterConnection(const TA_ConnectionObjectHolder &holder)
+        static bool unregisterConnection(TA_ConnectionObjectHolder &holder)
         {
             auto &&pConnection = holder.get();
             if(!pConnection)
@@ -286,6 +291,7 @@ namespace CoreAsync
             }
             delete pConnection;
             pConnection = nullptr;
+            holder.reset();
             return true;
         }
 

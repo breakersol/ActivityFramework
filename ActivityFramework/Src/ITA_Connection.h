@@ -45,7 +45,7 @@ namespace CoreAsync
             return TA_Connection::disconnect(pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc));
         }
 
-        static bool disconnect(const ConnectionHolder &pConnection)
+        static bool disconnect(ConnectionHolder &pConnection)
         {
             return TA_Connection::disconnect(pConnection);
         };
