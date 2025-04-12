@@ -13,8 +13,7 @@ namespace CoreAsync
     enum CorotuineBehavior
     {
         Lazy,
-        Eager,
-        Signal
+        Eager
     };
 
     struct TA_BaseAwaitable : public TA_MetaObject
@@ -52,15 +51,14 @@ namespace CoreAsync
 
         virtual constexpr bool await_ready() const noexcept override
         {
-            return true;
+            return false;
         }
 
         virtual constexpr void await_suspend(std::coroutine_handle<> handle) const noexcept override
         {
             if(!m_connectionHolder.valid())
             {
-                m_connectionHolder = TA_Connection::connect(m_pObject, m_signal, [handle](Args... args)
-                                    {
+                m_connectionHolder = TA_Connection::connect(m_pObject, m_signal, [handle](Args... args) {
                                         handle.resume();
                                     });
             }
@@ -71,11 +69,24 @@ namespace CoreAsync
 
         }
 
-    private:
+    protected:
         TA_ConnectionObjectHolder m_connectionHolder {nullptr};
         Sender *m_pObject {nullptr};
         void (std::decay_t<Sender>::*m_signal)(Args...);
 
+    };
+
+    class TA_StandardResumeSender : public TA_MetaObject
+    {
+    TA_Signals:
+        void resume();
+    };
+
+    DEFINE_TYPE_INFO(TA_StandardResumeSender)
+    {
+        AUTO_META_FIELDS(
+            REGISTER_FIELD(resume)
+        )
     };
 
     template <typename T, CorotuineBehavior = Lazy>
