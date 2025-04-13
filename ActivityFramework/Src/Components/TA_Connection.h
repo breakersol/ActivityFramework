@@ -1,5 +1,5 @@
 /*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,9 @@ namespace CoreAsync {
         }
 
         template <TA_ConnectionType type = TA_ConnectionType::Auto, EnableConnectObjectType Sender, typename SenderFunc, LambdaExpType LambdaExp>
-        static constexpr auto connect(Sender *pSender, SenderFunc &&sFunc, LambdaExp &&lExp)
+        static constexpr auto connect(Sender *pSender, SenderFunc &&sFunc, LambdaExp &&lExp, bool autoDestroy = false)
         {
-            return TA_MetaObject::registerConnection(pSender, std::forward<SenderFunc>(sFunc), std::forward<LambdaExp>(lExp), type);
+            return TA_MetaObject::registerConnection(pSender, std::forward<SenderFunc>(sFunc), std::forward<LambdaExp>(lExp), type, autoDestroy);
         }
 
         template<EnableConnectObjectType Sender, typename SenderFunc, EnableConnectObjectType Receiver, typename ReceiverFunc>
@@ -42,7 +42,7 @@ namespace CoreAsync {
             return TA_MetaObject::unregisterConnection(pSender, std::forward<SenderFunc>(sFunc), pReceiver, std::forward<ReceiverFunc>(rFunc));
         }
 
-        static bool disconnect(TA_MetaObject::TA_ConnectionObjectHolder &pConnection)
+        static bool disconnect(const TA_MetaObject::TA_ConnectionObjectHolder &pConnection)
         {
             return TA_MetaObject::unregisterConnection(pConnection);
         };

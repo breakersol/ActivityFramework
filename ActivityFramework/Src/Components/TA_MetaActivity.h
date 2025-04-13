@@ -1,5 +1,5 @@
 /*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,17 +41,17 @@ namespace CoreAsync
             using Func = std::decay_t<decltype(exp)>;
             static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
             static_assert(!std::is_same_v<std::nullptr_t, Func>, "Cannot find the method from the class.");
-            static constexpr auto lambdaExp {[](Instance &ins, const RemainedParas &...paras)->FunctionTypeInfo<Func>::RetType {
+            static constexpr auto lambdaExp {[](Instance &ins, const RemainedParas &...paras)->MethodTypeInfo<Func>::RetType {
                 if constexpr(IsStaticMethod<Func>::value)
                 {
-                    if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
+                    if constexpr(std::is_same_v<typename MethodTypeInfo<Func>::RetType, void>)
                         (*Reflex::TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
                         return (*Reflex::TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                 }
                 else
                 {
-                    if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
+                    if constexpr(std::is_same_v<typename MethodTypeInfo<Func>::RetType, void>)
                         (ins.*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
                         return (ins.*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
@@ -67,17 +67,17 @@ namespace CoreAsync
             static_assert(!std::is_same_v<std::nullptr_t, std::decay_t<decltype(exp)>>, "Cannot find the method from the class.");
             using Func = std::decay_t<decltype(exp)>;
             static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
-            static constexpr auto lambdaExp {[](Instance *pIns, const RemainedParas &...paras)->FunctionTypeInfo<Func>::RetType {
+            static constexpr auto lambdaExp {[](Instance *pIns, const RemainedParas &...paras)->MethodTypeInfo<Func>::RetType {
                 if constexpr(IsStaticMethod<Func>::value)
                 {
-                    if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
+                    if constexpr(std::is_same_v<typename MethodTypeInfo<Func>::RetType, void>)
                         (*Reflex::TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
                         return (*Reflex::TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                 }
                 else
                 {
-                    if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
+                    if constexpr(std::is_same_v<typename MethodTypeInfo<Func>::RetType, void>)
                         (pIns->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
                         return (pIns->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
@@ -93,17 +93,17 @@ namespace CoreAsync
             using Func = std::decay_t<decltype(exp)>;
             static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
             static_assert(!std::is_same_v<std::nullptr_t, Func>, "Cannot find the method from the class.");
-            static constexpr auto lambdaExp {[](std::shared_ptr<Instance> &pIns, const RemainedParas &...paras)->FunctionTypeInfo<Func>::RetType {
+            static constexpr auto lambdaExp {[](std::shared_ptr<Instance> &pIns, const RemainedParas &...paras)->MethodTypeInfo<Func>::RetType {
                 if constexpr(IsStaticMethod<Func>::value)
                 {
-                    if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
+                    if constexpr(std::is_same_v<typename MethodTypeInfo<Func>::RetType, void>)
                         (*Reflex::TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
                         return (*Reflex::TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                 }
                 else
                 {
-                    if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
+                    if constexpr(std::is_same_v<typename MethodTypeInfo<Func>::RetType, void>)
                         (pIns.get()->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
                         return (pIns.get()->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
@@ -119,17 +119,17 @@ namespace CoreAsync
             using Func = std::decay_t<decltype(exp)>;
             static constexpr auto isStaticMethod {IsStaticMethod<Func>::value};
             static_assert(!std::is_same_v<std::nullptr_t, Func>, "Cannot find the method from the class.");
-            static constexpr auto lambdaExp {[](std::unique_ptr<Instance> &pIns, const RemainedParas &...paras)->FunctionTypeInfo<Func>::RetType {
+            static constexpr auto lambdaExp {[](std::unique_ptr<Instance> &pIns, const RemainedParas &...paras)->MethodTypeInfo<Func>::RetType {
                 if constexpr(IsStaticMethod<Func>::value)
                 {
-                    if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
+                    if constexpr(std::is_same_v<typename MethodTypeInfo<Func>::RetType, void>)
                         (*Reflex::TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
                         return (*Reflex::TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                 }
                 else
                 {
-                    if constexpr(std::is_same_v<typename FunctionTypeInfo<Func>::RetType, void>)
+                    if constexpr(std::is_same_v<typename MethodTypeInfo<Func>::RetType, void>)
                         (pIns.get()->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);
                     else
                         return (pIns.get()->*Reflex::template TA_TypeInfo<Instance>::findType(Method {}))(paras...);

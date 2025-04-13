@@ -14,23 +14,26 @@
  * limitations under the License.
  */
 
-#ifndef TA_ACTIVITYTEST_H
-#define TA_ACTIVITYTEST_H
+
+#ifndef TA_METAOBJECTTEST_H
+#define TA_METAOBJECTTEST_H
 
 #include "gtest/gtest.h"
-#include "MetaTest.h"
 
-class TA_ActivityTest : public :: testing :: Test
+class MetaTest;
+
+class TA_MetaObjectTest : public :: testing :: Test
 {
 public:
-    TA_ActivityTest();
-    ~TA_ActivityTest();
+    TA_MetaObjectTest();
+	~TA_MetaObjectTest() override;
 
-    void SetUp() override;
-    void TearDown() override;
+protected:
+	void SetUp() override;
+	void TearDown() override;
 
-    MetaTest *m_pTest;
-
+	std::shared_ptr<MetaTest> m_pMetaTest {std::make_shared<MetaTest>()};
+	std::string m_str{ "This is a test.\n" };
 };
 
-#endif // TA_ACTIVITYTEST_H
+#endif // TA_METAOBJECTTEST_H

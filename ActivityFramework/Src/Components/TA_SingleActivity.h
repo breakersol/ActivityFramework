@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 #define TA_SINGLEACTIVITY_H
 
 #include <functional>
-#include <mutex>
 
 #include "TA_TypeFilter.h"
 #include "TA_ActivityComponments.h"
@@ -71,14 +70,12 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->Ret{return (m_object.*m_funcPtr)(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->Ret{return (m_object.*m_funcPtr)(para...);});
         }
 
@@ -110,13 +107,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return m_funcActivity();
         }
 
     protected:
         std::function<Ret()> m_funcActivity;
-        std::mutex m_mutex;
 
         Fn &m_funcPtr;
         Ins &m_object;
@@ -153,14 +148,12 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->Ret{return (m_object->*m_funcPtr)(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->Ret{return (m_object->*m_funcPtr)(para...);});
         }
 
@@ -192,13 +185,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return m_funcActivity();
         }
 
     protected:
         std::function<Ret()> m_funcActivity;
-        std::mutex m_mutex;
 
         Fn &m_funcPtr;
         Ins *&m_object;
@@ -234,20 +225,17 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->void{(m_object.*m_funcPtr)(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->void{(m_object.*m_funcPtr)(para...);});
         }
 
         decltype(auto) operator()()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return run();
         }
 
@@ -274,13 +262,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
         }
 
     protected:
         std::function<void()> m_funcActivity;
-        std::mutex m_mutex;
 
         Fn &m_funcPtr;
         Ins &m_object;
@@ -316,14 +302,12 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->void{(m_object->*m_funcPtr)(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->void{(m_object->*m_funcPtr)(para...);});
         }
 
@@ -355,13 +339,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return m_funcActivity();
         }
 
     protected:
         std::function<void()> m_funcActivity;
-        std::mutex m_mutex;
 
         Fn &m_funcPtr;
         Ins *&m_object;
@@ -397,7 +379,6 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->Ret{return (m_object.get()->*m_funcPtr)(para...);});
         }
 
@@ -405,7 +386,6 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->Ret{return (m_object.get()->*m_funcPtr)(para...);});
         }
 
@@ -437,13 +417,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return m_funcActivity();
         }
 
     protected:
         std::function<Ret()> m_funcActivity;
-        std::mutex m_mutex;
 
         Fn &m_funcPtr;
         std::shared_ptr<Ins> &m_object;
@@ -479,14 +457,12 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->void{(m_object.get()->*m_funcPtr)(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->void{(m_object.get()->*m_funcPtr)(para...);});
         }
 
@@ -518,13 +494,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
         }
 
     protected:
         std::function<void()> m_funcActivity;
-        std::mutex m_mutex;
 
         Fn &m_funcPtr;
         std::shared_ptr<Ins> &m_object;
@@ -564,7 +538,6 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->Ret{return (m_pObject->*m_funcPtr)(para...);});
         }
 
@@ -572,7 +545,6 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->Ret{return (m_pObject->*m_funcPtr)(para...);});
         }
 
@@ -604,13 +576,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return m_funcActivity();
         }
 
     protected:
         std::function<Ret()> m_funcActivity;
-        std::mutex m_mutex;
 
         Fn &m_funcPtr;
         Ins *m_pObject;
@@ -650,7 +620,6 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->void{return (m_pObject->*m_funcPtr)(para...);});
         }
 
@@ -658,7 +627,6 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->void{return (m_pObject->*m_funcPtr)(para...);});
         }
 
@@ -690,13 +658,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {      
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
         }
 
     protected:
         std::function<void()> m_funcActivity;
-        std::mutex m_mutex;
 
         Fn &m_funcPtr;
         Ins *m_pObject;
@@ -732,14 +698,12 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,&para...]()->Ret{return (*m_funcPtr)(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
@@ -766,13 +730,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return m_funcActivity();
         }
 
     protected:
         std::function<Ret()> m_funcActivity;
-        std::mutex m_mutex;
 
         NonMemberFunctionPtr<Ret,FuncPara...> &m_funcPtr;
 
@@ -807,14 +769,12 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,&para...]()->void{(*m_funcPtr)(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([this,para...]()->void{(*m_funcPtr)(para...);});
         }
 
@@ -841,13 +801,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
         }
 
     protected:
         std::function<void()> m_funcActivity;
-        std::mutex m_mutex;
 
         NonMemberFunctionPtr<void,FuncPara...> &m_funcPtr;
 
@@ -882,14 +840,12 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->Ret{return m_funcPtr(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
@@ -916,13 +872,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return m_funcActivity();
         }
 
     protected:
         std::function<Ret()> m_funcActivity;
-        std::mutex m_mutex;
 
         LambdaType<Ret,FuncPara...> m_funcPtr;
 
@@ -957,14 +911,12 @@ namespace CoreAsync {
         template <typename ...NewPara>
         void setPara(NewPara &...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap([&]()->void{return m_funcPtr(para...);});
         }
 
         template <typename ...NewPara>
         void setPara(NewPara &&...para)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity.swap(std::bind(m_funcPtr,std::forward<FuncPara>(para)...));
         }
 
@@ -991,13 +943,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
         }
 
     protected:
         std::function<void()> m_funcActivity;
-        std::mutex m_mutex;
 
         std::function<void(FuncPara...)> m_funcPtr;
 
@@ -1047,13 +997,11 @@ namespace CoreAsync {
     protected:
         decltype(auto) run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             return m_funcActivity();
         }
 
     protected:
         std::function<Ret()> m_funcActivity;
-        std::mutex m_mutex;
 
         TA_ActivityAffinityThread m_affinityThread {};
         TA_ActivityId m_id {};
@@ -1101,13 +1049,11 @@ namespace CoreAsync {
     protected:
         void run()
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
             m_funcActivity();
         }
 
     protected:
         std::function<void()> m_funcActivity;
-        std::mutex m_mutex;
 
         TA_ActivityAffinityThread m_affinityThread {};
         TA_ActivityId m_id {};

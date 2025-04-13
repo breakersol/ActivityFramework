@@ -1,5 +1,5 @@
 /*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ namespace CoreAsync
 
         }
 
-        TA_ActivityAffinityThread(TA_ActivityAffinityThread &&another) : m_sourceThread(std::move(another.m_sourceThread)), m_affinityThread(std::move(another.affinityThread()))
+        TA_ActivityAffinityThread(TA_ActivityAffinityThread &&another) noexcept : m_sourceThread(another.m_sourceThread), m_affinityThread(std::move(another.affinityThread()))
         {
 
         }
@@ -50,7 +50,7 @@ namespace CoreAsync
             return *this;
         }
 
-        TA_ActivityAffinityThread & operator = (TA_ActivityAffinityThread &&another)
+        TA_ActivityAffinityThread & operator = (TA_ActivityAffinityThread &&another) noexcept
         {
             m_affinityThread.store(std::move(another.affinityThread()), std::memory_order_release);
             return *this;

@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,14 @@ struct TA_StringView
     {
         return str.data;
     }
+};
+
+template <typename T>
+concept MetaStringType = requires
+{
+    { T::raw() } -> std::same_as<const char *>;
+    { T::size() } -> std::same_as<std::size_t>;
+    { T::data() } -> std::same_as<std::basic_string_view<typename T::RawType>>;
 };
 
 }
