@@ -35,6 +35,7 @@ add_executable(ActivityFrameworkTest ActivityFrameworkTest/main.cpp
     ActivityFrameworkTest/TA_SerializationTest.cpp
     ActivityFrameworkTest/TA_ActivityProxyTest.h ActivityFrameworkTest/TA_ActivityProxyTest.cpp
     ActivityFrameworkTest/TA_VariantTest.h ActivityFrameworkTest/TA_VariantTest.cpp
+    ActivityFrameworkTest/TA_CoroutineTest.h ActivityFrameworkTest/TA_CoroutineTest.cpp
 )
 
 if(MSVC)

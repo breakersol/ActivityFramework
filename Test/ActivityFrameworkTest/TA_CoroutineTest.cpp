@@ -14,20 +14,14 @@
  * limitations under the License.
  */
 
-#include "TA_CommonTools.h"
+#include "TA_CoroutineTest.h"
 
-namespace  CoreAsync {
-
-std::vector<std::string> StringUtils::split(const std::string &source, char delimiter)
+TA_CoroutineTest::TA_CoroutineTest()
 {
-    std::vector<std::string> res;
-    std::string tr;
-    std::istringstream tokenStream(source);
-    while(std::getline(tokenStream, tr, delimiter))
-    {
-        res.push_back(tr);
-    }
-    return res;
+
 }
+
+TA_CoroutineTest::~TA_CoroutineTest()
+{
 
 }

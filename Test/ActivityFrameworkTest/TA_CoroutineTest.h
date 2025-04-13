@@ -14,20 +14,21 @@
  * limitations under the License.
  */
 
-#include "TA_CommonTools.h"
 
-namespace  CoreAsync {
+#ifndef TA_COROUTINETEST_H
+#define TA_COROUTINETEST_H
 
-std::vector<std::string> StringUtils::split(const std::string &source, char delimiter)
+#include "gtest/gtest.h"
+
+class TA_CoroutineTest : public ::testing::Test
 {
-    std::vector<std::string> res;
-    std::string tr;
-    std::istringstream tokenStream(source);
-    while(std::getline(tokenStream, tr, delimiter))
-    {
-        res.push_back(tr);
-    }
-    return res;
-}
+public:
+    TA_CoroutineTest();
+    virtual ~TA_CoroutineTest();
 
-}
+    void SetUp() override;
+    void TearDown() override;
+
+};
+
+#endif // TA_COROUTINETEST_H
