@@ -142,7 +142,7 @@ struct FunctionTypeInfo<R(C::* &&)(Args...)>
     static constexpr std::size_t argSize = sizeof...(Args);
 
     template <std::size_t Idx>
-    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
+    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
 template <typename C, typename R, typename ...Args>
@@ -155,7 +155,7 @@ struct FunctionTypeInfo<R(C::*)(Args...)>
     static constexpr bool isMemberFunction {true};
 
     template <std::size_t Idx>
-    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
+    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
 template <typename C, typename R, typename ...Args>
@@ -167,7 +167,7 @@ struct FunctionTypeInfo<R(C::* &&)(Args...) const>
     static constexpr std::size_t argSize = sizeof...(Args);
 
     template <std::size_t Idx>
-    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
+    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
 template <typename C, typename R, typename ...Args>
@@ -180,7 +180,7 @@ struct FunctionTypeInfo<R(C::*)(Args...) const>
     static constexpr bool isMemberFunction {true};
 
     template <std::size_t Idx>
-    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
+    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
 template <typename R, typename ...Args>
@@ -191,7 +191,7 @@ struct FunctionTypeInfo<R(* &&)(Args...)>
     static constexpr std::size_t argSize = sizeof...(Args);
 
     template <std::size_t Idx>
-    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
+    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
 template <typename R, typename ...Args>
@@ -203,7 +203,7 @@ struct FunctionTypeInfo<R(*)(Args...)>
     static constexpr bool isMemberFunction {false};
 
     template <std::size_t Idx>
-    using ArgType = ArgGroup::template MetaTypeAt<Idx>;
+    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
 template <typename Var>
