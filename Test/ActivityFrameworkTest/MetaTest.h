@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,6 +113,11 @@ public:
     {
         return std::string("123") + str;
     }
+
+    static void printStr(std::string &str)
+    {
+		std::cout << "The string is: " << str << std::endl;
+	}
 
 TA_Signals:
     void startTest(int,int) {}
@@ -228,6 +233,23 @@ private:
     std::queue<int64_t> m_queue;
     std::priority_queue<double> m_prioritQueue;
 
+};
+
+class CoroutineTestSender : public CoreAsync::TA_MetaObject
+{
+public:
+	CoroutineTestSender() = default;
+	~CoroutineTestSender() = default;
+
+TA_Signals:
+    void sendSignal(int a) {}
+};
+
+DEFINE_TYPE_INFO(CoroutineTestSender)
+{
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(sendSignal)
+    )
 };
 
 DEFINE_TYPE_INFO(TestA)

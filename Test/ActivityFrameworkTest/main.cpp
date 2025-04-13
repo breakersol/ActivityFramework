@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,32 @@
 #include "Components/TA_BasicPipeline.h"
 #include "Components/TA_MetaReflex.h"
 #include "Components/TA_MetaActivity.h"
+#include "Components/TA_Coroutine.h"
+
+CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender)
+{
+    auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
+    co_return val * 3;
+}
 
 int main(int argc, char *argv[])
 {
     ::testing::InitGoogleTest(&argc,argv);
 
     return RUN_ALL_TESTS();
+ //   CoroutineTestSender sender;
+
+ //   auto task_1 = testCoroutineTask(&sender);
+ //   CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 3);
+ //   auto r1 = task_1.get();
+ //   EXPECT_EQ(r1, 9);
+
+ //   auto task_2 = testCoroutineTask(&sender);
+ //   CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 4);
+ //   auto r2 = task_2.get();
+ //   EXPECT_EQ(r2, 12);
+
+	//std::cout << "Test completed!" << std::endl;
+
+ //   return 0;
 }

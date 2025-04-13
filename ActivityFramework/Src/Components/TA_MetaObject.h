@@ -1,5 +1,5 @@
 /*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include "TA_ThreadPool.h"
 #include "TA_SingleActivity.h"
 #include "TA_MetaReflex.h"
+#include "TA_MetaActivity.h"
 
 namespace CoreAsync
 {
@@ -51,21 +52,17 @@ namespace CoreAsync
     public:
         class TA_ConnectionObjectHolder
         {
+			friend class TA_MetaObject;
         public:
             TA_ConnectionObjectHolder() = default;
-            TA_ConnectionObjectHolder(TA_ConnectionObject *pConnection) : m_pConnection(pConnection)
+            TA_ConnectionObjectHolder(const std::shared_ptr<TA_ConnectionObject> &pConnection) : m_pConnection(pConnection ? pConnection->getPtr() : nullptr)
             {
 
             }
 
             ~TA_ConnectionObjectHolder()
             {
-                m_pConnection = nullptr;
-            }
-
-            decltype(auto) get() const
-            {
-                return m_pConnection;
+               
             }
 
             bool valid() const
@@ -75,11 +72,12 @@ namespace CoreAsync
 
             void reset()
             {
-                m_pConnection = nullptr;
+                if(m_pConnection)
+                    m_pConnection.reset();
             }
 
         private:
-            TA_ConnectionObject *m_pConnection {nullptr};
+            std::shared_ptr<TA_ConnectionObject> m_pConnection {nullptr};
 
         };
 
@@ -98,7 +96,7 @@ namespace CoreAsync
 
         }
 
-        TA_MetaObject(TA_MetaObject &&object) : m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()), m_outputConnections(std::move(object.m_outputConnections)), m_inputConnections(std::move(object.m_inputConnections))
+        TA_MetaObject(TA_MetaObject &&object) noexcept : m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()), m_outputConnections(std::move(object.m_outputConnections)), m_inputConnections(std::move(object.m_inputConnections))
         {
 
         }
@@ -114,7 +112,7 @@ namespace CoreAsync
             return *this;
         }
 
-        TA_MetaObject & operator = (TA_MetaObject &&object)
+        TA_MetaObject & operator = (TA_MetaObject &&object) noexcept
         {
             if(this != &object)
             {
@@ -145,13 +143,13 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
+            if constexpr(MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
+            if constexpr(MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
+                if constexpr(!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup, typename MethodTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -171,26 +169,26 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), pReceiver, std::forward<Slot>(slot), type);
+			auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::forward<Signal>(signal), pReceiver, std::forward<Slot>(slot), type);
             pSender->m_outputConnections.emplace(signalMark, conn);
             pReceiver->m_inputConnections.emplace(slotMark, conn);
             return true;
         }
 
         template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
-        static constexpr TA_ConnectionObjectHolder registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type)
+        static constexpr TA_ConnectionObjectHolder registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type, bool autoDestroy = false)
         {
             if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value || !std::is_same_v<typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType, void>)
             {
-                return nullptr;
+                return { nullptr };
             }
             if(!pSender)
             {
-                return nullptr;
+                return { nullptr };
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize)
+            if constexpr(MethodTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize)
             {
-                return nullptr;
+                return { nullptr };
             }
             TA_ConnectionObject::FuncMark signalMark {Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))};
             TA_ConnectionObject::FuncMark slotMark {typeid(LambdaExp).name()};
@@ -199,13 +197,15 @@ namespace CoreAsync
             {
                 if(startSendIter->second->receiver() == pSender && startSendIter->second->slotMark() == slotMark)
                 {
-                    return nullptr;
+                    return { nullptr };
                 }
                 startSendIter++;
             }
-            auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type);
+			auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
             pSender->m_outputConnections.emplace(signalMark, conn);
-            return {conn};
+            if(autoDestroy)
+				return { nullptr };
+			return { conn };
         }
 
         template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -215,13 +215,13 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
+            if constexpr(MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
+            if constexpr(MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
+                if constexpr(!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup, typename MethodTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -235,7 +235,7 @@ namespace CoreAsync
             auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
             if(startSendIter == endSendIter)
                 return false;
-            TA_ConnectionObject *pConnecton {nullptr};
+            std::shared_ptr<TA_ConnectionObject> pConnecton {nullptr};
             while(startSendIter != endSendIter)
             {
                 if(startSendIter->second->receiver() == pReceiver && startSendIter->second->slotMark() == slotMark)
@@ -258,17 +258,16 @@ namespace CoreAsync
                 }
                 startRecIter++;
             }
-            if(pConnecton)
-            {
-                delete pConnecton;
-                pConnecton = nullptr;
-            }
             return true;
         }
 
-        static bool unregisterConnection(TA_ConnectionObjectHolder &holder)
+        static bool unregisterConnection(const TA_ConnectionObjectHolder &holder)
         {
-            auto &&pConnection = holder.get();
+			if (!holder.valid())
+			{
+				return false;
+			}
+			auto &&pConnection = holder.m_pConnection;
             if(!pConnection)
             {
                 return false;
@@ -289,9 +288,6 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            delete pConnection;
-            pConnection = nullptr;
-            holder.reset();
             return true;
         }
 
@@ -302,7 +298,7 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(!std::is_convertible_v<std::decay_t<Sender *>, typename FunctionTypeInfo<Signal>::ParentClass *>)
+            if constexpr(!std::is_convertible_v<std::decay_t<Sender *>, typename MethodTypeInfo<Signal>::ParentClass *>)
             {
                 return false;
             }
@@ -315,9 +311,10 @@ namespace CoreAsync
                 return false;
             while(startIter != endIter)
             {
-                startIter->second->setPara(std::forward<Args>(args)...);
-                startIter->second->callSlot();
-                startIter++;
+				auto cpIter = startIter;
+				auto obj = startIter++->second;
+                obj->setPara(std::forward<Args>(args)...);
+                obj->callSlot();
             }
             return true;
         }
@@ -329,13 +326,13 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
+            if constexpr(MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
+            if constexpr(MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
+                if constexpr(!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup, typename MethodTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -356,16 +353,57 @@ namespace CoreAsync
             return false;
         }
 
+        template <LambdaExpType LambdaExp, typename ...Args>
+        static constexpr bool invokeMethod(LambdaExp &&exp, Args &&...args)
+        {
+            if constexpr(LambdaExpTraits<std::decay_t<LambdaExp>>::argSize != sizeof...(Args))
+            {
+                return false;
+            }
+            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_SingleActivity<LambdaType<void, Args...>, INVALID_INS, void, Args...>(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
+            return true;
+        }
+
+        template <InstanceMethodType Method, typename Ins, typename ...Args>
+        static constexpr bool invokeMethod(Method &&method, Ins &ins, Args &&...args)
+        {
+            if constexpr(MethodTypeInfo<std::decay_t<Method>>::argSize != sizeof...(Args))
+            {
+                return false;
+            }
+            using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
+            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_SingleActivity<Method, Ins, typename MethodTypeInfo<Method>::RetType, Args...>(std::forward<Method>(method), ins, std::forward<Args>(args)...), true);
+            return true;
+        }
+
+        template <StaticMethodType Method, typename ...Args>
+        static constexpr bool invokeMethod(Method &&method, Args &&...args)
+        {
+            if constexpr(MethodTypeInfo<std::decay_t<Method>>::argSize != sizeof...(Args))
+            {
+                return false;
+            }
+            using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
+            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_SingleActivity<NonMemberFunctionPtr<typename MethodTypeInfo<Method>::RetType, Args...>, INVALID_INS, Ret, Args...>(std::forward<Method>(method), std::forward<Args>(args)...), true);
+            return true;
+        }
+
+        template <MetaStringType Method, typename ...Args>
+        static constexpr auto invokeMethod(Method, Args && ...args)
+        {
+			return TA_ThreadHolder::get().postActivity(new TA_MetaActivity<Method, Args...>(Method{}, std::forward<Args>(args)...), true);
+        }
+
     private:
-        class TA_ConnectionObject
+		class TA_ConnectionObject : public std::enable_shared_from_this<TA_ConnectionObject>
         {
         public:
             TA_ConnectionObject() = default;
             template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
-            TA_ConnectionObject(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<Slot>(slot))), m_type(type)
+            TA_ConnectionObject(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<Slot>(slot))), m_type(type), m_autoDestroy(false)
             {
-                using SlotParaTuple = typename FunctionTypeInfo<Slot>::ArgGroup::Tuple;
-                using Ret = typename FunctionTypeInfo<Slot>::RetType;
+                using SlotParaTuple = typename MethodTypeInfo<Slot>::ArgGroup::Tuple;
+                using Ret = typename MethodTypeInfo<Slot>::RetType;
                 m_para = SlotParaTuple {};
                 decltype(auto) slotExp = [&,slot]()->void {
                     decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
@@ -379,7 +417,7 @@ namespace CoreAsync
             }
 
             template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
-            TA_ConnectionObject(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pSender), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(typeid(LambdaExp).name()), m_type(type)
+            TA_ConnectionObject(Sender *pSender, Signal &&signal, LambdaExp &&exp, TA_ConnectionType type, bool autoDestroy) : m_pSender(pSender),m_pReceiver(pSender), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(typeid(LambdaExp).name()), m_type(type), m_autoDestroy(autoDestroy)
             {
                 using SlotParaTuple = typename LambdaExpTraits<std::decay_t<LambdaExp>>::ArgGroup::Tuple;
                 using Ret = typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType;
@@ -413,6 +451,11 @@ namespace CoreAsync
                 }
             }
 
+			std::shared_ptr<TA_ConnectionObject> getPtr()
+			{
+				return shared_from_this();
+			}
+
             template <typename ...Args>
             void setPara(Args &&...args)
             {
@@ -441,6 +484,35 @@ namespace CoreAsync
                         m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                     }
                 }
+				if (m_autoDestroy)
+				{
+					removeConnectionReferences();
+				}
+            }
+
+            void removeConnectionReferences()
+            {
+				auto rangeSender = m_pSender->m_outputConnections.equal_range(m_senderFunc);
+				for (auto iter = rangeSender.first; iter != rangeSender.second; ++iter)
+				{
+					if (iter->second.get() == this)
+					{
+						m_pSender->m_outputConnections.erase(iter);
+						break;
+					}
+				}
+                if (m_pSender != m_pReceiver)
+                {
+					auto rangeReceiver = m_pReceiver->m_inputConnections.equal_range(m_receiverFunc);
+                    for (auto iter = rangeReceiver.first; iter != rangeReceiver.second; ++iter)
+                    {
+						if (iter->second.get() == this)
+						{
+							m_pReceiver->m_inputConnections.erase(iter);
+							break;
+						}
+                    }
+                }
             }
 
             TA_MetaObject * sender() const {return m_pSender;}
@@ -456,6 +528,11 @@ namespace CoreAsync
                 return m_pSender->sourceThread() == m_pReceiver->sourceThread() && (m_type == TA_ConnectionType::Auto || m_type == TA_ConnectionType::Direct);
             }
 
+			bool isAutoDestroy() const
+			{
+				return m_autoDestroy;
+			}
+
         private:
             TA_MetaObject *m_pSender {nullptr}, *m_pReceiver {nullptr};
             FuncMark m_senderFunc {}, m_receiverFunc {};
@@ -463,6 +540,7 @@ namespace CoreAsync
             std::any m_para;
             TA_SingleActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS> *m_pActivity {nullptr};
             TA_ActivityProxy *m_pSlotProxy {nullptr};
+            const bool m_autoDestroy {false};
         };
 
     private:
@@ -480,8 +558,6 @@ namespace CoreAsync
                     }
                     ++start;
                 }
-                delete obj;
-                obj = nullptr;
             }
             m_outputConnections.clear();
 
@@ -497,8 +573,6 @@ namespace CoreAsync
                     }
                     ++start;
                 }
-                delete obj;
-                obj = nullptr;
             }
             m_inputConnections.clear();
         }
@@ -507,10 +581,18 @@ namespace CoreAsync
         const std::thread::id m_sourceThread;
         std::atomic_size_t m_affinityThreadIdx;
 
-        std::unordered_multimap<TA_ConnectionObject::FuncMark, TA_ConnectionObject *> m_outputConnections {};
-        std::unordered_multimap<TA_ConnectionObject::FuncMark, TA_ConnectionObject *> m_inputConnections {};
+        std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject> > m_outputConnections {};
+        std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject> > m_inputConnections {};
 
     };
 }
+
+template <typename T>
+struct TA_MetaObjectTraits
+{
+	static constexpr bool isMetaObject = std::is_base_of_v<CoreAsync::TA_MetaObject, T>;
+};
+template <typename T>
+concept EnableMetaObjectType = TA_MetaObjectTraits<T>::isMetaObject;
 
 #endif // TA_METAOBJECT_H

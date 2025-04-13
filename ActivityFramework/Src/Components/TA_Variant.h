@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright [2024] [Shuang Zhu / Sol]
+ * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,7 +106,7 @@ namespace CoreAsync {
             return *this;
         }
 
-        TA_Variant & operator = (TA_Variant &&var)
+        TA_Variant & operator = (TA_Variant &&var) noexcept
         {
             if(this != &var)
             {
