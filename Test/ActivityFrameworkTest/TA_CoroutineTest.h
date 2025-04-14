@@ -19,6 +19,8 @@
 #define TA_COROUTINETEST_H
 
 #include "gtest/gtest.h"
+#include "Components/TA_Coroutine.h"
+#include "MetaTest.h"
 
 class TA_CoroutineTest : public ::testing::Test
 {
@@ -28,6 +30,13 @@ public:
 
     void SetUp() override;
     void TearDown() override;
+
+private:
+    CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender, int value)
+    {
+        co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
+        co_return value;
+    }
 
 };
 

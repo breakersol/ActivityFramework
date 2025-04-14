@@ -25,3 +25,13 @@ TA_CoroutineTest::~TA_CoroutineTest()
 {
 
 }
+
+void TA_CoroutineTest::SetUp()
+{
+
+}
+
+void TA_CoroutineTest::TearDown()
+{
+
+}

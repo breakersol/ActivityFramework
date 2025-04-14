@@ -230,6 +230,19 @@ private:
 
 };
 
+class CoroutineTestSender : public CoreAsync::TA_MetaObject
+{
+TA_Signals:
+    void sendSignal(int a) {}
+};
+
+DEFINE_TYPE_INFO(CoroutineTestSender)
+{
+    AUTO_META_FIELDS(
+        REGISTER_FIELD(sendSignal)
+    )
+};
+
 DEFINE_TYPE_INFO(TestA)
 {
     AUTO_META_FIELDS(

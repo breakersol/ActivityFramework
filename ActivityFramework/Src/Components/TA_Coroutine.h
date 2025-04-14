@@ -32,24 +32,8 @@ namespace CoreAsync
         Eager
     };
 
-    struct TA_BaseAwaitable : public TA_MetaObject
-    {
-        virtual constexpr bool await_ready() const noexcept = 0;
-        virtual constexpr void await_suspend(std::coroutine_handle<>) const noexcept = 0;
-        virtual constexpr void await_resume() const noexcept = 0;
-    };
-
-    DEFINE_TYPE_INFO(TA_BaseAwaitable)
-    {
-        AUTO_META_FIELDS(
-            REGISTER_FIELD(await_ready),
-            REGISTER_FIELD(await_suspend),
-            REGISTER_FIELD(await_resume)
-        )
-    };
-
     template <EnableConnectObjectType Sender, typename ...Args>
-    class TA_SignalAwaitable : public TA_BaseAwaitable
+    class TA_SignalAwaitable
     {
     public:
         TA_SignalAwaitable(Sender *pObject, void(std::decay_t<Sender>::*signal)(Args...))
@@ -65,51 +49,49 @@ namespace CoreAsync
             }
         }
 
-        virtual constexpr bool await_ready() const noexcept override
+        constexpr bool await_ready() const noexcept
         {
             return false;
         }
 
-        virtual constexpr void await_suspend(std::coroutine_handle<> handle) const noexcept override
+        constexpr void await_suspend(std::coroutine_handle<> handle) noexcept
         {
             if(!m_connectionHolder.valid())
             {
-                m_connectionHolder = TA_Connection::connect(m_pObject, m_signal, [handle](Args... args) {
+                m_connectionHolder = TA_Connection::connect(m_pObject, m_signal, [this, handle](Args... args) {
+                                        if constexpr(sizeof...(Args) != 0)
+                                            m_args = std::make_tuple(args...);
                                         handle.resume();
                                     });
             }
         }
 
-        virtual constexpr void await_resume() const noexcept override
+        constexpr auto await_resume() const noexcept
         {
-
+            if constexpr(sizeof...(Args) != 0)
+            {
+                if constexpr(sizeof...(Args) == 1)
+                {
+                    return std::get<0>(m_args);
+                }
+                else
+                {
+                    return m_args;
+                }
+            }
         }
 
     protected:
-        TA_ConnectionObjectHolder m_connectionHolder {nullptr};
+        TA_MetaObject::TA_ConnectionObjectHolder m_connectionHolder {nullptr};
         Sender *m_pObject {nullptr};
         void (std::decay_t<Sender>::*m_signal)(Args...);
+        std::tuple<Args...> m_args {};
 
-    };
-
-    class TA_StandardResumeSender : public TA_MetaObject
-    {
-    TA_Signals:
-        void resume();
-    };
-
-    DEFINE_TYPE_INFO(TA_StandardResumeSender)
-    {
-        AUTO_META_FIELDS(
-            REGISTER_FIELD(resume)
-        )
     };
 
     template <typename T, CorotuineBehavior = Lazy>
     struct TA_CoroutineTask
     {
-        using HandleType = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineTask, T>::promise_type>;
-
         struct promise_type
         {
             std::optional<T> m_result {};
@@ -134,7 +116,7 @@ namespace CoreAsync
             }
         };
 
-        HandleType m_coroutineHandle;
+        using HandleType = std::coroutine_handle<promise_type>;
 
         explicit TA_CoroutineTask(HandleType handle) : m_coroutineHandle(handle) {}
 
@@ -182,13 +164,14 @@ namespace CoreAsync
             }
             return std::move(*m_coroutineHandle.promise().m_result);
         }
+
+        HandleType m_coroutineHandle;
+
     };
 
     template <typename T>
     struct TA_CoroutineTask<T, Eager>
     {
-        using HandleType = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineTask, T>::promise_type>;
-
         struct promise_type
         {
             std::optional<T> m_result {};
@@ -207,12 +190,13 @@ namespace CoreAsync
                 m_result = value;
             }
 
-            void unhanded_exception()
+            void unhandled_exception()
             {
                 m_exception = std::current_exception();
             }
         };
 
+        using HandleType = std::coroutine_handle<promise_type>;
         HandleType m_coroutineHandle;
 
         explicit TA_CoroutineTask(HandleType handle) : m_coroutineHandle(handle) {}
@@ -265,9 +249,7 @@ namespace CoreAsync
 
     template <typename T, CorotuineBehavior = Lazy>
     struct TA_CoroutineGenerator
-    {
-        using HandleType = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineGenerator, T>::promise_type>;
-
+    { 
         struct promise_type
         {
             T m_currentValue {};
@@ -295,7 +277,7 @@ namespace CoreAsync
             }
         };
 
-        HandleType m_coroutineHandle;
+        using HandleType = std::coroutine_handle<promise_type>;
 
         explicit TA_CoroutineGenerator(HandleType handle) : m_coroutineHandle(handle) {}
 
@@ -344,13 +326,13 @@ namespace CoreAsync
         {
             return std::move(m_coroutineHandle.promise().m_currentValue);
         }
+
+        HandleType m_coroutineHandle;
     };
 
     template <typename T>
     struct TA_CoroutineGenerator<T, Eager>
     {
-        using HandleType = std::coroutine_handle<typename std::coroutine_traits<TA_CoroutineGenerator, T>::promise_type>;
-
         struct promise_type
         {
             T m_currentValue {};
@@ -378,7 +360,7 @@ namespace CoreAsync
             }
         };
 
-        HandleType m_coroutineHandle;
+        using HandleType = std::coroutine_handle<promise_type>;
 
         explicit TA_CoroutineGenerator(HandleType handle) : m_coroutineHandle(handle) {}
 
@@ -427,6 +409,8 @@ namespace CoreAsync
         {
             return std::move(m_coroutineHandle.promise().m_currentValue);
         }
+
+        HandleType m_coroutineHandle;
     };
 }
 
