@@ -58,7 +58,7 @@ namespace CoreAsync
         {
             if(!m_connectionHolder.valid())
             {
-                m_connectionHolder = TA_Connection::connect(m_pObject, m_signal, [this, handle](Args... args) {
+                m_connectionHolder = TA_Connection::connect(m_pObject, std::move(m_signal), [this, handle](Args... args) {
                                         if constexpr(sizeof...(Args) != 0)
                                             m_args = std::make_tuple(args...);
                                         handle.resume();
