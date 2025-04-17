@@ -31,11 +31,10 @@ public:
     void SetUp() override;
     void TearDown() override;
 
-private:
-    CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender, int value)
+    CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender)
     {
-        co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
-        co_return value;
+        auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
+        co_return val * 3;
     }
 
 };

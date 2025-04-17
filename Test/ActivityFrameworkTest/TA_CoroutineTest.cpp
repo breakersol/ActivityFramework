@@ -35,3 +35,14 @@ void TA_CoroutineTest::TearDown()
 {
 
 }
+
+TEST_F(TA_CoroutineTest, testCoroutineTask)
+{
+    CoroutineTestSender sender;
+
+    auto task = testCoroutineTask(&sender);
+
+    CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 3);
+    auto r = task.get();
+    EXPECT_EQ(r, 9);
+}
