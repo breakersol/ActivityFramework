@@ -36,7 +36,7 @@ namespace CoreAsync
     class TA_SignalAwaitable
     {
     public:
-        TA_SignalAwaitable(Sender *pObject, void(std::decay_t<Sender>::*signal)(Args...))
+        TA_SignalAwaitable(Sender *pObject, void(std::decay_t<Sender>::*signal)(Args...)) : m_pObject(pObject), m_signal(signal)
         {
 
         }
@@ -45,7 +45,13 @@ namespace CoreAsync
         {
             if(m_connectionHolder.valid())
             {
-                TA_Connection::disconnect(m_connectionHolder);
+                // TA_Connection::disconnect(m_connectionHolder);
+                if(!TA_MetaObject::invokeMethod([](TA_MetaObject::TA_ConnectionObjectHolder &conn) {
+                        TA_Connection::disconnect(conn);
+                    }, std::move(m_connectionHolder)))
+                {
+                    std::cerr << "Disconnect failed!" << std::endl;
+                }
             }
         }
 
@@ -80,6 +86,8 @@ namespace CoreAsync
                 }
             }
         }
+
+        TA_SignalAwaitable operator = (const TA_SignalAwaitable &) = delete;
 
     protected:
         TA_MetaObject::TA_ConnectionObjectHolder m_connectionHolder {nullptr};
