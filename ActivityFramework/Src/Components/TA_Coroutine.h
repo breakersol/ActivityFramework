@@ -48,7 +48,7 @@ namespace CoreAsync
                 // TA_Connection::disconnect(m_connectionHolder);
                 if(!TA_MetaObject::invokeMethod([](TA_MetaObject::TA_ConnectionObjectHolder &conn) {
                         TA_Connection::disconnect(conn);
-                    }, std::move(m_connectionHolder)))
+                    }, m_connectionHolder))
                 {
                     std::cerr << "Disconnect failed!" << std::endl;
                 }

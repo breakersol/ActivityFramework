@@ -357,14 +357,13 @@ namespace CoreAsync
         }
 
         template <LambdaExpType LambdaExp, typename ...Args>
-        static constexpr bool invokeMethod(LambdaExp &&exp, Args &&...args/*, TA_ConnectionType type = TA_ConnectionType::Queued*/)
+        static constexpr bool invokeMethod(LambdaExp &&exp, Args &&...args)
         {
             if constexpr(LambdaExpTraits<std::decay_t<LambdaExp>>::argSize != sizeof...(Args))
             {
                 return false;
             }
-            auto func {exp};
-            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_SingleActivity<LambdaType<void, Args...>, INVALID_INS,void,Args...>(func, std::forward<Args>(args)...), true);
+            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_SingleActivity<LambdaType<void, Args...>, INVALID_INS, void, Args...>(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
             return true;
         }
 
