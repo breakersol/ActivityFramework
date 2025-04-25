@@ -37,6 +37,11 @@ public:
         co_return val * 3;
     }
 
+    CoreAsync::TA_CoroutineGenerator<int, CoreAsync::Eager> testCoroutineGenerator(CoroutineTestSender *pSender)
+    {
+        auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
+        co_yield val * 3;
+    }
 };
 
 #endif // TA_COROUTINETEST_H

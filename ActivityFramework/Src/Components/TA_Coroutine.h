@@ -43,16 +43,7 @@ namespace CoreAsync
 
         ~TA_SignalAwaitable()
         {
-            if(m_connectionHolder.valid())
-            {
-                // TA_Connection::disconnect(m_connectionHolder);
-                if(!TA_MetaObject::invokeMethod([](TA_MetaObject::TA_ConnectionObjectHolder &conn) {
-                        TA_Connection::disconnect(conn);
-                    }, m_connectionHolder))
-                {
-                    std::cerr << "Disconnect failed!" << std::endl;
-                }
-            }
+
         }
 
         constexpr bool await_ready() const noexcept
@@ -118,7 +109,7 @@ namespace CoreAsync
                 m_result = value;
             }
 
-            void unhanded_exception()
+            void unhandled_exception()
             {
                 m_exception = std::current_exception();
             }
@@ -279,7 +270,7 @@ namespace CoreAsync
 
             void return_void() {};
 
-            void unhanded_exception()
+            void unhandled_exception()
             {
                 m_exception = std::current_exception();
             }
@@ -362,7 +353,7 @@ namespace CoreAsync
 
             void return_void() {};
 
-            void unhanded_exception()
+            void unhandled_exception()
             {
                 m_exception = std::current_exception();
             }
