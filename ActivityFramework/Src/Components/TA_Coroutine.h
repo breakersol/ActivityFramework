@@ -43,7 +43,16 @@ namespace CoreAsync
 
         ~TA_SignalAwaitable()
         {
-
+            if (m_connectionHolder.valid())
+            {
+                 //TA_Connection::disconnect(m_connectionHolder);
+                if (!TA_MetaObject::invokeMethod([](TA_MetaObject::TA_ConnectionObjectHolder conn) {
+                    TA_Connection::disconnect(conn);
+					}, std::move(m_connectionHolder)))
+                {
+                    std::cerr << "Disconnect failed!" << std::endl;
+                }
+            }
         }
 
         constexpr bool await_ready() const noexcept

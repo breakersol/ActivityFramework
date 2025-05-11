@@ -53,14 +53,14 @@ namespace CoreAsync
         {
         public:
             TA_ConnectionObjectHolder() = default;
-            TA_ConnectionObjectHolder(TA_ConnectionObject *pConnection) : m_pConnection(pConnection)
+            TA_ConnectionObjectHolder(const std::shared_ptr<TA_ConnectionObject> &pConnection) : m_pConnection(pConnection)
             {
 
             }
 
             ~TA_ConnectionObjectHolder()
             {
-                m_pConnection = nullptr;
+                //m_pConnection = nullptr;
             }
 
             decltype(auto) get() const
@@ -79,7 +79,7 @@ namespace CoreAsync
             }
 
         private:
-            TA_ConnectionObject *m_pConnection {nullptr};
+            std::shared_ptr<TA_ConnectionObject> m_pConnection {nullptr};
 
         };
 
@@ -171,7 +171,8 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), pReceiver, std::forward<Slot>(slot), type);
+            //auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), pReceiver, std::forward<Slot>(slot), type);
+			auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::forward<Signal>(signal), pReceiver, std::forward<Slot>(slot), type);
             pSender->m_outputConnections.emplace(signalMark, conn);
             pReceiver->m_inputConnections.emplace(slotMark, conn);
             return true;
@@ -182,15 +183,15 @@ namespace CoreAsync
         {
             if constexpr(!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag || !IsReturnTypeEqual<void,Signal,std::is_same>::value || !std::is_same_v<typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType, void>)
             {
-                return nullptr;
+                return { nullptr };
             }
             if(!pSender)
             {
-                return nullptr;
+                return { nullptr };
             }
             if constexpr(FunctionTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize)
             {
-                return nullptr;
+                return { nullptr };
             }
             TA_ConnectionObject::FuncMark signalMark {Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))};
             TA_ConnectionObject::FuncMark slotMark {typeid(LambdaExp).name()};
@@ -199,11 +200,12 @@ namespace CoreAsync
             {
                 if(startSendIter->second->receiver() == pSender && startSendIter->second->slotMark() == slotMark)
                 {
-                    return nullptr;
+                    return { nullptr };
                 }
                 startSendIter++;
             }
-            auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type);
+            //auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type);
+			auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type);
             pSender->m_outputConnections.emplace(signalMark, conn);
             return {conn};
         }
@@ -235,7 +237,7 @@ namespace CoreAsync
             auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
             if(startSendIter == endSendIter)
                 return false;
-            TA_ConnectionObject *pConnecton {nullptr};
+            std::shared_ptr<TA_ConnectionObject> pConnecton {nullptr};
             while(startSendIter != endSendIter)
             {
                 if(startSendIter->second->receiver() == pReceiver && startSendIter->second->slotMark() == slotMark)
@@ -258,15 +260,15 @@ namespace CoreAsync
                 }
                 startRecIter++;
             }
-            if(pConnecton)
-            {
-                delete pConnecton;
-                pConnecton = nullptr;
-            }
+            //if(pConnecton)
+            //{
+            //    delete pConnecton;
+            //    pConnecton = nullptr;
+            //}
             return true;
         }
 
-        static bool unregisterConnection(TA_ConnectionObjectHolder &holder)
+        static bool unregisterConnection(const TA_ConnectionObjectHolder &holder)
         {
             auto &&pConnection = holder.get();
             if(!pConnection)
@@ -289,9 +291,9 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            delete pConnection;
-            pConnection = nullptr;
-            holder.reset();
+            //delete pConnection;
+            //pConnection = nullptr;
+            //holder.reset();
             return true;
         }
 
@@ -491,8 +493,8 @@ namespace CoreAsync
                     }
                     ++start;
                 }
-                delete obj;
-                obj = nullptr;
+                //delete obj;
+                //obj = nullptr;
             }
             m_outputConnections.clear();
 
@@ -508,8 +510,8 @@ namespace CoreAsync
                     }
                     ++start;
                 }
-                delete obj;
-                obj = nullptr;
+                //delete obj;
+                //obj = nullptr;
             }
             m_inputConnections.clear();
         }
@@ -518,8 +520,8 @@ namespace CoreAsync
         const std::thread::id m_sourceThread;
         std::atomic_size_t m_affinityThreadIdx;
 
-        std::unordered_multimap<TA_ConnectionObject::FuncMark, TA_ConnectionObject *> m_outputConnections {};
-        std::unordered_multimap<TA_ConnectionObject::FuncMark, TA_ConnectionObject *> m_inputConnections {};
+        std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject> > m_outputConnections {};
+        std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject> > m_inputConnections {};
 
     };
 }

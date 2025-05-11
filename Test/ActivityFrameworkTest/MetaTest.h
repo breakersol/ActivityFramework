@@ -232,6 +232,10 @@ private:
 
 class CoroutineTestSender : public CoreAsync::TA_MetaObject
 {
+public:
+	CoroutineTestSender() = default;
+	~CoroutineTestSender() = default;
+
 TA_Signals:
     void sendSignal(int a) {}
 };
