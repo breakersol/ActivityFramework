@@ -526,4 +526,12 @@ namespace CoreAsync
     };
 }
 
+template <typename T>
+struct TA_MetaObjectTraits
+{
+	static constexpr bool isMetaObject = std::is_base_of_v<CoreAsync::TA_MetaObject, T>;
+};
+template <typename T>
+concept EnableMetaObjectType = TA_MetaObjectTraits<T>::isMetaObject;
+
 #endif // TA_METAOBJECT_H
