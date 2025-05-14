@@ -53,7 +53,7 @@ namespace CoreAsync
         {
         public:
             TA_ConnectionObjectHolder() = default;
-            TA_ConnectionObjectHolder(const std::shared_ptr<TA_ConnectionObject> &pConnection) : m_pConnection(pConnection)
+            TA_ConnectionObjectHolder(const std::shared_ptr<TA_ConnectionObject> &pConnection) : m_pConnection(pConnection->getPtr())
             {
 
             }
@@ -317,9 +317,9 @@ namespace CoreAsync
                 return false;
             while(startIter != endIter)
             {
-                startIter->second->setPara(std::forward<Args>(args)...);
-                startIter->second->callSlot();
-                startIter++;
+				auto obj = startIter++->second;
+                obj->setPara(std::forward<Args>(args)...);
+                obj->callSlot();
             }
             return true;
         }
@@ -370,7 +370,7 @@ namespace CoreAsync
         }
 
     private:
-        class TA_ConnectionObject
+		class TA_ConnectionObject : public std::enable_shared_from_this<TA_ConnectionObject>
         {
         public:
             TA_ConnectionObject() = default;
@@ -426,6 +426,11 @@ namespace CoreAsync
                 }
             }
 
+			std::shared_ptr<TA_ConnectionObject> getPtr()
+			{
+				return shared_from_this();
+			}
+
             template <typename ...Args>
             void setPara(Args &&...args)
             {
@@ -469,6 +474,11 @@ namespace CoreAsync
                 return m_pSender->sourceThread() == m_pReceiver->sourceThread() && (m_type == TA_ConnectionType::Auto || m_type == TA_ConnectionType::Direct);
             }
 
+			bool isAutoDestroy() const
+			{
+				return m_autoDestroy;
+			}
+
         private:
             TA_MetaObject *m_pSender {nullptr}, *m_pReceiver {nullptr};
             FuncMark m_senderFunc {}, m_receiverFunc {};
@@ -476,6 +486,7 @@ namespace CoreAsync
             std::any m_para;
             TA_SingleActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS> *m_pActivity {nullptr};
             TA_ActivityProxy *m_pSlotProxy {nullptr};
+			bool m_autoDestroy{ false };
         };
 
     private:
