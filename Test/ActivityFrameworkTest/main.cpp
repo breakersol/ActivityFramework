@@ -31,22 +31,22 @@ CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTe
 
 int main(int argc, char *argv[])
 {
-    //::testing::InitGoogleTest(&argc,argv);
+    ::testing::InitGoogleTest(&argc,argv);
 
-    //return RUN_ALL_TESTS();
-	CoroutineTestSender *pSender = new CoroutineTestSender();
+    return RUN_ALL_TESTS();
+ //   CoroutineTestSender sender;
 
-    auto task_1 = testCoroutineTask(pSender);
-    CoreAsync::TA_Connection::active(pSender, &CoroutineTestSender::sendSignal, 3);
-    auto r1 = task_1.get();
-    EXPECT_EQ(r1, 9);
+ //   auto task_1 = testCoroutineTask(&sender);
+ //   CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 3);
+ //   auto r1 = task_1.get();
+ //   EXPECT_EQ(r1, 9);
 
-    auto task_2 = testCoroutineTask(pSender);
-    CoreAsync::TA_Connection::active(pSender, &CoroutineTestSender::sendSignal, 4);
-    auto r2 = task_2.get();
-    EXPECT_EQ(r2, 12);
+ //   auto task_2 = testCoroutineTask(&sender);
+ //   CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 4);
+ //   auto r2 = task_2.get();
+ //   EXPECT_EQ(r2, 12);
 
-	std::cout << "Test completed!" << std::endl;
+	//std::cout << "Test completed!" << std::endl;
 
-    return 0;
+ //   return 0;
 }

@@ -45,10 +45,10 @@ TEST_F(TA_CoroutineTest, testCoroutineTask)
     auto r1 = task_1.get();
     EXPECT_EQ(r1, 9);
 
-    //auto task_2 = testCoroutineTask(&sender);
-    //CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 4);
-    //auto r2 = task_2.get();
-    //EXPECT_EQ(r2, 9);
+    auto task_2 = testCoroutineTask(&sender);
+    CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 4);
+    auto r2 = task_2.get();
+    EXPECT_EQ(r2, 12);
 }
 
 TEST_F(TA_CoroutineTest, testCoroutineGenerator)

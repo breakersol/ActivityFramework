@@ -31,9 +31,9 @@ namespace CoreAsync {
         }
 
         template <TA_ConnectionType type = TA_ConnectionType::Auto, EnableConnectObjectType Sender, typename SenderFunc, LambdaExpType LambdaExp>
-        static constexpr auto connect(Sender *pSender, SenderFunc &&sFunc, LambdaExp &&lExp)
+        static constexpr auto connect(Sender *pSender, SenderFunc &&sFunc, LambdaExp &&lExp, bool autoDestroy = false)
         {
-            return TA_MetaObject::registerConnection(pSender, std::forward<SenderFunc>(sFunc), std::forward<LambdaExp>(lExp), type);
+            return TA_MetaObject::registerConnection(pSender, std::forward<SenderFunc>(sFunc), std::forward<LambdaExp>(lExp), type, autoDestroy);
         }
 
         template<EnableConnectObjectType Sender, typename SenderFunc, EnableConnectObjectType Receiver, typename ReceiverFunc>

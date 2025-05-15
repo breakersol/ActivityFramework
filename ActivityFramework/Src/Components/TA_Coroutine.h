@@ -43,16 +43,15 @@ namespace CoreAsync
 
         ~TA_SignalAwaitable()
         {
-            if (m_connectionHolder.valid())
-            {
-                 //TA_Connection::disconnect(m_connectionHolder);
-                if (!TA_MetaObject::invokeMethod([](TA_MetaObject::TA_ConnectionObjectHolder conn) {
-                    TA_Connection::disconnect(conn);
-					}, std::move(m_connectionHolder)))
-                {
-                    std::cerr << "Disconnect failed!" << std::endl;
-                }
-            }
+     //       if (m_connectionHolder.valid())
+     //       {
+     //           if (!TA_MetaObject::invokeMethod([](TA_MetaObject::TA_ConnectionObjectHolder conn) {
+     //               TA_Connection::disconnect(conn);
+					//}, std::move(m_connectionHolder)))
+     //           {
+     //               std::cerr << "Disconnect failed!" << std::endl;
+     //           }
+     //       }
         }
 
         constexpr bool await_ready() const noexcept
@@ -62,14 +61,19 @@ namespace CoreAsync
 
         constexpr void await_suspend(std::coroutine_handle<> handle) noexcept
         {
-            if(!m_connectionHolder.valid())
-            {
-                m_connectionHolder = TA_Connection::connect(m_pObject, std::move(m_signal), [this, handle](Args... args) {
-                                        if constexpr(sizeof...(Args) != 0)
-                                            m_args = std::make_tuple(args...);
-                                        handle.resume();
-                                    });
-            }
+            //if(!m_connectionHolder.valid())
+            //{
+            //    m_connectionHolder = TA_Connection::connect(m_pObject, std::move(m_signal), [this, handle](Args... args) {
+            //                            if constexpr(sizeof...(Args) != 0)
+            //                                m_args = std::make_tuple(args...);
+            //                            handle.resume();
+            //                        }, true);
+            //}
+            TA_Connection::connect(m_pObject, std::move(m_signal), [this, handle](Args... args) {
+                if constexpr (sizeof...(Args) != 0)
+                    m_args = std::make_tuple(args...);
+                handle.resume();
+            }, true);
         }
 
         constexpr auto await_resume() const noexcept
@@ -90,7 +94,7 @@ namespace CoreAsync
         TA_SignalAwaitable operator = (const TA_SignalAwaitable &) = delete;
 
     protected:
-        TA_MetaObject::TA_ConnectionObjectHolder m_connectionHolder {nullptr};
+        //TA_MetaObject::TA_ConnectionObjectHolder m_connectionHolder {nullptr};
         Sender *m_pObject {nullptr};
         void (std::decay_t<Sender>::*m_signal)(Args...);
         std::tuple<Args...> m_args {};
