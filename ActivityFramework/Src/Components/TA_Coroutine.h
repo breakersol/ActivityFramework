@@ -61,14 +61,6 @@ namespace CoreAsync
 
         constexpr void await_suspend(std::coroutine_handle<> handle) noexcept
         {
-            //if(!m_connectionHolder.valid())
-            //{
-            //    m_connectionHolder = TA_Connection::connect(m_pObject, std::move(m_signal), [this, handle](Args... args) {
-            //                            if constexpr(sizeof...(Args) != 0)
-            //                                m_args = std::make_tuple(args...);
-            //                            handle.resume();
-            //                        }, true);
-            //}
             TA_Connection::connect(m_pObject, std::move(m_signal), [this, handle](Args... args) {
                 if constexpr (sizeof...(Args) != 0)
                     m_args = std::make_tuple(args...);
@@ -94,7 +86,6 @@ namespace CoreAsync
         TA_SignalAwaitable operator = (const TA_SignalAwaitable &) = delete;
 
     protected:
-        //TA_MetaObject::TA_ConnectionObjectHolder m_connectionHolder {nullptr};
         Sender *m_pObject {nullptr};
         void (std::decay_t<Sender>::*m_signal)(Args...);
         std::tuple<Args...> m_args {};
@@ -158,6 +149,14 @@ namespace CoreAsync
                 m_coroutineHandle.destroy();
             }
         }
+
+		void start()
+		{
+			if (m_coroutineHandle)
+			{
+				m_coroutineHandle.resume();
+			}
+		}
 
         T get()
         {
@@ -320,10 +319,17 @@ namespace CoreAsync
             }
         }
 
+		void start()
+		{
+			if (m_coroutineHandle)
+			{
+				m_coroutineHandle.resume();
+			}
+		}
+
         bool next()
-        {
-            m_coroutineHandle.resume();
-            if(m_coroutineHandle.done())
+        { 
+            if(!m_coroutineHandle || m_coroutineHandle.done())
             {
                 if(m_coroutineHandle.promise().m_exception)
                 {
@@ -331,7 +337,8 @@ namespace CoreAsync
                 }
                 return false;
             }
-            return true;
+            m_coroutineHandle.resume();
+			return !m_coroutineHandle.done();
         }
 
         T value()
@@ -405,16 +412,16 @@ namespace CoreAsync
 
         bool next()
         {
-            m_coroutineHandle.resume();
-            if(m_coroutineHandle.done())
+            if (!m_coroutineHandle || m_coroutineHandle.done())
             {
-                if(m_coroutineHandle.promise().m_exception)
+                if (m_coroutineHandle.promise().m_exception)
                 {
                     std::rethrow_exception(m_coroutineHandle.promise().m_exception);
                 }
                 return false;
             }
-            return true;
+            m_coroutineHandle.resume();
+            return !m_coroutineHandle.done();
         }
 
         T value()

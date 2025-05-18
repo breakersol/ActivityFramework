@@ -61,7 +61,7 @@ namespace CoreAsync
 
             ~TA_ConnectionObjectHolder()
             {
-                //m_pConnection = nullptr;
+               
             }
 
             bool valid() const

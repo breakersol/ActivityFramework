@@ -39,9 +39,19 @@ public:
 
     CoreAsync::TA_CoroutineGenerator<int, CoreAsync::Eager> testCoroutineGenerator(CoroutineTestSender *pSender)
     {
-        auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
-        co_yield val * 3;
+		while (true)
+		{
+            auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
+            co_yield val * 3;
+			if (val > 10)
+			{
+				break;
+			}
+		}
+        co_return;
     }
+
+	std::size_t m_count{ 0 };
 };
 
 #endif // TA_COROUTINETEST_H
