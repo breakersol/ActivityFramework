@@ -168,7 +168,6 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            //auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), pReceiver, std::forward<Slot>(slot), type);
 			auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::forward<Signal>(signal), pReceiver, std::forward<Slot>(slot), type);
             pSender->m_outputConnections.emplace(signalMark, conn);
             pReceiver->m_inputConnections.emplace(slotMark, conn);
@@ -201,7 +200,6 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            //auto &&conn = new TA_ConnectionObject(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type);
 			auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
             pSender->m_outputConnections.emplace(signalMark, conn);
             if(autoDestroy)
@@ -259,11 +257,6 @@ namespace CoreAsync
                 }
                 startRecIter++;
             }
-            //if(pConnecton)
-            //{
-            //    delete pConnecton;
-            //    pConnecton = nullptr;
-            //}
             return true;
         }
 
@@ -294,9 +287,6 @@ namespace CoreAsync
                 }
                 startSendIter++;
             }
-            //delete pConnection;
-            //pConnection = nullptr;
-            //holder.reset();
             return true;
         }
 
@@ -324,11 +314,6 @@ namespace CoreAsync
 				auto obj = startIter++->second;
                 obj->setPara(std::forward<Args>(args)...);
                 obj->callSlot();
-     //           if (obj->isAutoDestroy())
-     //           {
-					//pSender->m_outputConnections.erase(cpIter);
-					//TA_CommonTools::debugInfo(META_STRING("Auto destroy connection object"));
-     //           }
             }
             return true;
         }
@@ -524,7 +509,7 @@ namespace CoreAsync
             std::any m_para;
             TA_SingleActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS> *m_pActivity {nullptr};
             TA_ActivityProxy *m_pSlotProxy {nullptr};
-			const bool m_autoDestroy;
+            const bool m_autoDestroy {false};
         };
 
     private:
@@ -542,8 +527,6 @@ namespace CoreAsync
                     }
                     ++start;
                 }
-                //delete obj;
-                //obj = nullptr;
             }
             m_outputConnections.clear();
 
@@ -559,8 +542,6 @@ namespace CoreAsync
                     }
                     ++start;
                 }
-                //delete obj;
-                //obj = nullptr;
             }
             m_inputConnections.clear();
         }
