@@ -116,7 +116,7 @@ public:
 
     static void printStr(std::string &str)
     {
-        std::printf("The string is: %s\n", str.c_str());
+		std::cout << "The string is: " << str << std::endl;
 	}
 
 TA_Signals:

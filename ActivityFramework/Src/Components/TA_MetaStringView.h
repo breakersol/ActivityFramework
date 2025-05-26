@@ -69,6 +69,14 @@ struct TA_StringView
     }
 };
 
+template <typename T>
+concept MetaStringType = requires
+{
+    { T::raw() } -> std::same_as<typename T::RawType *>;
+    { T::size() } -> std::same_as<std::size_t>;
+    { T::data() } -> std::same_as<std::basic_string_view<typename T::RawType>>;
+};
+
 }
 
 #endif // TA_METASTRING_H
