@@ -114,6 +114,11 @@ public:
         return std::string("123") + str;
     }
 
+    static void printStr(std::string &str)
+    {
+        std::printf("The string is: %s\n", str.c_str());
+	}
+
 TA_Signals:
     void startTest(int,int) {}
     void printTest() {}

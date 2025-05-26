@@ -45,8 +45,8 @@ namespace CoreAsync
                 using FuncType = std::decay_t<decltype(value)>;
                 if constexpr(std::is_member_function_pointer_v<FuncType>)
                 {
-                    auto pObj = dynamic_cast<typename FunctionTypeInfo<FuncType>::ParentClass *>(pReceiver);
-                    return wrapper(pObj, std::forward<std::decay_t<decltype(value)>>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::argSize> {}, args);
+                    auto pObj = dynamic_cast<typename MethodTypeInfo<FuncType>::ParentClass *>(pReceiver);
+                    return wrapper(pObj, std::forward<std::decay_t<decltype(value)>>(value), std::make_index_sequence<MethodTypeInfo<FuncType>::argSize> {}, args);
                 }
                 else
                 {
@@ -67,19 +67,19 @@ namespace CoreAsync
                 using FuncType = std::decay_t<decltype(value)>;
                 if constexpr(std::is_member_function_pointer_v<FuncType>)
                 {
-                    using ReturnType = typename FunctionTypeInfo<FuncType>::RetType;
-                    auto pObj = dynamic_cast<typename FunctionTypeInfo<FuncType>::ParentClass *>(pReceiver);
+                    using ReturnType = typename MethodTypeInfo<FuncType>::RetType;
+                    auto pObj = dynamic_cast<typename MethodTypeInfo<FuncType>::ParentClass *>(pReceiver);
                     if constexpr(std::is_same_v<void, ReturnType>)
                     {
-                        if constexpr(FunctionTypeInfo<FuncType>::argSize != 0)
-                            invoke(pObj, std::forward<FuncType>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::argSize> {}, args);
+                        if constexpr(MethodTypeInfo<FuncType>::argSize != 0)
+                            invoke(pObj, std::forward<FuncType>(value), std::make_index_sequence<MethodTypeInfo<FuncType>::argSize> {}, args);
                         else
                             invoke(pObj, std::forward<FuncType>(value));
                     }
                     else
                     {
-                        if constexpr(FunctionTypeInfo<FuncType>::argSize != 0)
-                            invoke(pObj, std::forward<FuncType>(value), std::make_index_sequence<FunctionTypeInfo<FuncType>::argSize> {}, args);
+                        if constexpr(MethodTypeInfo<FuncType>::argSize != 0)
+                            invoke(pObj, std::forward<FuncType>(value), std::make_index_sequence<MethodTypeInfo<FuncType>::argSize> {}, args);
                         else
                             invoke(pObj, std::forward<FuncType>(value));
                     }

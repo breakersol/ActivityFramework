@@ -77,13 +77,13 @@ namespace CoreAsync
         ~TA_ActivityProxy() = default;
 
         TA_ActivityProxy(const TA_ActivityProxy &other) = delete;
-        TA_ActivityProxy(TA_ActivityProxy &&other) : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pAffinityThreadExp(std::exchange(other.m_pAffinityThreadExp, nullptr)), m_pIdExp(std::exchange(other.m_pIdExp, nullptr)), m_pMoveThreadExp(std::exchange(other.m_pMoveThreadExp, nullptr)), m_future(std::move(other.m_future))
+        TA_ActivityProxy(TA_ActivityProxy &&other) noexcept : m_pActivity(std::exchange(other.m_pActivity, nullptr)), m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)), m_pAffinityThreadExp(std::exchange(other.m_pAffinityThreadExp, nullptr)), m_pIdExp(std::exchange(other.m_pIdExp, nullptr)), m_pMoveThreadExp(std::exchange(other.m_pMoveThreadExp, nullptr)), m_future(std::move(other.m_future))
         {
 
         }
 
         TA_ActivityProxy & operator = (const TA_ActivityProxy &other) = delete;
-        TA_ActivityProxy & operator = (TA_ActivityProxy &&other)
+        TA_ActivityProxy & operator = (TA_ActivityProxy &&other) noexcept
         {
             if(this != &other)
             {

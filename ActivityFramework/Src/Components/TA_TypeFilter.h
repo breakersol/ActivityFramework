@@ -131,10 +131,10 @@ struct ParentObject<R(C::*)(Args...) const>
 };
 
 template <typename Func>
-struct FunctionTypeInfo;
+struct MethodTypeInfo;
 
 template <typename C, typename R, typename ...Args>
-struct FunctionTypeInfo<R(C::* &&)(Args...)>
+struct MethodTypeInfo<R(C::* &&)(Args...)>
 {
     using RetType = R;
     using ParentClass = C;
@@ -146,7 +146,7 @@ struct FunctionTypeInfo<R(C::* &&)(Args...)>
 };
 
 template <typename C, typename R, typename ...Args>
-struct FunctionTypeInfo<R(C::*)(Args...)>
+struct MethodTypeInfo<R(C::*)(Args...)>
 {
     using RetType = R;
     using ParentClass = C;
@@ -159,7 +159,7 @@ struct FunctionTypeInfo<R(C::*)(Args...)>
 };
 
 template <typename C, typename R, typename ...Args>
-struct FunctionTypeInfo<R(C::* &&)(Args...) const>
+struct MethodTypeInfo<R(C::* &&)(Args...) const>
 {
     using RetType = R;
     using ParentClass = C;
@@ -171,7 +171,7 @@ struct FunctionTypeInfo<R(C::* &&)(Args...) const>
 };
 
 template <typename C, typename R, typename ...Args>
-struct FunctionTypeInfo<R(C::*)(Args...) const>
+struct MethodTypeInfo<R(C::*)(Args...) const>
 {
     using RetType = R;
     using ParentClass = C;
@@ -184,7 +184,7 @@ struct FunctionTypeInfo<R(C::*)(Args...) const>
 };
 
 template <typename R, typename ...Args>
-struct FunctionTypeInfo<R(* &&)(Args...)>
+struct MethodTypeInfo<R(* &&)(Args...)>
 {
     using RetType = R;
     using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
@@ -195,7 +195,7 @@ struct FunctionTypeInfo<R(* &&)(Args...)>
 };
 
 template <typename R, typename ...Args>
-struct FunctionTypeInfo<R(*)(Args...)>
+struct MethodTypeInfo<R(*)(Args...)>
 {
     using RetType = R;
     using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
@@ -317,7 +317,13 @@ concept LambdaExpType = requires(T t)
 };
 
 template <typename T>
-struct LambdaExpTraits : FunctionTypeInfo<decltype(&T::operator())> {};
+struct LambdaExpTraits : MethodTypeInfo<decltype(&T::operator())> {};
+
+template <typename T>
+concept InstanceMethodType = IsInstanceMethod<T>::value;
+
+template <typename T>
+concept StaticMethodType = IsStaticMethod<T>::value;
 
 }
 

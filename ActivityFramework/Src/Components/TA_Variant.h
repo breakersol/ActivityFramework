@@ -106,7 +106,7 @@ namespace CoreAsync {
             return *this;
         }
 
-        TA_Variant & operator = (TA_Variant &&var)
+        TA_Variant & operator = (TA_Variant &&var) noexcept
         {
             if(this != &var)
             {

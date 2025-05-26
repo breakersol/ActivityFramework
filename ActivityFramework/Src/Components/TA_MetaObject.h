@@ -95,7 +95,7 @@ namespace CoreAsync
 
         }
 
-        TA_MetaObject(TA_MetaObject &&object) : m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()), m_outputConnections(std::move(object.m_outputConnections)), m_inputConnections(std::move(object.m_inputConnections))
+        TA_MetaObject(TA_MetaObject &&object) noexcept : m_sourceThread(std::this_thread::get_id()),m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()), m_outputConnections(std::move(object.m_outputConnections)), m_inputConnections(std::move(object.m_inputConnections))
         {
 
         }
@@ -111,7 +111,7 @@ namespace CoreAsync
             return *this;
         }
 
-        TA_MetaObject & operator = (TA_MetaObject &&object)
+        TA_MetaObject & operator = (TA_MetaObject &&object) noexcept
         {
             if(this != &object)
             {
@@ -142,13 +142,13 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
+            if constexpr(MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
+            if constexpr(MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
+                if constexpr(!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup, typename MethodTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -185,7 +185,7 @@ namespace CoreAsync
             {
                 return { nullptr };
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize)
+            if constexpr(MethodTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize)
             {
                 return { nullptr };
             }
@@ -214,13 +214,13 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
+            if constexpr(MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
+            if constexpr(MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
+                if constexpr(!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup, typename MethodTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -297,7 +297,7 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(!std::is_convertible_v<std::decay_t<Sender *>, typename FunctionTypeInfo<Signal>::ParentClass *>)
+            if constexpr(!std::is_convertible_v<std::decay_t<Sender *>, typename MethodTypeInfo<Signal>::ParentClass *>)
             {
                 return false;
             }
@@ -325,13 +325,13 @@ namespace CoreAsync
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != FunctionTypeInfo<Slot>::argSize)
+            if constexpr(MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize)
             {
                 return false;
             }
-            if constexpr(FunctionTypeInfo<Signal>::argSize != 0 && FunctionTypeInfo<Slot>::argSize != 0)
+            if constexpr(MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0)
             {
-                if constexpr(!MetaSame<typename FunctionTypeInfo<Signal>::ArgGroup, typename FunctionTypeInfo<Slot>::ArgGroup>::value)
+                if constexpr(!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup, typename MethodTypeInfo<Slot>::ArgGroup>::value)
                 {
                     return false;
                 }
@@ -363,6 +363,30 @@ namespace CoreAsync
             return true;
         }
 
+        template <InstanceMethodType Method, typename Ins, typename ...Args>
+        static constexpr bool invokeMethod(Method &&method, Ins &ins, Args &&...args)
+        {
+            if constexpr(MethodTypeInfo<std::decay_t<Method>>::argSize != sizeof...(Args))
+            {
+                return false;
+            }
+            using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
+            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_SingleActivity<Method, Ins, typename MethodTypeInfo<Method>::RetType, Args...>(std::forward<Method>(method), ins, std::forward<Args>(args)...), true);
+            return true;
+        }
+
+        template <StaticMethodType Method, typename ...Args>
+        static constexpr bool invokeMethod(Method &&method, Args &&...args)
+        {
+            if constexpr(MethodTypeInfo<std::decay_t<Method>>::argSize != sizeof...(Args))
+            {
+                return false;
+            }
+            using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
+            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_SingleActivity<NonMemberFunctionPtr<typename MethodTypeInfo<Method>::RetType, Args...>, INVALID_INS, Ret, Args...>(std::forward<Method>(method), std::forward<Args>(args)...), true);
+            return true;
+        }
+
     private:
 		class TA_ConnectionObject : public std::enable_shared_from_this<TA_ConnectionObject>
         {
@@ -371,8 +395,8 @@ namespace CoreAsync
             template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
             TA_ConnectionObject(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot, TA_ConnectionType type) : m_pSender(pSender),m_pReceiver(pReceiver), m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender> >::findName(std::forward<Signal>(signal))), m_receiverFunc(Reflex::TA_TypeInfo<std::decay_t<Receiver> >::findName(std::forward<Slot>(slot))), m_type(type), m_autoDestroy(false)
             {
-                using SlotParaTuple = typename FunctionTypeInfo<Slot>::ArgGroup::Tuple;
-                using Ret = typename FunctionTypeInfo<Slot>::RetType;
+                using SlotParaTuple = typename MethodTypeInfo<Slot>::ArgGroup::Tuple;
+                using Ret = typename MethodTypeInfo<Slot>::RetType;
                 m_para = SlotParaTuple {};
                 decltype(auto) slotExp = [&,slot]()->void {
                     decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
