@@ -25,6 +25,7 @@
 #include "TA_ThreadPool.h"
 #include "TA_SingleActivity.h"
 #include "TA_MetaReflex.h"
+#include "TA_MetaActivity.h"
 
 namespace CoreAsync
 {
@@ -385,6 +386,12 @@ namespace CoreAsync
             using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
             auto fetcher = TA_ThreadHolder::get().postActivity(new TA_SingleActivity<NonMemberFunctionPtr<typename MethodTypeInfo<Method>::RetType, Args...>, INVALID_INS, Ret, Args...>(std::forward<Method>(method), std::forward<Args>(args)...), true);
             return true;
+        }
+
+        template <MetaStringType Method, typename ...Args>
+        static constexpr auto invokeMethod(Method, Args && ...args)
+        {
+			return TA_ThreadHolder::get().postActivity(new TA_MetaActivity<Method, Args...>(Method{}, std::forward<Args>(args)...), true);
         }
 
     private:

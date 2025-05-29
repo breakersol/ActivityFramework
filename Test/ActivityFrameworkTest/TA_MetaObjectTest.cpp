@@ -41,6 +41,8 @@ void TA_MetaObjectTest::TearDown()
 
 TEST_F(TA_MetaObjectTest, InvokeMethodTest)
 {
+	auto fetcher = CoreAsync::TA_MetaObject::invokeMethod(META_STRING("contains<int>"), m_pMetaTest, 3);
+	EXPECT_TRUE(fetcher().get<bool>());
 	EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod([](int a) {std::cout << a << std::endl;}, 1));
 	EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::productMM, m_pMetaTest, 2, 5));
 	EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::printStr, m_str));
