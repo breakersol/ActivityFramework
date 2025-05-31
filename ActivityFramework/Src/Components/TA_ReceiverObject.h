@@ -17,7 +17,7 @@
 #ifndef TA_SLOTOBJECT_H
 #define TA_SLOTOBJECT_H
 
-#include "TA_SingleActivity.h"
+#include "TA_MethodActivity.h"
 #include "TA_MetaReflex.h"
 #include "TA_MetaObject.h"
 
@@ -106,7 +106,7 @@ namespace CoreAsync
                 }
 
             };
-            return new TA_ActivityProxy{new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread())};
+            return new TA_ActivityProxy{new CoreAsync::TA_MethodActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread())};
         }
 
         template <typename Ret, typename RClass, typename ...Args, typename std::size_t ...IDXS>
@@ -126,7 +126,7 @@ namespace CoreAsync
                 }
 
             };
-            return new TA_ActivityProxy {new CoreAsync::TA_SingleActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread())};
+            return new TA_ActivityProxy {new CoreAsync::TA_MethodActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(funcWrapper), pReceiver->affinityThread())};
         }
 
         template <typename Ret, typename RClass, typename ...Args, typename std::size_t ...IDXS>

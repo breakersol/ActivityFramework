@@ -11,6 +11,7 @@
 | Lock-free Circular Queue         | Implements an efficient circular data structure for improved data handling. |
 | Thread Pool                      | Optimizes concurrent task executions through effective thread management.   |
 | Qt-like Signal and Slot Mechanism| Provides a dynamic event-handling mechanism inspired by the Qt framework.   |
+| Coroutine                        | provides a set of coroutine utilities for C++20, designed to simplify asynchronous programming and event-driven development   |
 
 ### Platform Support
 
@@ -438,58 +439,28 @@ Finally, if the connection is unnecessary anymore, you can **disconnect** it.
 ```cpp
     CoreAsync::ITA_Connection::disconnect(pTest, &MetaTest::printTest, ppTest, &MetaTest::printSlot);
 ```
+<br/>Alternatively, Lambda expressions can be connected as a slot function, and return a connection hold which is used to disconnect. 
+```cpp
+    auto conn = CoreAsync::ITA_Connection::connect(pTempTest, &MetaTest::startTest, [c](int a, int b){std::printf("The numbers are: %d, %d, %d\n.",a, b, c);});
+```
+### Invoke Method
+You can also use TA_MetaObject::invokeMethod to call methods asynchronously in a variety of forms.
+```cpp
+	auto fetcher = CoreAsync::TA_MetaObject::invokeMethod(META_STRING("contains<int>"), m_pMetaTest, 3);
+	fetcher().get<bool>());
+```
+```cpp
+	CoreAsync::TA_MetaObject::invokeMethod([](int a) {std::cout << a << std::endl;}, 1);
+	CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::productMM, m_pMetaTest, 2, 5);
+	CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::printStr, m_str);
+```
 ### Activity
-Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides several methods to create them, you can learn about them from the source code of the unit test. This is one of the methods  :
+Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides several methods to create them, you can learn about them from the source code of the unit test. These are tow of the them  :
 ```cpp
-    auto acivity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::printNums, pTest, m,n);
+    auto acivity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::printNums, pTest, m,n);  //function address
+    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b); //function name
 ```
-<br/>If all the parameters binded when creating an activity are left-value, modifying the original left-valued object before executing the activity will affect the final execution result.
-<br/>Activity also provides some additional features:
-<br/>1. Link an activity to another activity. 
-```cpp
-    std::function<int()> func_1 = [&]()->int {return m_pTest->sub(5,5);};
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create(func_1);
-    std::function<int()> func_2 = [&]()->int {return m_pTest->sub(2,1);};
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
-    activity_1->link(activity_2);
-    auto var = (*activity_1)();
-```
-<br/>When the execution of activity_1 is finished, activity_2 will be executed automatically, and the result of activity_2 will be returned.
-
-<br/>2. Make two activities execute in concurrency.
-```cpp
-    std::function<int()> func_1 = [&]()->int {return m_pTest->sub(5,5);};
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create(func_1);
-    std::function<int()> func_2 = [&]()->int {return m_pTest->sub(8,1);};
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
-    activity_1->parallel(activity_2);
-    auto var = (*activity_1)();
-    auto res = var.get<int>();
-```
-<br/>The execution of activity_1 will execute actvity_2 in concurrency and finally return the result of activtiy_2.
-
-<br/>3. Create branches on selected activity.
-```cpp
-    std::function<int()> func_1 = [&]()->int {return m_pTest->sub(5,5);};
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create(func_1);
-    std::function<int()> func_2 = [&]()->int {return m_pTest->sub(1,2);};
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(func_2);
-    std::function<int()> func_3 = [&]()->int {return m_pTest->sub(99,1);};
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create(func_3);
-    std::function<int()> func_4 = [&]()->int {return m_pTest->sub(58,33);};
-    auto activity_4 = CoreAsync::ITA_ActivityCreator::create(func_4);
-    std::function<std::string()> func_5 = [&]()->std::string {return MetaTest::getStr("321");};
-    auto activity_5 = CoreAsync::ITA_ActivityCreator::create(func_5);
-
-    activity_3->branch(activity_4,activity_5);
-    activity_1->branch(activity_2,activity_3);
-
-    activity_1->selectBranch({2,2});
-    auto var = (*activity_1)();
-    auto res = var.get<std::string>();
-```
-<br/>The above code indicates that we first create two branches activity_4 and activity_5 on activity_3. At this layer, activity_3 represents branch index 0, while activity_4 and activity_5 represent 1 and 2, respectively. Similarly, we created the branch on activity_1 activity_2 and activity_3. **selectBranch({2,2})** means that when activity_1 is executed(**(*activity_1)()**), it will be executed in the order from activity_3 to activity_5 and return the result of activity_5. And activity_1 itself will not be executed.
-
+<br/>If the parameters binded when creating an activity are left-value, modifying the original left-valued object before executing the activity will affect the final execution result.
 ### Thread Pool
 A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
 - **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
@@ -510,7 +481,27 @@ A lightweight thread pool has been implemented within the framework, which is as
 - **size**: Return the number of threads.
 - **shutDown**: Request to shut down and clear all of threads.
 ---
+### Coroutine
+**TA_Coroutine** is a modern C++ coroutine utility designed to simplify asynchronous programming and generator patterns using the C++20 coroutine features.
+#### Features
 
+- **Coroutine Task**: Supports both lazy and eager execution models for asynchronous tasks (`TA_CoroutineTask`).
+- **Coroutine Generator**: Yields multiple values over time, supporting both lazy and eager evaluation (`TA_CoroutineGenerator`).
+- **Signal Awaitable**: Enables awaiting Qt-like signal emissions within coroutines (`TA_SignalAwaitable`).
+- **Exception Handling**: Robust management of exceptions within coroutine flows.
+- **RAII and Resource Safety**: Ensures proper cleanup of coroutine handles and resources.
+
+#### Coroutine Behavior
+
+Two execution behaviors are provided:
+- **Lazy**: Execution starts only when explicitly resumed.
+- **Eager**: Execution starts immediately upon creation.
+<br/>**TA_CoroutineTask** is a coroutine wrapper for asynchronous tasks. Allows starting/resuming and retrieving the result.
+<br/>**TA_CoroutineGenerator** is a coroutine-based generator that yields values on each suspension.
+<br/>**TA_SignalAwaitable** enables coroutines to await signal emissions from sender objects.
+
+You can get detailed usage from the unit test use cases.
+---
 ### Pipelines
 Activity Pipeline currently offers five types of pipelines to use: **Auto Chain Pipeline, Concurrent Pipeline, Manual Chain Pipeline, Manual Steps Chain Pipeline, and Manual Key Activity Chain Pipeline**, and all types of pipelines can be created through **ITA_PipelineCreator**.
 1. _Auto Chain Pipeline_: The pipeline will automatically execute all activites in order.

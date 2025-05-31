@@ -52,7 +52,7 @@ TEST_F(TA_ActivityProxyTest, MetaActivityTest)
 
 TEST_F(TA_ActivityProxyTest, SingleActivityTest)
 {
-    decltype(auto) pActivity = new CoreAsync::TA_SingleActivity<decltype(&MetaTest::sub), MetaTest *, int, int ,int>(&MetaTest::sub, m_pTest, 9, 8);
+    decltype(auto) pActivity = new CoreAsync::TA_MethodActivity<decltype(&MetaTest::sub), MetaTest *, int, int ,int>(&MetaTest::sub, m_pTest, 9, 8);
     CoreAsync::TA_ActivityProxy *pProxy = new CoreAsync::TA_ActivityProxy(pActivity);
     auto fetcher = CoreAsync::TA_ThreadHolder::get().postActivity(pProxy);
     EXPECT_EQ(fetcher().get<int>(), 1);

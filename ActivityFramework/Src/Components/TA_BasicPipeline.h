@@ -24,7 +24,7 @@
 #include "TA_MetaReflex.h"
 #include "TA_MetaObject.h"
 #include "TA_Connection.h"
-#include "TA_SingleActivity.h"
+#include "TA_MethodActivity.h"
 
 namespace CoreAsync {
     class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject
