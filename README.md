@@ -211,6 +211,7 @@ DEFINE_TYPE_INFO(MetaTest, BaseTest, OtherTest)
     auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("META_RED"));
 ```
 **Note: If a type is exported to use, then the meta info for that type needs to be exported as well.**
+---
 ### Serialization & Deserialization
 This module is responsible for both serialization and deserialization of data types to and from a buffer. It provides a robust foundation for serialization tasks, accommodating a variety of data types and structures, and ensuring data integrity and type safety through compile-time checks and runtime validations.<br/>
 <br/>- **Supported Types**:<br/>
@@ -382,6 +383,7 @@ From the snippet above, it is evident that **TA_DEFAULT_PROPERTY** is passed int
     }
 ```
 In the demo above, properties with a serialized version of 2 or lower are eligible for serialization. The same criteria apply to deserialization.
+---
 ### Connection
 This is a simplified version of the Qt-like signal-slot mechanism.It allows objects to communicate with each other in a loosely coupled way, by emitting signals and connecting them to slots. When a signal is emitted, all connected slots are called, allowing objects to respond to events in a flexible and decoupled manner.
 The condition for using this mechanism is to make the target class inherit from **TA_MetaObject** and to implement type info of this type.
@@ -454,6 +456,7 @@ You can also use **TA_MetaObject::invokeMethod** to call methods asynchronously 
 	CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::productMM, m_pMetaTest, 2, 5);
 	CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::printStr, m_str);
 ```
+---
 ### Activity
 Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides several methods to create them, you can learn about them from the source code of the unit test. These are tow of the them  :
 ```cpp
@@ -461,6 +464,7 @@ Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides sev
     auto activity_2 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b); //function name
 ```
 <br/>If the parameters binded when creating an activity are left-value, modifying the original left-valued object before executing the activity will affect the final execution result.
+---
 ### Thread Pool
 A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
 - **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
@@ -496,6 +500,7 @@ A lightweight thread pool has been implemented within the framework, which is as
 Two execution behaviors are provided:
 - **Lazy**: Execution starts only when explicitly resumed.
 - **Eager**: Execution starts immediately upon creation.
+
 <br/>**TA_CoroutineTask** is a coroutine wrapper for asynchronous tasks. Allows starting/resuming and retrieving the result.
 <br/>**TA_CoroutineGenerator** is a coroutine-based generator that yields values on each suspension.
 <br/>**TA_SignalAwaitable** enables coroutines to await signal emissions from sender objects.
