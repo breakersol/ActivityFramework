@@ -11,7 +11,7 @@
 | Lock-free Circular Queue         | Implements an efficient circular data structure for improved data handling. |
 | Thread Pool                      | Optimizes concurrent task executions through effective thread management.   |
 | Qt-like Signal and Slot Mechanism| Provides a dynamic event-handling mechanism inspired by the Qt framework.   |
-| Coroutine                        | provides a set of coroutine utilities for C++20, designed to simplify asynchronous programming and event-driven development   |
+| Coroutine                        | Provides a set of coroutine utilities for C++20, designed to simplify asynchronous programming and event-driven development   |
 
 ### Platform Support
 
@@ -47,10 +47,10 @@ To build the project, use the `CMakeList.txt` at **/ActivityFramework/ActivityFr
 ### Versioning
 
 Recent versions can be accessed at:
-- [v0.2.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.1)
 - [v0.2.2](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.2)
 - [v0.3.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.3.0)
 - [v0.3.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.3.1)
+- [v0.4.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.4.0)
 
 ### Authors
 
@@ -439,12 +439,12 @@ Finally, if the connection is unnecessary anymore, you can **disconnect** it.
 ```cpp
     CoreAsync::ITA_Connection::disconnect(pTest, &MetaTest::printTest, ppTest, &MetaTest::printSlot);
 ```
-<br/>Alternatively, Lambda expressions can be connected as a slot function, and return a connection hold which is used to disconnect. 
+<br/>Alternatively, Lambda expressions can be connected as a slot function, and return a connection holder which is used to disconnect. 
 ```cpp
     auto conn = CoreAsync::ITA_Connection::connect(pTempTest, &MetaTest::startTest, [c](int a, int b){std::printf("The numbers are: %d, %d, %d\n.",a, b, c);});
 ```
 ### Invoke Method
-You can also use TA_MetaObject::invokeMethod to call methods asynchronously in a variety of forms.
+You can also use **TA_MetaObject::invokeMethod** to call methods asynchronously in a variety of forms.
 ```cpp
 	auto fetcher = CoreAsync::TA_MetaObject::invokeMethod(META_STRING("contains<int>"), m_pMetaTest, 3);
 	fetcher().get<bool>());
@@ -513,7 +513,6 @@ Activity Pipeline currently offers five types of pipelines to use: **Auto Chain 
 <br/>List some of the APIs about pipeline here:
 - **waitingComplete**: Continuous waiting until the pipeline execution is finished.This function will block the current thread.
 - **void setStartIndex(unsigned int index)**: Set the execution to start from the _index_ activity. Valid only in the **Waiting** state.
-- **bool switchActivityBranch(int activityIndex, std::deque<unsigned int> branches)**: Switching the branch of the _activityIndex_ activity.Valid only in the **Waiting** state.
 - **add**: Adding activites into the pipeline. Valid only in the **Waiting** state.
 - **bool remove(ActivityIndex index)**: Delete the _index_ activity. Valid only in the **Waiting** state.
 - **void clear()**: Clear all activities and cached data, and reset the pipeline status to **Waiting**. Invalid when called in **Busy** state.
