@@ -1062,7 +1062,6 @@ namespace CoreAsync {
     template <typename Method, typename ...Args>
     class TA_MethodActivity
     {
-        using Ins = std::conditional_t<IsInstanceMethod<Method>::value, std::decay_t<std::tuple_element_t<0, std::tuple<Args...>>>, void>;
     public:
         TA_MethodActivity() = delete;
         TA_MethodActivity(const TA_MethodActivity &activity) = delete;
@@ -1072,9 +1071,10 @@ namespace CoreAsync {
         TA_MethodActivity(Method method, Args &&...args, std::size_t affinityThread = std::numeric_limits<std::size_t>::max())
             : m_method(std::move(method)), m_args(std::forward<Args>(args)...), m_affinityThread(affinityThread)
         {
+
         }
 
-        virtual ~TA_MethodActivity() = default;
+        ~TA_MethodActivity() = default;
 
         decltype(auto) operator()()
         {
@@ -1091,29 +1091,40 @@ namespace CoreAsync {
             return m_affinityThread.moveToThread(thread);
         }
 
+        std::int64_t id() const
+        {
+            return m_id.id();
+        }
+
+        template <typename ...NewArgs>
+        void setPara(NewArgs &&...args)
+        {
+            if constexpr(IsInstanceMethod<Method>::value)
+            {
+                m_args = std::tuple_cat(std::get<0>(m_args), std::make_tuple(std::forward<std::decay_t<NewArgs>>(args)...));
+            }
+            else
+            {
+                m_args = std::make_tuple(std::forward<std::decay_t<NewArgs>>(args)...);
+            }
+        }
+
     private:
         decltype(auto) run()
         {
-
             return std::apply(m_method, m_args);
         }
 
         template<typename T>
         using StorageType = std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>;
 
-        template <std::size_t Idx, std::size_t ...Idxs>
-        static constexpr auto getStaticMethodParas(const std::tuple<StorageType<Args>...> &paras, std::index_sequence<Idx, Idxs...>)
-        {
-            if constexpr(sizeof...(Idxs) != 0)
-                return std::make_tuple(std::get<Idxs>(paras)...);
-            else
-                return std::make_tuple();
-        }
+        using Ins = std::conditional_t<IsInstanceMethod<Method>::value, std::decay_t<std::tuple_element_t<0, std::tuple<Args...>>>, void>;
+
     private:
         Method m_method;
         std::tuple<StorageType<Args>...> m_args;
-        Ins m_ins {};
         TA_ActivityAffinityThread m_affinityThread {};
+        TA_ActivityId m_id {};
     };
 }
 

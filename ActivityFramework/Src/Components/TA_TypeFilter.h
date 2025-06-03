@@ -50,6 +50,15 @@ struct IsSmartPointer<std::weak_ptr<Ins> >
 };
 
 template <typename T>
+concept LambdaExpType = requires(T t)
+{
+    {&T::operator()};
+};
+
+template <typename T>
+concept NonLambdaExpType = !LambdaExpType<T>;
+
+template <typename T>
 struct IsInstanceVariable
 {
    static constexpr bool value = false;
@@ -70,14 +79,14 @@ struct IsInstanceMethod
 template <typename CL, typename T, typename ...PARAS>
 struct IsInstanceMethod<T(CL:: *)(PARAS...)>
 {
-   static constexpr bool value = std::is_member_function_pointer_v<T(CL::*)(PARAS...)>;
+   static constexpr bool value = std::is_member_function_pointer_v<T(CL::*)(PARAS...)> && NonLambdaExpType<T>;
 };
 
 template <typename T>
 struct IsStaticVariable : std::integral_constant<bool, !std::is_member_object_pointer_v<T> && !std::is_member_function_pointer_v<T>> {};
 
 template <typename T>
-struct IsStaticMethod : std::integral_constant<bool, !std::is_member_function_pointer_v<T> && !std::is_member_object_pointer_v<T> && std::is_function_v<std::remove_pointer_t<T>>> {};
+struct IsStaticMethod : std::integral_constant<bool, !std::is_member_function_pointer_v<T> && !std::is_member_object_pointer_v<T> && std::is_function_v<std::remove_pointer_t<T>> && NonLambdaExpType<T>> {};
 
 template <typename T>
 concept MethodType = IsInstanceMethod<T>::value || IsStaticMethod<T>::value;
@@ -308,12 +317,6 @@ template <typename T>
 concept StandLayoutType = requires(T t)
 {
     {t}->IsStandLayout;
-};
-
-template <typename T>
-concept LambdaExpType = requires(T t)
-{
-    {&T::operator()};
 };
 
 template <typename T>
