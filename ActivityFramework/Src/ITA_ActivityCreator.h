@@ -24,58 +24,57 @@ namespace CoreAsync {
     class ITA_ActivityCreator
     {
     public:
-        template <typename Ret,typename Fn,typename Ins,typename... FuncPara,typename = SupportMemberFunction<Fn> >
-        static constexpr auto create(Fn &&func, Ins &ins, FuncPara &... para)
-        {
-            return new CoreAsync::TA_MethodActivity<Fn,Ins,Ret,FuncPara...>(std::move(func),ins,para...);
-        }
+        // template <typename Ret,typename Fn,typename Ins,typename... FuncPara,typename = SupportMemberFunction<Fn> >
+        // static constexpr auto create(Fn &&func, Ins &ins, FuncPara &... para)
+        // {
+        //     return new CoreAsync::TA_MethodActivity<Fn,Ins,Ret,FuncPara...>(std::move(func),ins,para...);
+        // }
 
-        template <typename Ret,typename Fn,typename Ins,typename... FuncPara,typename = SupportMemberFunction<Fn> >
-        static constexpr auto create(Fn &&func, Ins &ins, FuncPara &&... para)
-        {
-            return new CoreAsync::TA_MethodActivity<Fn,Ins,Ret,FuncPara...>(std::move(func),ins,std::forward<FuncPara>(para)...);
-        }
+        // template <typename Ret,typename Fn,typename Ins,typename... FuncPara,typename = SupportMemberFunction<Fn> >
+        // static constexpr auto create(Fn &&func, Ins &ins, FuncPara &&... para)
+        // {
+        //     return new CoreAsync::TA_MethodActivity<Fn,Ins,Ret,FuncPara...>(std::move(func),ins,std::forward<FuncPara>(para)...);
+        // }
 
-        template <typename Ret,typename ...FuncPara>
-        static constexpr auto create(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &...para)
-        {
-            return new CoreAsync::TA_MethodActivity<NonMemberFunctionPtr<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>(std::move(func),para...);
-        }
+        // template <typename Ret,typename ...FuncPara>
+        // static constexpr auto create(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &...para)
+        // {
+        //     return new CoreAsync::TA_MethodActivity<NonMemberFunctionPtr<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>(std::move(func),para...);
+        // }
 
-        template <typename Ret,typename ...FuncPara>
-        static constexpr auto create(NonMemberFunctionPtr<Ret,FuncPara...> &&func,  std::decay_t<FuncPara> &&...para)
-        {
-            return new CoreAsync::TA_MethodActivity<NonMemberFunctionPtr<Ret,FuncPara ...>,INVALID_INS,Ret,FuncPara...>(std::move(func),std::forward<FuncPara>(para)...);
-        }
+        // template <typename Ret,typename ...FuncPara>
+        // static constexpr auto create(NonMemberFunctionPtr<Ret,FuncPara...> &&func,  std::decay_t<FuncPara> &&...para)
+        // {
+        //     return new CoreAsync::TA_MethodActivity<NonMemberFunctionPtr<Ret,FuncPara ...>,INVALID_INS,Ret,FuncPara...>(std::move(func),std::forward<FuncPara>(para)...);
+        // }
 
-        template <typename Ret>
-        static constexpr auto create(LambdaTypeWithoutPara<Ret> func)
-        {
-            return new CoreAsync::TA_MethodActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(func));
-        }
+        // template <typename Ret>
+        // static constexpr auto create(LambdaTypeWithoutPara<Ret> func)
+        // {
+        //     return new CoreAsync::TA_MethodActivity<LambdaTypeWithoutPara<Ret>,INVALID_INS,Ret,INVALID_INS>(std::move(func));
+        // }
 
-        template <typename Ret,typename ...FuncPara>
-        static constexpr auto create(LambdaType<Ret,FuncPara...> func, std::decay_t<FuncPara> &...para)
-        {
-            return new CoreAsync::TA_MethodActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>(std::move(func),para...);
-        }
+        // template <typename Ret,typename ...FuncPara>
+        // static constexpr auto create(LambdaType<Ret,FuncPara...> func, std::decay_t<FuncPara> &...para)
+        // {
+        //     return new CoreAsync::TA_MethodActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>(std::move(func),para...);
+        // }
 
-        template <typename Ret,typename ...FuncPara>
-        static constexpr auto create(LambdaType<Ret,FuncPara...> func, std::decay_t<FuncPara> &&...para)
-        {
-            return new CoreAsync::TA_MethodActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>(std::move(func),std::forward<FuncPara>(para)...);
-        }
-
-        template <Method MethodName, typename ...FuncPara>
-        static constexpr auto create(MethodName , FuncPara &&...paras, std::size_t affinityThread)
-        {
-            return new TA_MetaActivity(MethodName {}, std::forward<FuncPara>(paras)..., affinityThread);
-        }
-
-        template <Method MethodName, typename ...FuncPara>
+        // template <typename Ret,typename ...FuncPara>
+        // static constexpr auto create(LambdaType<Ret,FuncPara...> func, std::decay_t<FuncPara> &&...para)
+        // {
+        //     return new CoreAsync::TA_MethodActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>(std::move(func),std::forward<FuncPara>(para)...);
+        // }
+        template <MethodNameType MethodName, typename ...FuncPara>
         static constexpr auto create(MethodName , FuncPara &&...paras)
         {
             return new TA_MetaActivity<MethodName, FuncPara...>(MethodName {}, std::forward<FuncPara>(paras)...);
+        }
+
+        template <GenernalMethodType Method, typename ...Args>
+        static constexpr auto create(Method &&method, Args &&...args)
+        {
+            return new TA_MethodXActivity<Method, Args...>(std::forward<Method>(method), std::forward<Args>(args)...);
         }
     };
 }

@@ -36,7 +36,7 @@ void TA_ThreadPoolTest::SetUp()
     };
     for(int i = 0;i < activities.size();++i)
     {
-        auto activity = CoreAsync::ITA_ActivityCreator::create(func,std::move(i));
+        auto activity = CoreAsync::ITA_ActivityCreator::create(std::move(func),std::move(i));
         activities[i] = new CoreAsync::TA_ActivityProxy(activity);
     }
 }

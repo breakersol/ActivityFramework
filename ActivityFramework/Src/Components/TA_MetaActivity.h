@@ -23,13 +23,13 @@
 namespace CoreAsync
 {
     template <typename T>
-    concept Method = requires(T t)
+    concept MethodNameType = requires(T t)
     {
         typename T::RawType;
         {T::data()};
     };
 
-    template <Method MethodName, typename ...Paras>
+    template <MethodNameType MethodName, typename ...Paras>
     class TA_MetaActivity
     {
     public:
@@ -146,11 +146,6 @@ namespace CoreAsync
         TA_MetaActivity & operator = (TA_MetaActivity &&activity) = delete;
 
         TA_MetaActivity(MethodName, Paras &&...para) : m_paras(std::forward<Paras>(para)...), m_affinityThread(TA_ThreadHolder::get().topPriorityThread())
-        {
-
-        }
-
-        TA_MetaActivity(MethodName, Paras &&...para, std::size_t affinityThread) : m_paras(std::forward<Paras>(para)...), m_affinityThread(affinityThread)
         {
 
         }

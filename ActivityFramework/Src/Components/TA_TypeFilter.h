@@ -79,17 +79,20 @@ struct IsInstanceMethod
 template <typename CL, typename T, typename ...PARAS>
 struct IsInstanceMethod<T(CL:: *)(PARAS...)>
 {
-   static constexpr bool value = std::is_member_function_pointer_v<T(CL::*)(PARAS...)> && NonLambdaExpType<T>;
+   static constexpr bool value = std::is_member_function_pointer_v<T(CL::*)(PARAS...)>;
 };
 
 template <typename T>
 struct IsStaticVariable : std::integral_constant<bool, !std::is_member_object_pointer_v<T> && !std::is_member_function_pointer_v<T>> {};
 
 template <typename T>
-struct IsStaticMethod : std::integral_constant<bool, !std::is_member_function_pointer_v<T> && !std::is_member_object_pointer_v<T> && std::is_function_v<std::remove_pointer_t<T>> && NonLambdaExpType<T>> {};
+struct IsStaticMethod : std::integral_constant<bool, !std::is_member_function_pointer_v<T> && !std::is_member_object_pointer_v<T> && std::is_function_v<std::remove_pointer_t<T>>> {};
 
 template <typename T>
 concept MethodType = IsInstanceMethod<T>::value || IsStaticMethod<T>::value;
+
+template <typename T>
+concept GenernalMethodType = MethodType<T> || LambdaExpType<T>;
 
 template <typename ST, typename FUNC, template <typename S, typename D> class FILTER>
 struct IsReturnTypeEqual;

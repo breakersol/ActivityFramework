@@ -60,8 +60,7 @@ TEST_F(TA_ActivityProxyTest, SingleActivityTest)
 
 TEST_F(TA_ActivityProxyTest, LambdaActivityTest)
 {
-    std::function<int()> func = [&]()->int {return m_pTest->sub(5, 5); };
-    auto activity = CoreAsync::ITA_ActivityCreator::create(func);
+    auto activity = CoreAsync::ITA_ActivityCreator::create([&]()->int {return m_pTest->sub(5, 5); });
     CoreAsync::TA_ActivityProxy *pProxy = new CoreAsync::TA_ActivityProxy(activity);
     auto fetcher = CoreAsync::TA_ThreadHolder::get().postActivity(pProxy);
     EXPECT_EQ(fetcher().get<int>(), 0);
