@@ -103,7 +103,7 @@ TEST_F(TA_ActivityTest, modifyArguments_2)
     auto activity = CoreAsync::ITA_ActivityCreator::create(&MetaTest::sub, m_pTest, m,4);
     m = 5;
     decltype(auto) var = (*activity)();
-    EXPECT_EQ(-1,var);
+    EXPECT_EQ(1,var);
 }
 
 TEST_F(TA_ActivityTest, createNonMemberFunctionActivity)

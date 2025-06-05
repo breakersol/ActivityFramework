@@ -65,10 +65,10 @@ namespace CoreAsync {
         // {
         //     return new CoreAsync::TA_MethodActivity<LambdaType<Ret,FuncPara...>,INVALID_INS,Ret,FuncPara...>(std::move(func),std::forward<FuncPara>(para)...);
         // }
-        template <MethodNameType MethodName, typename ...FuncPara>
-        static constexpr auto create(MethodName , FuncPara &&...paras)
+        template <MethodNameType MethodName, typename ...Args>
+        static constexpr auto create(MethodName , Args &&...args)
         {
-            return new TA_MetaActivity<MethodName, FuncPara...>(MethodName {}, std::forward<FuncPara>(paras)...);
+            return new TA_MetaActivity<MethodName, Args...>(MethodName {}, std::forward<Args>(args)...);
         }
 
         template <GenernalMethodType Method, typename ...Args>

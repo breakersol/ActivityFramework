@@ -29,14 +29,13 @@ TA_ThreadPoolTest::~TA_ThreadPoolTest()
 
 void TA_ThreadPoolTest::SetUp()
 {
-    std::function<int(int)> func = [](int a) {
-//        std::printf("%d\n", a);
-//        std::printf("%d has completed an activity!\n", std::this_thread::get_id());
-        return a;
-    };
     for(int i = 0;i < activities.size();++i)
     {
-        auto activity = CoreAsync::ITA_ActivityCreator::create(std::move(func),std::move(i));
+        auto activity = CoreAsync::ITA_ActivityCreator::create([](int a) {
+            //        std::printf("%d\n", a);
+            //        std::printf("%d has completed an activity!\n", std::this_thread::get_id());
+            return a;
+            },std::move(i));
         activities[i] = new CoreAsync::TA_ActivityProxy(activity);
     }
 }

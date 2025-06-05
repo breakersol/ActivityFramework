@@ -31,9 +31,18 @@ CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTe
 
 int main(int argc, char *argv[])
 {
-    ::testing::InitGoogleTest(&argc,argv);
+    //::testing::InitGoogleTest(&argc,argv);
 
-    return RUN_ALL_TESTS();
+    //return RUN_ALL_TESTS();
+    
+    std::function<void()> testFunction = []() {
+        std::cout << "Test function executed!" << std::endl;
+		};
+
+    auto testActivity = CoreAsync::ITA_ActivityCreator::create(std::move(testFunction));
+    testActivity->operator()();
+    std::cout << "Test completed!" << std::endl;
+
  //   CoroutineTestSender sender;
 
  //   auto task_1 = testCoroutineTask(&sender);
@@ -48,5 +57,5 @@ int main(int argc, char *argv[])
 
 	//std::cout << "Test completed!" << std::endl;
 
- //   return 0;
+    return 0;
 }

@@ -50,6 +50,15 @@ struct IsSmartPointer<std::weak_ptr<Ins> >
 };
 
 template <typename T>
+struct IsStdFunction : std::false_type {};
+
+template <typename R, typename ...Args>
+struct IsStdFunction<std::function<R(Args...)>> : std::true_type {};
+
+template <typename Func>
+concept StdFunctionType = IsStdFunction<std::decay_t<Func>>::value;
+
+template <typename T>
 concept LambdaExpType = requires(T t)
 {
     {&T::operator()};
@@ -92,7 +101,7 @@ template <typename T>
 concept MethodType = IsInstanceMethod<T>::value || IsStaticMethod<T>::value;
 
 template <typename T>
-concept GenernalMethodType = MethodType<T> || LambdaExpType<T>;
+concept GenernalMethodType = MethodType<T> || LambdaExpType<T> || StdFunctionType<T>;
 
 template <typename ST, typename FUNC, template <typename S, typename D> class FILTER>
 struct IsReturnTypeEqual;
