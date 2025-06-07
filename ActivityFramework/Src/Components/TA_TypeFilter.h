@@ -56,7 +56,10 @@ template <typename R, typename ...Args>
 struct IsStdFunction<std::function<R(Args...)>> : std::true_type {};
 
 template <typename Func>
-concept StdFunctionType = IsStdFunction<std::decay_t<Func>>::value;
+static constexpr bool IsStdFunction_v = IsStdFunction<std::decay_t<Func>>::value;
+
+template <typename Func>
+concept StdFunctionType = IsStdFunction_v<Func>;
 
 template <typename T>
 concept LambdaExpType = requires(T t)

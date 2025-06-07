@@ -15,7 +15,7 @@
  */
 
 #include "TA_ThreadPoolTest.h"
-#include "ITA_ActivityCreator.h"
+#include "Components/TA_Activity.h"
 
 TA_ThreadPoolTest::TA_ThreadPoolTest()
 {
@@ -31,7 +31,7 @@ void TA_ThreadPoolTest::SetUp()
 {
     for(int i = 0;i < activities.size();++i)
     {
-        auto activity = CoreAsync::ITA_ActivityCreator::create([](int a) {
+        auto activity = CoreAsync::TA_ActivityCreator::create([](int a) {
             //        std::printf("%d\n", a);
             //        std::printf("%d has completed an activity!\n", std::this_thread::get_id());
             return a;

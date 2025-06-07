@@ -30,7 +30,6 @@ add_library(ActivityFramework SHARED
     Src/TA_ActivityFramework_global.h
     Src/ITA_PipelineCreator.h
     Src/ITA_Connection.h
-    Src/ITA_ActivityCreator.h
     Src/Components/TA_ActivityQueue.h
     Src/Components/TA_AutoChainPipeline.cpp
     Src/Components/TA_AutoChainPipeline.h
@@ -43,7 +42,6 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_PipelineCreator.h
     Src/Components/TA_PipelineHolder.h
     Src/Components/TA_ReceiverObject.h
-    Src/Components/TA_MethodActivity.h
     Src/Components/TA_TypeFilter.h
     Src/Components/TA_TypeList.h
     Src/Components/TA_Variant.h
@@ -62,7 +60,7 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_EndianConversion.h
     Src/Components/TA_Serialization.h
     Src/Components/TA_Buffer.h
-    Src/Components/TA_MetaActivity.h
+    Src/Components/TA_Activity.h
     Src/Components/TA_ActivityComponments.h
     Src/Components/TA_ActivityProxy.h
     Src/Components/TA_Coroutine.h
