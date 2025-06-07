@@ -458,10 +458,10 @@ You can also use **TA_MetaObject::invokeMethod** to call methods asynchronously 
 ```
 ---
 ### Activity
-Activity is the basic unit in a pipeline, and _ITA_ActivityCreator_ provides several methods to create them, you can learn about them from the source code of the unit test. These are tow of the them  :
+Activity is the basic unit in a pipeline, and _TA_ActivityCreator_ provides several methods to create them, you can learn about them from the source code of the unit test. These are tow of the them  :
 ```cpp
-    auto acivity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::printNums, pTest, m,n);  //function address
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b); //function name
+    auto acivity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::printNums, pTest, m,n);  //function address
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b); //function name
 ```
 <br/>If the parameters binded when creating an activity are left-value, modifying the original left-valued object before executing the activity will affect the final execution result.
 ---
