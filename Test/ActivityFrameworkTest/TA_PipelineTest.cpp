@@ -15,7 +15,7 @@
  */
 
 #include "TA_PipelineTest.h"
-#include "ITA_ActivityCreator.h"
+#include "Components/TA_Activity.h"
 #include "ITA_PipelineCreator.h"
 
 TA_PipelineTest::TA_PipelineTest()
@@ -62,9 +62,9 @@ void TA_PipelineTest::TearDown()
 
 TEST_F(TA_PipelineTest, activitySizeTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
     std::size_t size = m_pAutoChainPipeline->activitySize();
@@ -74,9 +74,9 @@ TEST_F(TA_PipelineTest, activitySizeTest)
 
 TEST_F(TA_PipelineTest, removeTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
     m_pAutoChainPipeline->remove(1);
@@ -97,9 +97,9 @@ TEST_F(TA_PipelineTest, removeTest)
 
 TEST_F(TA_PipelineTest, resetTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
     m_pAutoChainPipeline->execute();
@@ -126,9 +126,9 @@ TEST_F(TA_PipelineTest, resetTest)
 
 TEST_F(TA_PipelineTest, clearTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
     m_pAutoChainPipeline->clear();
@@ -138,9 +138,9 @@ TEST_F(TA_PipelineTest, clearTest)
 
 TEST_F(TA_PipelineTest, stateTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     EXPECT_EQ(CoreAsync::TA_BasicPipeline::State::Waiting, m_pAutoChainPipeline->state());
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
@@ -153,9 +153,9 @@ TEST_F(TA_PipelineTest, stateTest)
 
 TEST_F(TA_PipelineTest, startIndexTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
     m_pAutoChainPipeline->setStartIndex(1);
@@ -175,9 +175,9 @@ TEST_F(TA_PipelineTest, startIndexTest)
 
 TEST_F(TA_PipelineTest, autoChainPipeline_executeTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
     m_pAutoChainPipeline->execute();
@@ -195,9 +195,9 @@ TEST_F(TA_PipelineTest, autoChainPipeline_executeTest)
 
 TEST_F(TA_PipelineTest, manualChainPipeline_executeTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 5,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pManualChainPipeline->add(activity_1,activity_2,activity_3);
     m_pManualChainPipeline->execute();
@@ -226,9 +226,9 @@ TEST_F(TA_PipelineTest, manualChainPipeline_executeTest)
 
 TEST_F(TA_PipelineTest, manualKeyActivityChainPipeline_executeTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 5,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pManualKeyActivityChainPipeline->add(activity_1,activity_2,activity_3);
     m_pManualKeyActivityChainPipeline->setKeyActivity(1);
@@ -251,9 +251,9 @@ TEST_F(TA_PipelineTest, manualKeyActivityChainPipeline_executeTest)
 
 TEST_F(TA_PipelineTest, manualStepsChainPipeline_executeTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 5,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pManualStepsChainPipeline->add(activity_1,activity_2,activity_3);
     m_pManualStepsChainPipeline->setSteps(2);
@@ -272,9 +272,9 @@ TEST_F(TA_PipelineTest, manualStepsChainPipeline_executeTest)
 
 TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
 {
-    auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pConcurrentPipeline->add(activity_1,activity_2,activity_3);
     m_pConcurrentPipeline->execute();
@@ -292,9 +292,9 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
     std::function<bool()> testFunc = [&]()->bool {
         m_pConcurrentPipeline->reset();
 
-        auto activity_1 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 1,2);
-        auto activity_2 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 2,2);
-        auto activity_3 = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 10,1);
+        auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
+        auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
+        auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
         m_pConcurrentPipeline->add(activity_1,activity_2,activity_3);
         m_pConcurrentPipeline->execute();
@@ -316,7 +316,7 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
     //line->clear();
 
     //line = CoreAsync::ITA_PipelineCreator::createConcurrentPipeline();
-    //auto a1 = CoreAsync::ITA_ActivityCreator::create<bool>(testFunc);
+    //auto a1 = CoreAsync::TA_ActivityCreator::create<bool>(testFunc);
     //line->add(a1);
     //line->execute();
     //if(line->waitingComplete())

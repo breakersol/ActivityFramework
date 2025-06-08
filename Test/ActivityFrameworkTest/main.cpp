@@ -16,11 +16,10 @@
 
 #include "gtest/gtest.h"
 #include "MetaTest.h"
-#include "ITA_ActivityCreator.h"
+#include "Components/TA_Activity.h"
 #include "ITA_PipelineCreator.h"
 #include "Components/TA_BasicPipeline.h"
 #include "Components/TA_MetaReflex.h"
-#include "Components/TA_MetaActivity.h"
 #include "Components/TA_Coroutine.h"
 
 CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender)
@@ -34,6 +33,15 @@ int main(int argc, char *argv[])
     ::testing::InitGoogleTest(&argc,argv);
 
     return RUN_ALL_TESTS();
+    
+  //   std::function<void()> testFunction = []() {
+  //       std::cout << "Test function executed!" << std::endl;
+        // };
+
+  //   auto testActivity = CoreAsync::TA_ActivityCreator::create(std::move(testFunction));
+  //   testActivity->operator()();
+  //   std::cout << "Test completed!" << std::endl;
+
  //   CoroutineTestSender sender;
 
  //   auto task_1 = testCoroutineTask(&sender);
@@ -48,5 +56,5 @@ int main(int argc, char *argv[])
 
 	//std::cout << "Test completed!" << std::endl;
 
- //   return 0;
+    //return 0;
 }

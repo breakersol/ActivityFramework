@@ -50,6 +50,27 @@ struct IsSmartPointer<std::weak_ptr<Ins> >
 };
 
 template <typename T>
+struct IsStdFunction : std::false_type {};
+
+template <typename R, typename ...Args>
+struct IsStdFunction<std::function<R(Args...)>> : std::true_type {};
+
+template <typename Func>
+static constexpr bool IsStdFunction_v = IsStdFunction<std::decay_t<Func>>::value;
+
+template <typename Func>
+concept StdFunctionType = IsStdFunction_v<Func>;
+
+template <typename T>
+concept LambdaExpType = requires(T t)
+{
+    {&T::operator()};
+};
+
+template <typename T>
+concept NonLambdaExpType = !LambdaExpType<T>;
+
+template <typename T>
 struct IsInstanceVariable
 {
    static constexpr bool value = false;
@@ -81,6 +102,9 @@ struct IsStaticMethod : std::integral_constant<bool, !std::is_member_function_po
 
 template <typename T>
 concept MethodType = IsInstanceMethod<T>::value || IsStaticMethod<T>::value;
+
+template <typename T>
+concept GenernalMethodType = MethodType<T> || LambdaExpType<T> || StdFunctionType<T>;
 
 template <typename ST, typename FUNC, template <typename S, typename D> class FILTER>
 struct IsReturnTypeEqual;
@@ -308,12 +332,6 @@ template <typename T>
 concept StandLayoutType = requires(T t)
 {
     {t}->IsStandLayout;
-};
-
-template <typename T>
-concept LambdaExpType = requires(T t)
-{
-    {&T::operator()};
 };
 
 template <typename T>

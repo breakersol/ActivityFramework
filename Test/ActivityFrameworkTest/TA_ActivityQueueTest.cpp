@@ -15,7 +15,7 @@
  */
 
 #include "TA_ActivityQueueTest.h"
-#include "ITA_ActivityCreator.h"
+#include "Components/TA_Activity.h"
 #include "Components/TA_ActivityQueue.h"
 
 #include <thread>
@@ -45,7 +45,7 @@ void TA_ActivityQueueTest::TearDown()
 
 TEST_F(TA_ActivityQueueTest, capacityTest)
 {
-//    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
+//    auto activity = CoreAsync::TA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
     CoreAsync::TA_ActivityQueue<int, 10240> queue;
     EXPECT_EQ(10240,queue.capacity());
 }
@@ -54,7 +54,7 @@ TEST_F(TA_ActivityQueueTest, capacityTest)
 TEST_F(TA_ActivityQueueTest, getFront)
 {
     CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 6,3);
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
     (*queue.front())();
     CoreAsync::TA_ActivityResultFetcher fetcher {queue.front()};
@@ -65,7 +65,7 @@ TEST_F(TA_ActivityQueueTest, getFront)
 TEST_F(TA_ActivityQueueTest, getRear)
 {
     CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 6,3);
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
     auto pActivity =  queue.rear();
     EXPECT_EQ(pActivity, nullptr);
@@ -77,7 +77,7 @@ TEST_F(TA_ActivityQueueTest, multiThreadTest)
     std::function<bool()> func_1 = [&]() {
         for(int i = 0;i < 150;++i)
         {
-            queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, i,3)));
+            queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, i,3)));
         }
         return true;
     };
@@ -86,7 +86,7 @@ TEST_F(TA_ActivityQueueTest, multiThreadTest)
         for(int i = 0;i < 150;++i)
         {
             std::string str {"321"};
-            queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::ITA_ActivityCreator::create(&MetaTest::getStr,str)));
+            queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::TA_ActivityCreator::create(&MetaTest::getStr,str)));
         }
         return true;
     };

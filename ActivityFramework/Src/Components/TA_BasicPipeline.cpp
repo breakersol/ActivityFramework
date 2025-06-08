@@ -107,7 +107,7 @@ namespace CoreAsync {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         if(type == ExecuteType::Async)
         {
-            m_fetcherList.emplace_back(TA_ThreadHolder::get().postActivity(new TA_MethodActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS>([this]()->void{this->run();}), true));
+            m_fetcherList.emplace_back(TA_ThreadHolder::get().postActivity(TA_ActivityCreator::create([this]()->void{this->run();}), true));
         }
         else
         {

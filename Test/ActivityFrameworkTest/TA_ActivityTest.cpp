@@ -15,7 +15,7 @@
  */
 
 #include "TA_ActivityTest.h"
-#include "ITA_ActivityCreator.h"
+#include "Components/TA_Activity.h"
 
 TA_ActivityTest::TA_ActivityTest()
 {
@@ -42,7 +42,7 @@ void TA_ActivityTest::TearDown()
 TEST_F(TA_ActivityTest, createMemberFunctionActivityWithPointer)
 {
     constexpr int m {3}, n {4};
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, m,n);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, m,n);
     decltype(auto) var = (*activity)();
     EXPECT_EQ(-1,var);
 }
@@ -50,7 +50,7 @@ TEST_F(TA_ActivityTest, createMemberFunctionActivityWithPointer)
 TEST_F(TA_ActivityTest, createMemberFunctionActivityWithNormalObject)
 {
     constexpr int m {3}, n {4};
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, *m_pTest, m,n);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, *m_pTest, m,n);
     decltype(auto) var = (*activity)();
     EXPECT_EQ(-1,var);
 }
@@ -59,7 +59,7 @@ TEST_F(TA_ActivityTest, createMemberFunctionActivityWithSharedPtr)
 {
     constexpr int m {3}, n {4};
     std::shared_ptr<MetaTest> pTest {m_pTest};
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, pTest, m,n);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, pTest, m,n);
     decltype(auto) var = (*activity)();
     EXPECT_EQ(-1,var);
     m_pTest = nullptr;
@@ -68,14 +68,14 @@ TEST_F(TA_ActivityTest, createMemberFunctionActivityWithSharedPtr)
 TEST_F(TA_ActivityTest, createActivityWithLeftVal)
 {
     constexpr int m {3}, n {4};
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, m,n);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, m,n);
     decltype(auto) var = (*activity)();
     EXPECT_EQ(-1,var);
 }
 
 TEST_F(TA_ActivityTest, createActivityWithRightVal)
 {
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 3, 4);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 3, 4);
     decltype(auto) var = (*activity)();
     EXPECT_EQ(-1,var);
 }
@@ -83,7 +83,7 @@ TEST_F(TA_ActivityTest, createActivityWithRightVal)
 TEST_F(TA_ActivityTest, createActivityWithMixedVal)
 {
     int m = 5;
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, m, 4);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, m, 4);
     decltype(auto) var = (*activity)();
     EXPECT_EQ(1,var);
 }
@@ -91,7 +91,7 @@ TEST_F(TA_ActivityTest, createActivityWithMixedVal)
 TEST_F(TA_ActivityTest, modifyArguments_1)
 {
     int m {3}, n {4};
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, m,n);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, m,n);
     m = 5;
     decltype(auto) var = (*activity)();
     EXPECT_EQ(1,var);
@@ -100,68 +100,65 @@ TEST_F(TA_ActivityTest, modifyArguments_1)
 TEST_F(TA_ActivityTest, modifyArguments_2)
 {
     int m {3};
-    auto activity = CoreAsync::ITA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, m,4);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, m,4);
     m = 5;
     decltype(auto) var = (*activity)();
-    EXPECT_EQ(-1,var);
+    EXPECT_EQ(1,var);
 }
 
 TEST_F(TA_ActivityTest, createNonMemberFunctionActivity)
 {
     std::string str {"321"};
-    auto activity = CoreAsync::ITA_ActivityCreator::create(&MetaTest::getStr,str);
+    auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::getStr,str);
     auto var = (*activity)();
     EXPECT_EQ("123321",var);
 }
 
 TEST_F(TA_ActivityTest, createLambdaActivity)
 {
-    std::function<int(int,int)> func = [&](int m,int n)->int {return m_pTest->sub(m,n);};
-    auto activity = CoreAsync::ITA_ActivityCreator::create(func,5,7);
+    auto activity = CoreAsync::TA_ActivityCreator::create([&](int m,int n)->int {return m_pTest->sub(m,n);},5,7);
     auto var = (*activity)();
     EXPECT_EQ(-2,var);
 }
 
 TEST_F(TA_ActivityTest, createLambdaWithoutArgActivity)
 {
-
-    std::function<int()> func = [&]()->int {return m_pTest->sub(5,5);};
-    auto activity = CoreAsync::ITA_ActivityCreator::create(func);
+    auto activity = CoreAsync::TA_ActivityCreator::create([&]()->int {return m_pTest->sub(5,5);});
     auto var = (*activity)();
     EXPECT_EQ(0,var);
 }
 
 TEST_F(TA_ActivityTest, createMetaActivity)
 {
-    auto activity = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, 3, 9);
+    auto activity = CoreAsync::TA_ActivityCreator::create(META_STRING("sub"), m_pTest, 3, 9);
     auto var = (*activity)();
     delete activity;
     EXPECT_EQ(var,-6);
 
     std::shared_ptr<MetaTest> pSharedTest = std::make_shared<MetaTest>();
-    auto activity_3 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), pSharedTest, 3, 9);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(META_STRING("sub"), pSharedTest, 3, 9);
     auto var_3 = (*activity_3)();
     delete activity_3;
     EXPECT_EQ(var_3,-6);
 
-    auto activity_2 = CoreAsync::ITA_ActivityCreator::create(META_STRING("getStr"), MetaTest {}, "321");
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(META_STRING("getStr"), MetaTest {}, "321");
     auto var_2 = (*activity_2)();
     delete activity_2;
     EXPECT_EQ(var_2, "123321");
 
     std::unique_ptr<MetaTest> pUniqueTest = std::make_unique<MetaTest>();
-    auto activity_4 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), pUniqueTest, 3, 9);
+    auto activity_4 = CoreAsync::TA_ActivityCreator::create(META_STRING("sub"), pUniqueTest, 3, 9);
     auto var_4 = (*activity_4)();
     delete activity_4;
     EXPECT_EQ(var_4,-6);
 
     int a = 3, b = 9;
-    auto activity_5 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, 9);
+    auto activity_5 = CoreAsync::TA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, 9);
     auto var_5 = (*activity_5)();
     delete activity_5;
     EXPECT_EQ(var_5,-6);
 
-    auto activity_6 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b);
+    auto activity_6 = CoreAsync::TA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b);
     auto var_6 = (*activity_6)();
     delete activity_6;
     EXPECT_EQ(var_6,-6);
@@ -170,7 +167,7 @@ TEST_F(TA_ActivityTest, createMetaActivity)
 TEST_F(TA_ActivityTest, setParaTest_MetaActivity)
 {
     int a = 3, b = 9;
-    auto activity_6 = CoreAsync::ITA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b);
+    auto activity_6 = CoreAsync::TA_ActivityCreator::create(META_STRING("sub"), m_pTest, a, b);
     auto var_6 = (*activity_6)();
     EXPECT_EQ(var_6,-6);
 

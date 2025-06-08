@@ -23,9 +23,8 @@
 #include <any>
 
 #include "TA_ThreadPool.h"
-#include "TA_MethodActivity.h"
 #include "TA_MetaReflex.h"
-#include "TA_MetaActivity.h"
+#include "TA_Activity.h"
 
 namespace CoreAsync
 {
@@ -360,7 +359,7 @@ namespace CoreAsync
             {
                 return false;
             }
-            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_MethodActivity<LambdaType<void, Args...>, INVALID_INS, void, Args...>(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
+            auto fetcher = TA_ThreadHolder::get().postActivity(TA_ActivityCreator::create(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
             return true;
         }
 
@@ -372,7 +371,7 @@ namespace CoreAsync
                 return false;
             }
             using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
-            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_MethodActivity<Method, Ins, typename MethodTypeInfo<Method>::RetType, Args...>(std::forward<Method>(method), ins, std::forward<Args>(args)...), true);
+            auto fetcher = TA_ThreadHolder::get().postActivity(TA_ActivityCreator::create(std::forward<Method>(method), std::forward<Ins>(ins), std::forward<Args>(args)...), true);
             return true;
         }
 
@@ -384,7 +383,7 @@ namespace CoreAsync
                 return false;
             }
             using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
-            auto fetcher = TA_ThreadHolder::get().postActivity(new TA_MethodActivity<NonMemberFunctionPtr<typename MethodTypeInfo<Method>::RetType, Args...>, INVALID_INS, Ret, Args...>(std::forward<Method>(method), std::forward<Args>(args)...), true);
+            auto fetcher = TA_ThreadHolder::get().postActivity(TA_ActivityCreator::create(std::forward<Method>(method), std::forward<Args>(args)...), true);
             return true;
         }
 
@@ -397,6 +396,7 @@ namespace CoreAsync
     private:
 		class TA_ConnectionObject : public std::enable_shared_from_this<TA_ConnectionObject>
         {
+            using SlotExpType = std::function<void()>;
         public:
             TA_ConnectionObject() = default;
             template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -405,13 +405,14 @@ namespace CoreAsync
                 using SlotParaTuple = typename MethodTypeInfo<Slot>::ArgGroup::Tuple;
                 using Ret = typename MethodTypeInfo<Slot>::RetType;
                 m_para = SlotParaTuple {};
-                decltype(auto) slotExp = [&,slot]()->void {
+                SlotExpType slotExp = [&,slot]()->void {
                     decltype(auto) rObj {dynamic_cast<std::decay_t<Receiver> *>(m_pReceiver)};
                     if constexpr(IsInstanceMethod<Slot>::value)
                         std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj), std::any_cast<SlotParaTuple>(m_para))));
                 };
                 {
-                    m_pActivity = new TA_MethodActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::move(slotExp), pReceiver->affinityThread());
+                    m_pActivity = TA_ActivityCreator::create(std::move(slotExp));
+                    m_pActivity->moveToThread(pReceiver->affinityThread());
                     m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                 }
             }
@@ -422,11 +423,12 @@ namespace CoreAsync
                 using SlotParaTuple = typename LambdaExpTraits<std::decay_t<LambdaExp>>::ArgGroup::Tuple;
                 using Ret = typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType;
                 m_para = SlotParaTuple {};
-                decltype(auto) slotExp = [&,exp]()->void {
+                SlotExpType slotExp = [&,exp]()->void {
                     std::apply(exp, std::any_cast<SlotParaTuple>(m_para));
                 };
                 {
-                    m_pActivity = new TA_MethodActivity<LambdaTypeWithoutPara<Ret>, INVALID_INS,Ret,INVALID_INS>(std::move(slotExp), pSender->affinityThread());
+                    m_pActivity = TA_ActivityCreator::create(std::move(slotExp));
+                    m_pActivity->moveToThread(pSender->affinityThread());
                     m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                 }
             }
@@ -538,7 +540,7 @@ namespace CoreAsync
             FuncMark m_senderFunc {}, m_receiverFunc {};
             TA_ConnectionType m_type;
             std::any m_para;
-            TA_MethodActivity<LambdaTypeWithoutPara<void>, INVALID_INS,void,INVALID_INS> *m_pActivity {nullptr};
+            TA_MethodXActivity<SlotExpType> *m_pActivity {nullptr};
             TA_ActivityProxy *m_pSlotProxy {nullptr};
             const bool m_autoDestroy {false};
         };
