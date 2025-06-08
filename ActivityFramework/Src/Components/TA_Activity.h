@@ -29,6 +29,18 @@ namespace CoreAsync
         {T::data()};
     };
 
+    template <typename ...MethodArgs>
+    struct InsTypeHelper
+    {
+        using type = std::decay_t<std::tuple_element_t<0, std::tuple<MethodArgs...>>>;
+    };
+
+    template <>
+    struct InsTypeHelper<>
+    {
+        using type = void;
+    };
+
     template <MethodNameType MethodName, typename ...Paras>
     class TA_MetaActivity
     {
@@ -259,19 +271,7 @@ namespace CoreAsync
         template<typename T>
         using StorageType = std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>;
 
-        template <bool IsMethod = true>
-        struct InsTypeHelper
-        {
-            using type = std::decay_t<std::tuple_element_t<0, std::tuple<Args...>>>;
-        };
-
-        template <>
-        struct InsTypeHelper<false>
-        {
-            using type = void;
-        };
-
-        using Ins = typename InsTypeHelper<IsInstanceMethod<Method>::value>::type;
+        using Ins = typename InsTypeHelper<Args...>::type;
 
     private:
         Method m_method;
