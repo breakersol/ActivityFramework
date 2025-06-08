@@ -63,7 +63,7 @@ namespace CoreAsync
             std::size_t r {m_rearIndex.load(std::memory_order_acquire)};
             std::size_t f {m_frontIndex.load(std::memory_order_acquire)};
 
-            return r <= f ? f - r : capacity() + r;
+            return r >= f ? r - f : (capacity() - (f - r));
         }
 
         bool push(T &&t)
