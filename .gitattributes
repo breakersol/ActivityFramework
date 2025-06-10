@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.lib binary
+*.a binary
+*.dll binary
+*.exp binary
+*.pdb binary
