@@ -61,7 +61,7 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_Serialization.h
     Src/Components/TA_Buffer.h
     Src/Components/TA_Activity.h
-    Src/Components/TA_ActivityComponments.h
+    Src/Components/TA_ActivityComponents.h
     Src/Components/TA_ActivityProxy.h
     Src/Components/TA_Coroutine.h
 

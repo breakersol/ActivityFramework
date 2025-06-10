@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef TA_ACTIVITYCOMPONMENTS_H
-#define TA_ACTIVITYCOMPONMENTS_H
+#ifndef TA_ACTIVITYCOMPONENTS_H
+#define TA_ACTIVITYCOMPONENTS_H
 
 #include <atomic>
 #include <thread>
@@ -100,4 +100,4 @@ namespace CoreAsync
 
 }
 
-#endif // TA_ACTIVITYCOMPONMENTS_H
+#endif // TA_ACTIVITYCOMPONENTS_H

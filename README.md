@@ -36,7 +36,7 @@ These instructions will guide you through setting up the project on your local m
 
 ### Installing
 
-To build the project, use the `CMakeList.txt` at **/ActivityFramework/ActivityFramework/CMakeList.txt** and set the build directory to **/ActivityFramework/build**.
+To build the project, use the `CMakeLists.txt` at **/ActivityFramework/ActivityFramework/CMakeList.txt** and set the build directory to **/ActivityFramework/build**.
 
 ### Running the Tests
 

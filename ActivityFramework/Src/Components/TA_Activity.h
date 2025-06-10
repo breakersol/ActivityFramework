@@ -18,7 +18,7 @@
 #define TA_ACTIVITY_H
 
 #include "TA_MetaReflex.h"
-#include "TA_ActivityComponments.h"
+#include "TA_ActivityComponents.h"
 
 namespace CoreAsync
 {
