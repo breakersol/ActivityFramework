@@ -61,6 +61,10 @@ Email: breakersol@outlook.com
 
 This project is licensed under the Apache-2.0 License - see the [LICENSE.md](https://github.com/breakersol/ActivityPipeline/blob/master/LICENSE) file for details.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to contribute to this project.
+
 ## Basic Usage
 
 ### Meta Reflex
