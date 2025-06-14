@@ -540,7 +540,7 @@ namespace CoreAsync
             FuncMark m_senderFunc {}, m_receiverFunc {};
             TA_ConnectionType m_type;
             std::any m_para;
-            TA_MethodXActivity<SlotExpType> *m_pActivity {nullptr};
+            TA_MethodActivity<SlotExpType> *m_pActivity {nullptr};
             TA_ActivityProxy *m_pSlotProxy {nullptr};
             const bool m_autoDestroy {false};
         };

@@ -213,21 +213,21 @@ namespace CoreAsync
     };
 
     template <typename Method, typename ...Args>
-    class TA_MethodXActivity
+    class TA_MethodActivity
     {
     public:
-        TA_MethodXActivity() = delete;
-        TA_MethodXActivity(const TA_MethodXActivity &activity) = delete;
-        TA_MethodXActivity(TA_MethodXActivity &&activity) = delete;
-        TA_MethodXActivity & operator = (const TA_MethodXActivity &) = delete;
+        TA_MethodActivity() = delete;
+        TA_MethodActivity(const TA_MethodActivity &activity) = delete;
+        TA_MethodActivity(TA_MethodActivity &&activity) = delete;
+        TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-        TA_MethodXActivity(Method method, Args &&...args)
+        TA_MethodActivity(Method method, Args &&...args)
             : m_method(std::move(method)), m_args(std::forward<Args>(args)...), m_affinityThread(std::numeric_limits<std::size_t>::max())
         {
 			
         }
 
-        virtual ~TA_MethodXActivity() = default;
+        virtual ~TA_MethodActivity() = default;
 
         decltype(auto) operator()()
         {
@@ -292,7 +292,7 @@ namespace CoreAsync
         template <GenernalMethodType Method, typename ...Args>
         static constexpr auto create(Method &&method, Args &&...args)
         {
-            return new TA_MethodXActivity<Method, Args...>(std::forward<Method>(method), std::forward<Args>(args)...);
+            return new TA_MethodActivity<Method, Args...>(std::forward<Method>(method), std::forward<Args>(args)...);
         }
     };
 }
