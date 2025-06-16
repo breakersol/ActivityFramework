@@ -95,26 +95,6 @@ namespace CoreAsync {
         setState(State::Waiting);
     }
 
-    void TA_BasicPipeline::execute(ExecuteType type)
-    {
-        if(State::Waiting != m_state.load(std::memory_order_consume))
-        {
-            assert(State::Waiting == m_state.load(std::memory_order_consume));
-            TA_CommonTools::debugInfo(META_STRING("Execute pipeline failed!"));
-            return;
-        }
-        setState(State::Busy);
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if(type == ExecuteType::Async)
-        {
-            m_fetcherList.emplace_back(TA_ThreadHolder::get().postActivity(TA_ActivityCreator::create([this]()->void{this->run();}), true));
-        }
-        else
-        {
-            this->run();
-        }
-    }
-
     void TA_BasicPipeline::setState(State state)
     {
         m_state.store(state,std::memory_order_release);

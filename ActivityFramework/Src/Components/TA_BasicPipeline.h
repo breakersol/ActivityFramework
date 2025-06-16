@@ -24,13 +24,14 @@
 #include "TA_MetaReflex.h"
 #include "TA_MetaObject.h"
 #include "TA_Connection.h"
+#include "TA_Coroutine.h"
 
 namespace CoreAsync {
     class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject
-    {  
+    {
     protected:
         using Milliseconds = std::chrono::duration<int,std::milli>;
-
+        using TaskFetcher = TA_CoroutineTask<TA_ActivityResultFetcher, CorotuineBehavior::Eager>;
     public:
         using ActivityIndex = unsigned int;
         enum class State
@@ -46,6 +47,59 @@ namespace CoreAsync {
             Sync
         };
 
+    private:
+        class TA_RunningAwaitable
+        {
+        public:
+            TA_RunningAwaitable(TA_ActivityProxy *pActivity, ExecuteType type) : m_pProxy(pActivity), m_executeType(type)
+            {
+                if(!m_pProxy)
+                {
+                    throw std::runtime_error("TA_ActivityResultAwaitable: pActivity is null!");
+                }
+            }
+
+            ~TA_RunningAwaitable()
+            {
+                if(m_pProxy && !m_pProxy->isExecuted())
+                {
+                    delete m_pProxy;
+                    m_pProxy = nullptr;
+                }
+            }
+
+            bool await_ready() const noexcept
+            {
+                return m_pProxy->isExecuted() || !m_pProxy->isValid();
+            }
+
+            void await_suspend(std::coroutine_handle<> handle) noexcept
+            {
+                if(m_executeType == ExecuteType::Async)
+                {
+                    m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
+                }
+                else
+                {
+                    m_pProxy->operator()();
+                    m_fetcher = {std::make_shared<TA_ActivityProxy>(m_pProxy)};
+                }
+                handle.resume();
+            }
+
+            auto await_resume() const noexcept
+            {
+                return m_fetcher;
+            }
+
+        private:
+            TA_ActivityProxy *m_pProxy {nullptr};
+            ExecuteType m_executeType {ExecuteType::Async};
+            TA_ActivityResultFetcher m_fetcher {};
+
+        };
+
+    public:
         TA_BasicPipeline() : TA_MetaObject()
         {
 
@@ -80,7 +134,43 @@ namespace CoreAsync {
 
         virtual bool remove(ActivityIndex index);
         virtual void clear();
-        void execute(ExecuteType type = ExecuteType::Async);
+
+        void execute(ExecuteType type = ExecuteType::Async)
+        {
+            if(State::Waiting != m_state.load(std::memory_order_consume))
+            {
+                assert(State::Waiting == m_state.load(std::memory_order_consume));
+                TA_CommonTools::debugInfo(META_STRING("Execute pipeline failed!"));
+                return;
+            }
+            setState(State::Busy);
+            std::lock_guard<std::recursive_mutex> locker(m_mutex);
+            if(type == ExecuteType::Async)
+            {
+                static auto pRunningActivity = TA_ActivityCreator::create([this]()->void{this->run();});
+                auto fetcher = TA_ThreadHolder::get().postActivity(TA_ActivityCreator::create([this]()->void{this->run();}), true);
+            }
+            else
+            {
+                this->run();
+            }
+        }
+
+        TaskFetcher executeAsync(ExecuteType type = ExecuteType::Async)
+        {
+            if(State::Waiting != m_state.load(std::memory_order_consume))
+            {
+                assert(State::Waiting == m_state.load(std::memory_order_consume));
+                TA_CommonTools::debugInfo(META_STRING("Execute pipeline failed!"));
+                co_return {};
+            }
+            setState(State::Busy);
+            std::lock_guard<std::recursive_mutex> locker(m_mutex);
+            static auto pActivity = TA_ActivityCreator::create([this]()->void{this->run();});
+            auto fetcher = co_await TA_RunningAwaitable(new TA_ActivityProxy(pActivity), type);
+            co_return fetcher;
+        }
+
         virtual void reset();
 
         std::size_t activitySize() const;
@@ -139,7 +229,6 @@ namespace CoreAsync {
     private:
         std::atomic<State> m_state {State::Waiting};
         std::atomic<unsigned int> m_startIndex {0};
-        std::list<TA_ActivityResultFetcher> m_fetcherList;
 
     TA_Signals:
         void stateChanged(TA_BasicPipeline::State st) { std::ignore = st; };
