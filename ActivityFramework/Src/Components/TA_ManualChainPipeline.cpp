@@ -100,18 +100,5 @@ namespace CoreAsync {
         setStartIndex(0);
         m_currentIndex.store(0,std::memory_order_release);
     }
-
-    bool TA_ManualChainPipeline::waitingComplete()
-    {
-        std::chrono::steady_clock::time_point asyncStartTime;
-        constexpr int interval = 100;
-        while (state() == State::Busy)
-        {
-            asyncStartTime = std::chrono::steady_clock::now();
-            while (std::chrono::duration_cast<Milliseconds>(std::chrono::steady_clock::now() - asyncStartTime).count() < interval){}
-        }
-
-        return true;
-    }
 }
 

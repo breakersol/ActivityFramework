@@ -36,8 +36,6 @@ namespace CoreAsync {
         virtual void clear() override;
         virtual void reset() override;
 
-        virtual bool ACTIVITY_FRAMEWORK_EXPORT waitingComplete() override final;
-
         void setStartIndex(unsigned int index) override;
 
     protected:
@@ -58,7 +56,6 @@ namespace CoreAsync {
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
                 TA_MetaField {&Raw::reset, META_STRING("reset")},
-                TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
             };
         };

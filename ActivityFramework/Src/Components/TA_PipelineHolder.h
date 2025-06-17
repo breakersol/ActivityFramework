@@ -39,9 +39,9 @@ namespace CoreAsync {
             destroy();
         }
 
-        void execute(TA_BasicPipeline::ExecuteType type = TA_BasicPipeline::ExecuteType::Async)
+        decltype(auto) execute(TA_BasicPipeline::ExecuteType type = TA_BasicPipeline::ExecuteType::Async)
         {
-            m_pBasicPipeline->execute(type);
+            return m_pBasicPipeline->execute(type);
         }
 
         void reset()
@@ -57,11 +57,6 @@ namespace CoreAsync {
         bool remove(unsigned int index)
         {
             return m_pBasicPipeline->remove(index);
-        }
-
-        bool waitingComplete()
-        {
-            return m_pBasicPipeline->waitingComplete();
         }
 
         void setStartIndex(unsigned int index)
@@ -207,7 +202,6 @@ namespace CoreAsync {
         struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
@@ -234,7 +228,6 @@ namespace CoreAsync {
         struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
@@ -261,7 +254,6 @@ namespace CoreAsync {
         struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
@@ -288,7 +280,6 @@ namespace CoreAsync {
         struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},
@@ -317,7 +308,6 @@ namespace CoreAsync {
         struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> > > : TA_MetaTypeInfo<TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> >>
         {
             static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::waitingComplete, META_STRING("waitingComplete")},
                 TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
                 TA_MetaField {&Raw::remove, META_STRING("remove")},
                 TA_MetaField {&Raw::clear, META_STRING("clear")},

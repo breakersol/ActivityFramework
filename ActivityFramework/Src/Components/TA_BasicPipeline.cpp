@@ -76,6 +76,11 @@ namespace CoreAsync {
         }
         m_pActivityList.clear();
         m_resultList.clear();
+        if(m_pRunningActivity)
+        {
+            delete m_pRunningActivity;
+            m_pRunningActivity = nullptr;
+        }
         m_mutex.unlock();
     }
 
@@ -95,26 +100,6 @@ namespace CoreAsync {
         setState(State::Waiting);
     }
 
-    void TA_BasicPipeline::execute(ExecuteType type)
-    {
-        if(State::Waiting != m_state.load(std::memory_order_consume))
-        {
-            assert(State::Waiting == m_state.load(std::memory_order_consume));
-            TA_CommonTools::debugInfo(META_STRING("Execute pipeline failed!"));
-            return;
-        }
-        setState(State::Busy);
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if(type == ExecuteType::Async)
-        {
-            m_fetcherList.emplace_back(TA_ThreadHolder::get().postActivity(TA_ActivityCreator::create([this]()->void{this->run();}), true));
-        }
-        else
-        {
-            this->run();
-        }
-    }
-
     void TA_BasicPipeline::setState(State state)
     {
         m_state.store(state,std::memory_order_release);
@@ -129,19 +114,6 @@ namespace CoreAsync {
     std::size_t TA_BasicPipeline::activitySize() const
     {
         return m_pActivityList.size();
-    }
-
-    bool TA_BasicPipeline::waitingComplete()
-    {
-        std::chrono::steady_clock::time_point asyncStartTime;
-        constexpr int interval = 100;
-        while (State::Ready != m_state.load(std::memory_order_consume))
-        {
-            asyncStartTime = std::chrono::steady_clock::now();
-            while (std::chrono::duration_cast<Milliseconds>(std::chrono::steady_clock::now() - asyncStartTime).count() < interval){}
-        }
-
-        return true;
     }
 
     void TA_BasicPipeline::setStartIndex(unsigned int index)

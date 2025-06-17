@@ -51,7 +51,7 @@ public:
         co_return;
     }
 
-	std::size_t m_count{ 0 };
+    std::size_t m_count { 0 };
 };
 
 #endif // TA_COROUTINETEST_H

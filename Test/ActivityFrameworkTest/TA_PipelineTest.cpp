@@ -84,9 +84,9 @@ TEST_F(TA_PipelineTest, removeTest)
     std::size_t size {m_pAutoChainPipeline->activitySize()};
     EXPECT_EQ(2,size);
 
-    m_pAutoChainPipeline->execute();
+    auto waiter =  m_pAutoChainPipeline->execute();
     int res_0, res_1;
-    if(m_pAutoChainPipeline->waitingComplete())
+    waiter();
     {
         m_pAutoChainPipeline->result(0,res_0);
         m_pAutoChainPipeline->result(1,res_1);
@@ -102,9 +102,9 @@ TEST_F(TA_PipelineTest, resetTest)
     auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
-    m_pAutoChainPipeline->execute();
+    auto waiter =  m_pAutoChainPipeline->execute();
     int res_0, res_1, res_2;
-    if(m_pAutoChainPipeline->waitingComplete())
+    waiter();
     {
         m_pAutoChainPipeline->result(0,res_0);
         m_pAutoChainPipeline->result(1,res_1);
@@ -144,8 +144,8 @@ TEST_F(TA_PipelineTest, stateTest)
 
     EXPECT_EQ(CoreAsync::TA_BasicPipeline::State::Waiting, m_pAutoChainPipeline->state());
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
-    m_pAutoChainPipeline->execute();
-    if(m_pAutoChainPipeline->waitingComplete())
+    auto waiter =  m_pAutoChainPipeline->execute();
+    waiter();
     {
         EXPECT_EQ(CoreAsync::TA_BasicPipeline::State::Ready, m_pAutoChainPipeline->state());
     }
@@ -159,9 +159,9 @@ TEST_F(TA_PipelineTest, startIndexTest)
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
     m_pAutoChainPipeline->setStartIndex(1);
-    m_pAutoChainPipeline->execute();
+    auto waiter =  m_pAutoChainPipeline->execute();
     int res_0, res_1, res_2;
-    if(m_pAutoChainPipeline->waitingComplete())
+    waiter();
     {
         m_pAutoChainPipeline->result(0,res_0);
         m_pAutoChainPipeline->result(1,res_1);
@@ -180,9 +180,9 @@ TEST_F(TA_PipelineTest, autoChainPipeline_executeTest)
     auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
-    m_pAutoChainPipeline->execute();
+    auto waiter =  m_pAutoChainPipeline->execute();
     int res_0, res_1, res_2;
-    if(m_pAutoChainPipeline->waitingComplete())
+    waiter();
     {
         m_pAutoChainPipeline->result(0,res_0);
         m_pAutoChainPipeline->result(1,res_1);
@@ -200,9 +200,9 @@ TEST_F(TA_PipelineTest, manualChainPipeline_executeTest)
     auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pManualChainPipeline->add(activity_1,activity_2,activity_3);
-    m_pManualChainPipeline->execute();
+    auto waiter =  m_pManualChainPipeline->execute();
     int res_0, res_1, res_2;
-    if(m_pManualChainPipeline->waitingComplete())
+    waiter();
     {
         m_pManualChainPipeline->result(0,res_0);
         m_pManualChainPipeline->result(1,res_1);
@@ -212,8 +212,8 @@ TEST_F(TA_PipelineTest, manualChainPipeline_executeTest)
     EXPECT_EQ(0,res_1);
     EXPECT_EQ(0,res_2);
 
-    m_pManualChainPipeline->execute();
-    if(m_pManualChainPipeline->waitingComplete())
+    waiter =  m_pManualChainPipeline->execute();
+    waiter();
     {
         m_pManualChainPipeline->result(0,res_0);
         m_pManualChainPipeline->result(1,res_1);
@@ -232,13 +232,13 @@ TEST_F(TA_PipelineTest, manualKeyActivityChainPipeline_executeTest)
 
     m_pManualKeyActivityChainPipeline->add(activity_1,activity_2,activity_3);
     m_pManualKeyActivityChainPipeline->setKeyActivity(1);
-    m_pManualKeyActivityChainPipeline->execute();
-    if(m_pManualKeyActivityChainPipeline->waitingComplete())
-        m_pManualKeyActivityChainPipeline->execute();
-    if(m_pManualKeyActivityChainPipeline->waitingComplete())
-        m_pManualKeyActivityChainPipeline->execute();
+    auto waiter =  m_pManualKeyActivityChainPipeline->execute();
+    waiter();
+    waiter = m_pManualKeyActivityChainPipeline->execute();
+    waiter();
+    waiter = m_pManualKeyActivityChainPipeline->execute();
     int res_0, res_1, res_2;
-    if(m_pManualKeyActivityChainPipeline->waitingComplete())
+    waiter();
     {
         m_pManualKeyActivityChainPipeline->result(0,res_0);
         m_pManualKeyActivityChainPipeline->result(1,res_1);
@@ -257,9 +257,9 @@ TEST_F(TA_PipelineTest, manualStepsChainPipeline_executeTest)
 
     m_pManualStepsChainPipeline->add(activity_1,activity_2,activity_3);
     m_pManualStepsChainPipeline->setSteps(2);
-    m_pManualStepsChainPipeline->execute();
+    auto waiter = m_pManualStepsChainPipeline->execute();
     int res_0, res_1, res_2;
-    if(m_pManualStepsChainPipeline->waitingComplete())
+    waiter();
     {
         m_pManualStepsChainPipeline->result(0,res_0);
         m_pManualStepsChainPipeline->result(1,res_1);
@@ -277,9 +277,9 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
     auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
     m_pConcurrentPipeline->add(activity_1,activity_2,activity_3);
-    m_pConcurrentPipeline->execute();
+    auto waiter = m_pConcurrentPipeline->execute();
     int res_0, res_1, res_2;
-    if(m_pConcurrentPipeline->waitingComplete())
+    waiter();
     {
         m_pConcurrentPipeline->result(0,res_0);
         m_pConcurrentPipeline->result(1,res_1);
@@ -297,9 +297,9 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
         auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
 
         m_pConcurrentPipeline->add(activity_1,activity_2,activity_3);
-        m_pConcurrentPipeline->execute();
+        auto waiter = m_pConcurrentPipeline->execute();
         int res_0, res_1, res_2;
-        if(m_pConcurrentPipeline->waitingComplete())
+        waiter();
         {
             m_pConcurrentPipeline->result(0,res_0);
             m_pConcurrentPipeline->result(1,res_1);
