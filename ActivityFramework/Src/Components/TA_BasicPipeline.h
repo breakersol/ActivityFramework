@@ -202,6 +202,19 @@ namespace CoreAsync {
         void setState(State state);
         unsigned int startIndex() const;
 
+        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningActivityGenerator()
+        {
+            for(int i = startIndex();i < m_pActivityList.size();++i)
+            {
+                decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
+                (*pActivity)();
+                auto var {pActivity->result()};
+                TA_CommonTools::replace(m_resultList, i, var);
+                co_yield var;
+            }
+            co_return;
+        };
+
     private:
         AsyncTask executeHelperFunc(ExecuteType type = ExecuteType::Async)
         {
