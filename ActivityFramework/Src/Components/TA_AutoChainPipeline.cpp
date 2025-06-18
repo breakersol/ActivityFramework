@@ -35,8 +35,6 @@ namespace CoreAsync {
                 TA_Connection::active(this, &TA_AutoChainPipeline::activityCompleted, i, var);
             }
         };
-//        std::future<void> ft = std::async(std::launch::async,exFunc);
-//        ft.get();
         exFunc();
         setState(State::Ready);
     }

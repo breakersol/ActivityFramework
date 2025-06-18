@@ -84,6 +84,53 @@ namespace CoreAsync
 
     };
 
+    class TA_ActivityResultAwaitable
+    {
+    public:
+        TA_ActivityResultAwaitable() = delete;
+
+        explicit TA_ActivityResultAwaitable(const TA_ActivityResultFetcher &fetcher) : m_fetcher(fetcher)
+        {
+            if (!m_fetcher.pProxy->isValid())
+            {
+                throw std::runtime_error("TA_ActivityResultAwaitable: Fetcher is not valid!");
+            }
+        }
+
+        ~TA_ActivityResultAwaitable() = default;
+
+        bool await_ready() const noexcept
+        {
+            return m_fetcher.pProxy->isExecuted() || !m_fetcher.pProxy->isValid();
+        }
+
+        void await_suspend(std::coroutine_handle<> handle) noexcept
+        {
+            auto activity = TA_ActivityCreator::create([this, handle]() {
+                                if (m_fetcher.pProxy->isExecuted())
+                                {
+                                    handle.resume();
+                                }
+                                else
+                                {
+                                    m_res = m_fetcher();
+                                    handle.resume();
+                                }
+                            });
+            auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+        }
+
+        auto await_resume() noexcept
+        {
+            return m_res;
+        }
+
+    private:
+        TA_ActivityResultFetcher m_fetcher {};
+        TA_DefaultVariant m_res {};
+
+    };
+
     template <typename T, CorotuineBehavior = Lazy>
     struct TA_CoroutineTask
     {

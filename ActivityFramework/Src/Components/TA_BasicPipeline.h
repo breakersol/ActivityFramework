@@ -149,8 +149,8 @@ namespace CoreAsync {
 
         virtual void setStartIndex(unsigned int index);
 
-        template<typename Activity,typename ...Activities> 
-        void add(Activity &pActivity,Activities &...pActivities)
+        template<typename Activity,typename ...Activities>
+        void add(Activity &pActivity, Activities &...pActivities)
         {
             if(State::Waiting != m_state.load(std::memory_order_acquire))
             {
