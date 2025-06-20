@@ -23,7 +23,6 @@
 #include "TA_ActivityProxy.h"
 #include "TA_MetaReflex.h"
 #include "TA_MetaObject.h"
-#include "TA_Connection.h"
 #include "TA_Coroutine.h"
 
 namespace CoreAsync {
@@ -202,15 +201,29 @@ namespace CoreAsync {
         void setState(State state);
         unsigned int startIndex() const;
 
-        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningActivityGenerator()
+        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(ExecuteType type)
         {
-            for(int i = startIndex();i < m_pActivityList.size();++i)
+            if(type == ExecuteType::Sync)
             {
-                decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-                (*pActivity)();
-                auto var {pActivity->result()};
-                TA_CommonTools::replace(m_resultList, i, var);
-                co_yield var;
+                for(int i = startIndex();i < m_pActivityList.size();++i)
+                {
+                    decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
+                    (*pActivity)();
+                    auto var {pActivity->result()};
+                    TA_CommonTools::replace(m_resultList, i, var);
+                    co_yield var;
+                }
+            }
+            else
+            {
+                for(int i = startIndex();i < m_pActivityList.size();++i)
+                {
+                    decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
+                    auto fetcher = co_await TA_RunningAwaitable(pActivity, type);
+                    auto res = co_await TA_ActivityResultAwaitable(fetcher);
+                    TA_CommonTools::replace(m_resultList, i, res);
+                    co_yield fetcher;
+                }
             }
             co_return;
         };

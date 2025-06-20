@@ -15,7 +15,6 @@
  */
 
 #include "TA_AutoChainPipeline.h"
-#include "TA_CommonTools.h"
 
 namespace CoreAsync {
     TA_AutoChainPipeline::TA_AutoChainPipeline() : TA_BasicPipeline()
@@ -25,17 +24,13 @@ namespace CoreAsync {
 
     void TA_AutoChainPipeline::run()
     {
-        auto exFunc = [&](){
-            for(int i = startIndex();i < m_pActivityList.size();++i)
-            {
-                decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-                (*pActivity)();
-                auto var {pActivity->result()};
-                TA_CommonTools::replace(m_resultList, i, var);
-                TA_Connection::active(this, &TA_AutoChainPipeline::activityCompleted, i, var);
-            }
-        };
-        exFunc();
+        std::size_t idx {0};
+        auto generator {runningGenerator(ExecuteType::Sync)};
+        while(generator.next())
+        {
+            auto res = generator.value();
+            TA_Connection::active(this, &TA_AutoChainPipeline::activityCompleted, idx++, res);
+        }
         setState(State::Ready);
     }
 }
