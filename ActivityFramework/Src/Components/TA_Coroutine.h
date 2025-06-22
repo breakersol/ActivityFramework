@@ -131,6 +131,63 @@ namespace CoreAsync
 
     };
 
+    class TA_ActivityExecutingAwaitable
+    {
+    public:
+        enum class ExecuteType
+        {
+            Async,
+            Sync
+        };
+
+        TA_ActivityExecutingAwaitable(TA_ActivityProxy *pActivity, ExecuteType type) : m_pProxy(pActivity), m_executeType(type)
+        {
+            if(!m_pProxy)
+            {
+                throw std::runtime_error("TA_ActivityResultAwaitable: pActivity is null!");
+            }
+        }
+
+        ~TA_ActivityExecutingAwaitable()
+        {
+            if(m_pProxy && !m_pProxy->isExecuted())
+            {
+                delete m_pProxy;
+                m_pProxy = nullptr;
+            }
+        }
+
+        bool await_ready() const noexcept
+        {
+            return m_pProxy->isExecuted() || !m_pProxy->isValid();
+        }
+
+        void await_suspend(std::coroutine_handle<> handle) noexcept
+        {
+            if(m_executeType == ExecuteType::Async)
+            {
+                m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
+            }
+            else
+            {
+                m_pProxy->operator()();
+                m_fetcher = {std::make_shared<TA_ActivityProxy>(m_pProxy)};
+            }
+            handle.resume();
+        }
+
+        auto await_resume() const noexcept
+        {
+            return m_fetcher;
+        }
+
+    private:
+        TA_ActivityProxy *m_pProxy {nullptr};
+        ExecuteType m_executeType {ExecuteType::Async};
+        TA_ActivityResultFetcher m_fetcher {};
+
+    };
+
     template <typename T, CorotuineBehavior = Lazy>
     struct TA_CoroutineTask
     {
@@ -175,6 +232,8 @@ namespace CoreAsync
         {
             if(this != &task)
             {
+                if(m_coroutineHandle)
+                    m_coroutineHandle.destroy();
                 m_coroutineHandle = std::move(task.m_coroutineHandle);
                 task.m_coroutineHandle = nullptr;
             }
@@ -264,6 +323,8 @@ namespace CoreAsync
         {
             if(this != &task)
             {
+                if(m_coroutineHandle)
+                    m_coroutineHandle.destroy();
                 m_coroutineHandle = std::move(task.m_coroutineHandle);
                 task.m_coroutineHandle = nullptr;
             }
@@ -344,6 +405,8 @@ namespace CoreAsync
         {
             if(this != &generator)
             {
+                if(m_coroutineHandle)
+                    m_coroutineHandle.destroy();
                 m_coroutineHandle = std::move(generator.m_coroutineHandle);
                 generator.m_coroutineHandle = nullptr;
             }
@@ -435,6 +498,8 @@ namespace CoreAsync
         {
             if(this != &generator)
             {
+                if(m_coroutineHandle)
+                    m_coroutineHandle.destroy();
                 m_coroutineHandle = std::move(generator.m_coroutineHandle);
                 generator.m_coroutineHandle = nullptr;
             }

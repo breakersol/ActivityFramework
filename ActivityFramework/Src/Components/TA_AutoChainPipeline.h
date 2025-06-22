@@ -32,6 +32,7 @@ namespace CoreAsync {
 
     protected:
         virtual void run() override final;
+        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator();
 
     };
 

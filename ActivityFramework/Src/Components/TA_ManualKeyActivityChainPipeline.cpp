@@ -18,9 +18,9 @@
 #include "Components/TA_CommonTools.h"
 
 namespace CoreAsync {
-    TA_ManualKeyActivityChainPipeline::TA_ManualKeyActivityChainPipeline() : TA_ManualChainPipeline()
+TA_ManualKeyActivityChainPipeline::TA_ManualKeyActivityChainPipeline() : TA_ManualChainPipeline()
     {
-
+        m_runningGenerator = runningGenerator();
     }
 
     void TA_ManualKeyActivityChainPipeline::setKeyActivity(int index)
@@ -42,40 +42,39 @@ namespace CoreAsync {
             TA_CommonTools::debugInfo(META_STRING("Skip key activity failed!"));
             return;
         }
-        if(m_currentIndex.load(std::memory_order_acquire) == m_keyIndex.load(std::memory_order_acquire))
-        {
-            m_currentIndex.fetch_add(1);
-        }
         m_keyIndex.store(-1,std::memory_order_release);
     }
 
     void TA_ManualKeyActivityChainPipeline::run()
     {
-        auto curIndex {m_currentIndex.load(std::memory_order_acquire)};
-        bool isAtKey = curIndex == m_keyIndex.load(std::memory_order_acquire);
-        if(!m_pActivityList.empty() && curIndex <= m_pActivityList.size() - 1)
-        {
-            auto pActivity = TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, curIndex);
-            if(pActivity)
-            {
-                (*pActivity)();
-                decltype(auto) var {pActivity->result()};
-                TA_CommonTools::replace(m_resultList, curIndex, var);
-                TA_Connection::active(this, &TA_ManualKeyActivityChainPipeline::activityCompleted, curIndex, var);
-            }
-            if(!isAtKey)
-            {
-                m_currentIndex.fetch_add(1);
-            }
-        }
-        if(m_currentIndex.load(std::memory_order_acquire) < m_pActivityList.size())
+        if(m_runningGenerator.next())
         {
             setState(State::Waiting);
         }
         else
         {
             setState(State::Ready);
-        }  
+        }
+    }
+
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> TA_ManualKeyActivityChainPipeline::runningGenerator()
+    {
+        bool isAtKey {false};
+        for(auto i = startIndex(); i < m_pActivityList.size();)
+        {
+            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
+            (*pActivity)();
+            auto var {pActivity->result()};
+            TA_CommonTools::replace(m_resultList, i, var);
+            TA_Connection::active(this, &TA_ManualKeyActivityChainPipeline::activityCompleted, i, var);
+            co_yield var;
+            isAtKey = (i == m_keyIndex.load(std::memory_order_acquire));
+            if(!isAtKey)
+            {
+                i++;
+            }
+        }
+        co_return;
     }
 
     void TA_ManualKeyActivityChainPipeline::reset()
@@ -90,8 +89,8 @@ namespace CoreAsync {
         m_resultList.clear();
         m_resultList.resize(m_pActivityList.size());
         m_mutex.unlock();
-        m_currentIndex.store(0,std::memory_order_release);
         m_keyIndex.store(-1,std::memory_order_release);
+        m_runningGenerator = runningGenerator();
         setState(State::Waiting);
         setStartIndex(0);  
     }
@@ -116,9 +115,9 @@ namespace CoreAsync {
         m_pActivityList.clear();
         m_resultList.clear();
         m_mutex.unlock();
+        m_runningGenerator = runningGenerator();
         setState(State::Waiting);
         setStartIndex(0);
-        m_currentIndex.store(0,std::memory_order_release);
         m_keyIndex.store(-1,std::memory_order_release);
     }
 }

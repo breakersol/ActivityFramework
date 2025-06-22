@@ -16,9 +16,7 @@
 
 #include "Components/TA_BasicPipeline.h"
 #include "Components/TA_CommonTools.h"
-#include "Components/TA_ThreadPool.h"
 
-#include <chrono>
 #include <cassert>
 
 namespace CoreAsync {
@@ -116,7 +114,7 @@ namespace CoreAsync {
         return m_pActivityList.size();
     }
 
-    void TA_BasicPipeline::setStartIndex(unsigned int index)
+    void TA_BasicPipeline::setStartIndex(ActivityIndex index)
     {
         if(State::Waiting != m_state.load(std::memory_order_consume))
         {
@@ -127,7 +125,7 @@ namespace CoreAsync {
         m_startIndex.store(index,std::memory_order_release);
     }
 
-    unsigned int TA_BasicPipeline::startIndex() const
+    TA_BasicPipeline::ActivityIndex TA_BasicPipeline::startIndex() const
     {
         return m_startIndex.load(std::memory_order_acquire);
     }

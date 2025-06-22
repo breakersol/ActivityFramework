@@ -20,54 +20,45 @@
 namespace CoreAsync {
     TA_ManualStepsChainPipeline::TA_ManualStepsChainPipeline() :TA_ManualChainPipeline()
     {
-
+        m_runningGenerator = runningGenerator();
     }
 
     void TA_ManualStepsChainPipeline::run()
     {
-        switch (m_steps.load(std::memory_order_acquire)) {
-        case 0:
-            break;
-        case 1:
-            TA_ManualChainPipeline::run();
-            break;
-        default:
+        if(m_runningGenerator.next())
         {
-            auto curIndex {m_currentIndex.load(std::memory_order_acquire)};
-            auto step {m_steps.load(std::memory_order_acquire)};
-            if(!m_pActivityList.empty() && step <= m_pActivityList.size() && curIndex + step <= m_pActivityList.size())
+            setState(State::Waiting);
+        }
+        else
+        {
+            setState(State::Ready);
+        }
+    }
+
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> TA_ManualStepsChainPipeline::runningGenerator()
+    {
+        auto step {m_steps.load(std::memory_order_acquire)};
+        if(step <= m_pActivityList.size())
+        {
+            for(auto i = startIndex(); i < m_pActivityList.size(); ++i)
             {
-                int endIndex = curIndex + step;
-                do
+                decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
+                (*pActivity)();
+                auto var {pActivity->result()};
+                TA_CommonTools::replace(m_resultList, i, var);
+                TA_Connection::active(this, &TA_ManualStepsChainPipeline::activityCompleted, i, var);
+                if(--step == 0)
                 {
-                    auto pActivity = TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, curIndex);
-                    if(pActivity)
+                    co_yield var;
+                    step = m_steps.load(std::memory_order_acquire);
+                    if(i + step >= m_pActivityList.size())
                     {
-                        (*pActivity)();
-                        decltype(auto) var {pActivity->result()};
-                        TA_CommonTools::replace(m_resultList, curIndex, var);
-                        TA_Connection::active(this, &TA_ManualStepsChainPipeline::activityCompleted, curIndex, var);
+                        break;
                     }
-                    m_currentIndex.fetch_add(1);
-                }while((curIndex = m_currentIndex.load(std::memory_order_acquire)) < endIndex);
-                if(m_currentIndex.load(std::memory_order_acquire) < m_pActivityList.size())
-                {
-                    setState(State::Waiting);
                 }
-                else
-                {
-                    setState(State::Ready);
-                }     
             }
-            else
-            {
-                assert(!m_pActivityList.empty());
-                assert(m_steps.load(std::memory_order_acquire) <= m_pActivityList.size());
-                assert(m_currentIndex.load(std::memory_order_acquire) + m_steps.load(std::memory_order_acquire) <= m_pActivityList.size());
-            }
-            break;
         }
-        }
+        co_return;
     }
 
     void TA_ManualStepsChainPipeline::reset()
@@ -78,14 +69,14 @@ namespace CoreAsync {
             std::printf("Reset pipeline failed!");
             return;
         }
-        m_currentIndex.store(0,std::memory_order_release);
         m_mutex.lock();
         m_resultList.clear();
         m_resultList.resize(m_pActivityList.size());
         m_mutex.unlock();
         m_steps.store(1,std::memory_order_release);
+        m_runningGenerator = runningGenerator();
         setState(State::Waiting);
-        setStartIndex(0);
+        setStartIndex(0); 
     }
 
     void TA_ManualStepsChainPipeline::clear()
@@ -109,9 +100,9 @@ namespace CoreAsync {
         m_resultList.clear();
         m_mutex.unlock();
         m_steps.store(1,std::memory_order_release);
+        m_runningGenerator = runningGenerator();
         setState(State::Waiting);
         setStartIndex(0);
-        m_currentIndex.store(0,std::memory_order_release);
     }
 
     void TA_ManualStepsChainPipeline::setSteps(unsigned int steps)

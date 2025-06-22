@@ -24,13 +24,21 @@ namespace CoreAsync {
 
     void TA_AutoChainPipeline::run()
     {
-        std::size_t idx {0};
-        auto generator {runningGenerator(ExecuteType::Sync)};
-        while(generator.next())
+        auto generator {this->runningGenerator()};
+        while(generator.next());
+    }
+
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> TA_AutoChainPipeline::runningGenerator()
+    {
+        for(auto i = startIndex(); i < m_pActivityList.size(); ++i)
         {
-            auto res = generator.value();
-            TA_Connection::active(this, &TA_AutoChainPipeline::activityCompleted, idx++, res);
+            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
+            (*pActivity)();
+            auto var {pActivity->result()};
+            TA_CommonTools::replace(m_resultList, i, var);
+            co_yield var;
         }
         setState(State::Ready);
+        co_return;
     }
 }

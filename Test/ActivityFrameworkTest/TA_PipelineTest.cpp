@@ -260,6 +260,8 @@ TEST_F(TA_PipelineTest, manualStepsChainPipeline_executeTest)
     auto waiter = m_pManualStepsChainPipeline->execute();
     int res_0, res_1, res_2;
     waiter();
+    waiter = m_pManualStepsChainPipeline->execute();
+    waiter();
     {
         m_pManualStepsChainPipeline->result(0,res_0);
         m_pManualStepsChainPipeline->result(1,res_1);

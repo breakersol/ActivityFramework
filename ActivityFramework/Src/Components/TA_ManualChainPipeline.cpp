@@ -18,37 +18,38 @@
 #include "Components/TA_CommonTools.h"
 
 namespace CoreAsync {
-    TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline()
+TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline(), m_runningGenerator(runningGenerator())
     {
 
     }
 
     void TA_ManualChainPipeline::run()
     {
-        auto curIndex {m_currentIndex.load(std::memory_order_acquire)};
-        if(!m_pActivityList.empty() && curIndex <= m_pActivityList.size() - 1)
-        {
-            auto pActivity = TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, curIndex);
-            if(pActivity)
-            {
-                (*pActivity)();
-                auto var {pActivity->result()};
-                TA_CommonTools::replace(m_resultList, curIndex, var);
-                TA_Connection::active(this, &TA_ManualChainPipeline::activityCompleted, curIndex, var);
-            }
-            m_currentIndex.fetch_add(1);
-        }
-        if(m_currentIndex.load(std::memory_order_acquire) < m_pActivityList.size())
+        if(m_runningGenerator.next())
         {
             setState(State::Waiting);
         }
         else
         {
             setState(State::Ready);
-        }  
+        }
     }
 
-    void TA_ManualChainPipeline::setStartIndex(unsigned int index)
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> TA_ManualChainPipeline::runningGenerator()
+    {
+        for(auto i = startIndex(); i < m_pActivityList.size(); ++i)
+        {
+            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
+            (*pActivity)();
+            auto var {pActivity->result()};
+            TA_CommonTools::replace(m_resultList, i, var);
+            TA_Connection::active(this, &TA_ManualChainPipeline::activityCompleted, i, var);
+            co_yield var;
+        }
+        co_return;
+    }
+
+    void TA_ManualChainPipeline::setStartIndex(ActivityIndex index)
     {
         TA_BasicPipeline::setStartIndex(index);
     }
@@ -67,10 +68,10 @@ namespace CoreAsync {
             TA_CommonTools::debugInfo(META_STRING("Reset pipeline failed!"));
             return;
         }
-        m_currentIndex.store(0,std::memory_order_release);
         m_mutex.lock();
         m_resultList.clear();
         m_resultList.resize(m_pActivityList.size());
+        m_runningGenerator = runningGenerator();
         m_mutex.unlock();
         setState(State::Waiting);
         setStartIndex(0);
@@ -95,10 +96,10 @@ namespace CoreAsync {
         }
         m_pActivityList.clear();
         m_resultList.clear();
+        m_runningGenerator = runningGenerator();
         m_mutex.unlock();
         setState(State::Waiting);
         setStartIndex(0);
-        m_currentIndex.store(0,std::memory_order_release);
     }
 }
 

@@ -48,13 +48,13 @@ namespace CoreAsync {
 
         struct Waiter
         {
-            Waiter(AsyncTask &&fetcher) : m_fetcher(std::move(fetcher))
+            Waiter(AsyncTask &&task) : m_task(std::move(task))
             {
 
             }
 
             Waiter(const Waiter &) = delete;
-            Waiter(Waiter &&other) noexcept : m_fetcher(std::move(other.m_fetcher))
+            Waiter(Waiter &&other) noexcept : m_task(std::move(other.m_task))
             {
 
             }
@@ -64,7 +64,7 @@ namespace CoreAsync {
             {
                 if(this != &other)
                 {
-                    m_fetcher = std::move(other.m_fetcher);
+                    m_task = std::move(other.m_task);
                 }
                 return *this;
             }
@@ -73,63 +73,11 @@ namespace CoreAsync {
 
             TA_DefaultVariant operator()()
             {
-                return m_fetcher.get()();
+                return m_task.get()();
             }
 
         private:
-            AsyncTask m_fetcher;
-        };
-
-    private:
-        class TA_RunningAwaitable
-        {
-        public:
-            TA_RunningAwaitable(TA_ActivityProxy *pActivity, ExecuteType type) : m_pProxy(pActivity), m_executeType(type)
-            {
-                if(!m_pProxy)
-                {
-                    throw std::runtime_error("TA_ActivityResultAwaitable: pActivity is null!");
-                }
-            }
-
-            ~TA_RunningAwaitable()
-            {
-                if(m_pProxy && !m_pProxy->isExecuted())
-                {
-                    delete m_pProxy;
-                    m_pProxy = nullptr;
-                }
-            }
-
-            bool await_ready() const noexcept
-            {
-                return m_pProxy->isExecuted() || !m_pProxy->isValid();
-            }
-
-            void await_suspend(std::coroutine_handle<> handle) noexcept
-            {
-                if(m_executeType == ExecuteType::Async)
-                {
-                    m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
-                }
-                else
-                {
-                    m_pProxy->operator()();
-                    m_fetcher = {std::make_shared<TA_ActivityProxy>(m_pProxy)};
-                }
-                handle.resume();
-            }
-
-            auto await_resume() const noexcept
-            {
-                return m_fetcher;
-            }
-
-        private:
-            TA_ActivityProxy *m_pProxy {nullptr};
-            ExecuteType m_executeType {ExecuteType::Async};
-            TA_ActivityResultFetcher m_fetcher {};
-
+            AsyncTask m_task;
         };
 
     public:
@@ -146,7 +94,7 @@ namespace CoreAsync {
             destroy();
         }
 
-        virtual void setStartIndex(unsigned int index);
+        virtual void setStartIndex(ActivityIndex index);
 
         template<typename Activity,typename ...Activities>
         void add(Activity &pActivity, Activities &...pActivities)
@@ -196,37 +144,9 @@ namespace CoreAsync {
 
         State state() const;
 
-    protected:
         virtual void run() = 0;
         void setState(State state);
-        unsigned int startIndex() const;
-
-        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(ExecuteType type)
-        {
-            if(type == ExecuteType::Sync)
-            {
-                for(int i = startIndex();i < m_pActivityList.size();++i)
-                {
-                    decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-                    (*pActivity)();
-                    auto var {pActivity->result()};
-                    TA_CommonTools::replace(m_resultList, i, var);
-                    co_yield var;
-                }
-            }
-            else
-            {
-                for(int i = startIndex();i < m_pActivityList.size();++i)
-                {
-                    decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-                    auto fetcher = co_await TA_RunningAwaitable(pActivity, type);
-                    auto res = co_await TA_ActivityResultAwaitable(fetcher);
-                    TA_CommonTools::replace(m_resultList, i, res);
-                    co_yield fetcher;
-                }
-            }
-            co_return;
-        };
+        ActivityIndex startIndex() const;
 
     private:
         AsyncTask executeHelperFunc(ExecuteType type = ExecuteType::Async)
@@ -239,7 +159,7 @@ namespace CoreAsync {
             }
             setState(State::Busy);
             std::lock_guard<std::recursive_mutex> locker(m_mutex);
-            auto fetcher = co_await TA_RunningAwaitable(new TA_ActivityProxy(m_pRunningActivity, false), type);
+            auto fetcher = co_await TA_ActivityExecutingAwaitable(new TA_ActivityProxy(m_pRunningActivity, false), (TA_ActivityExecutingAwaitable::ExecuteType)(type));
             co_return fetcher;
         }
 
@@ -270,11 +190,11 @@ namespace CoreAsync {
 
     private:
         std::atomic<State> m_state {State::Waiting};
-        std::atomic<unsigned int> m_startIndex {0};
+        std::atomic<ActivityIndex> m_startIndex {0};
 
     TA_Signals:
         void stateChanged(TA_BasicPipeline::State st) { std::ignore = st; };
-        void activityCompleted(unsigned int index, TA_DefaultVariant res) { std::ignore = index; std::ignore = res;};
+        void activityCompleted(ActivityIndex index, TA_DefaultVariant res) { std::ignore = index; std::ignore = res;};
 
     };
 

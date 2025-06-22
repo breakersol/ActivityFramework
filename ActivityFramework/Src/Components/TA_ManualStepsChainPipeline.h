@@ -37,6 +37,7 @@ namespace CoreAsync {
 
     protected:
         virtual void run() override final;
+        virtual TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator() override final;
 
     private:
         std::atomic<unsigned int> m_steps {1};
