@@ -18,7 +18,7 @@
 #include "Components/TA_CommonTools.h"
 
 namespace CoreAsync {
-TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline(), m_runningGenerator(runningGenerator())
+    TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline()
     {
 
     }

@@ -26,9 +26,39 @@ namespace CoreAsync {
         ACTIVITY_FRAMEWORK_EXPORT TA_ManualStepsChainPipeline();
         virtual ~TA_ManualStepsChainPipeline(){}
 
-        TA_ManualStepsChainPipeline(const TA_ManualStepsChainPipeline &activity) = delete;
-        TA_ManualStepsChainPipeline(TA_ManualStepsChainPipeline &&activity) = delete;
-        TA_ManualStepsChainPipeline & operator = (const TA_ManualStepsChainPipeline &) = delete;
+        TA_ManualStepsChainPipeline(const TA_ManualStepsChainPipeline &other) :
+            TA_ManualChainPipeline(other),
+            m_steps(other.m_steps.load(std::memory_order_acquire))
+        {
+
+        }
+
+        TA_ManualStepsChainPipeline(TA_ManualStepsChainPipeline &&other) :
+            TA_ManualChainPipeline(std::move(other)),
+            m_steps(std::move(other.m_steps.load(std::memory_order_acquire)))
+        {
+
+        }
+
+        TA_ManualStepsChainPipeline & operator = (const TA_ManualStepsChainPipeline &other)
+        {
+            if(this != &other)
+            {
+                TA_ManualChainPipeline::operator = (other);
+                m_steps.store(other.m_steps.load(std::memory_order_acquire), std::memory_order_release);
+            }
+            return *this;
+        }
+
+        TA_ManualStepsChainPipeline & operator = (TA_ManualStepsChainPipeline &&other)
+        {
+            if(this != &other)
+            {
+                TA_ManualChainPipeline::operator = (std::move(other));
+                m_steps.store(std::move(other.m_steps.load(std::memory_order_acquire)), std::memory_order_release);
+            }
+            return *this;
+        }
 
         void ACTIVITY_FRAMEWORK_EXPORT setSteps(unsigned int steps);
 

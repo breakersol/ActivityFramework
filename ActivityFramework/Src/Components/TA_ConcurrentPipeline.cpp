@@ -55,7 +55,7 @@ namespace CoreAsync {
             auto fetcher = co_await TA_ActivityExecutingAwaitable(pActivity, TA_ActivityExecutingAwaitable::ExecuteType::Async);
             auto res = co_await TA_ActivityResultAwaitable(fetcher);
             TA_CommonTools::replace(m_resultList, i, res);
-            co_yield fetcher;
+            co_yield res;
         }
         co_return;
     }

@@ -26,9 +26,33 @@ namespace CoreAsync {
         ACTIVITY_FRAMEWORK_EXPORT TA_ManualChainPipeline();
         virtual ~TA_ManualChainPipeline() {}
 
-        TA_ManualChainPipeline(const TA_ManualChainPipeline &activity) = delete;
-        TA_ManualChainPipeline(TA_ManualChainPipeline &&activity) = delete;
-        TA_ManualChainPipeline & operator = (const TA_ManualChainPipeline &) = delete;
+        TA_ManualChainPipeline(const TA_ManualChainPipeline &other) : TA_BasicPipeline(other)
+        {
+
+        }
+
+        TA_ManualChainPipeline(TA_ManualChainPipeline &&other) : TA_BasicPipeline(std::move(other))
+        {
+
+        }
+
+        TA_ManualChainPipeline & operator = (const TA_ManualChainPipeline &other)
+        {
+            if(this != &other)
+            {
+                TA_BasicPipeline::operator = (other);
+            }
+            return *this;
+        }
+
+        TA_ManualChainPipeline & operator = (TA_ManualChainPipeline &&other)
+        {
+            if(this != &other)
+            {
+                TA_BasicPipeline::operator = (std::move(other));
+            }
+            return *this;
+        }
 
         virtual bool remove(ActivityIndex index) override final;
         virtual void clear() override;
@@ -41,7 +65,7 @@ namespace CoreAsync {
         virtual TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator();
 
     protected:
-        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> m_runningGenerator;
+        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> m_runningGenerator {this->runningGenerator()};
 
     };
 

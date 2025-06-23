@@ -26,9 +26,33 @@ namespace CoreAsync {
         ACTIVITY_FRAMEWORK_EXPORT TA_AutoChainPipeline();
         virtual ~TA_AutoChainPipeline(){}
 
-        TA_AutoChainPipeline(const TA_AutoChainPipeline &activity) = delete;
-        TA_AutoChainPipeline(TA_AutoChainPipeline &&activity) = delete;
-        TA_AutoChainPipeline & operator = (const TA_AutoChainPipeline &) = delete;
+        TA_AutoChainPipeline(const TA_AutoChainPipeline &other) : TA_BasicPipeline(other)
+        {
+
+        }
+
+        TA_AutoChainPipeline(TA_AutoChainPipeline &&other) : TA_BasicPipeline(std::move(other))
+        {
+
+        }
+
+        TA_AutoChainPipeline & operator = (const TA_AutoChainPipeline &other)
+        {
+            if(this != &other)
+            {
+                TA_BasicPipeline::operator = (other);
+            }
+            return *this;
+        }
+
+        TA_AutoChainPipeline & operator = (TA_AutoChainPipeline &&other)
+        {
+            if(this != &other)
+            {
+                TA_BasicPipeline::operator = (std::move(other));
+            }
+            return *this;
+        }
 
     protected:
         virtual void run() override final;

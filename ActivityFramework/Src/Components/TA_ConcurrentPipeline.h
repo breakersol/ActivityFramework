@@ -26,9 +26,37 @@ namespace CoreAsync {
         TA_ConcurrentPipeline();
         virtual ~TA_ConcurrentPipeline() {}
 
-        TA_ConcurrentPipeline(const TA_ConcurrentPipeline &activity) = delete;
-        TA_ConcurrentPipeline(TA_ConcurrentPipeline &&activity) = delete;
-        TA_ConcurrentPipeline & operator = (const TA_ConcurrentPipeline &) = delete;
+        TA_ConcurrentPipeline(const TA_ConcurrentPipeline &other) : TA_BasicPipeline(other),m_resultFetchers(other.m_resultFetchers)
+        {
+
+        }
+
+        TA_ConcurrentPipeline(TA_ConcurrentPipeline &&other) : TA_BasicPipeline(std::move(other)),
+            m_resultFetchers(std::move(other.m_resultFetchers))
+        {
+            other.m_resultFetchers.clear();
+        }
+
+        TA_ConcurrentPipeline & operator = (const TA_ConcurrentPipeline &other)
+        {
+            if(this != &other)
+            {
+                TA_BasicPipeline::operator = (other);
+                m_resultFetchers = other.m_resultFetchers;
+            }
+            return *this;
+        }
+
+        TA_ConcurrentPipeline & operator = (TA_ConcurrentPipeline &&other)
+        {
+            if(this != &other)
+            {
+                TA_BasicPipeline::operator = (std::move(other));
+                m_resultFetchers = std::move(other.m_resultFetchers);
+                other.m_resultFetchers.clear();
+            }
+            return *this;
+        }
 
         void clear() override final;
         void reset() override final;

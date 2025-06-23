@@ -81,13 +81,57 @@ namespace CoreAsync {
         };
 
     public:
-        TA_BasicPipeline() : TA_MetaObject(), m_pRunningActivity(new TA_MethodActivity<std::function<void()>>(std::function<void()>([this]() { run(); })))
+        TA_BasicPipeline() : TA_MetaObject()
         {
 
         }
-        TA_BasicPipeline(const TA_BasicPipeline &other) = delete;
-        TA_BasicPipeline(TA_BasicPipeline &&other) = delete;
-        TA_BasicPipeline & operator = (const TA_BasicPipeline &) = delete;
+        TA_BasicPipeline(const TA_BasicPipeline &other)
+        {
+            destroy();
+            m_pActivityList = other.m_pActivityList;
+            m_resultList.resize(m_pActivityList.size());
+            m_pRunningActivity = other.m_pRunningActivity;
+            m_state.store(other.m_state.load(std::memory_order_acquire), std::memory_order_release);
+            m_startIndex.store(other.m_startIndex.load(std::memory_order_acquire), std::memory_order_release);
+        }
+
+        TA_BasicPipeline(TA_BasicPipeline &&other)
+        {
+            destroy();
+            m_pActivityList = std::move(other.m_pActivityList);
+            m_resultList = std::move(other.m_resultList);
+            m_pRunningActivity = std::exchange(other.m_pRunningActivity, nullptr);
+            m_state.store(State::Waiting, std::memory_order_release);
+            m_startIndex.store(0, std::memory_order_release);
+        }
+
+        TA_BasicPipeline & operator = (const TA_BasicPipeline &other)
+        {
+            if(this != &other)
+            {
+                destroy();
+                m_pActivityList = other.m_pActivityList;
+                m_resultList.resize(m_pActivityList.size());
+                m_pRunningActivity = other.m_pRunningActivity;
+                m_state.store(other.m_state.load(std::memory_order_acquire), std::memory_order_release);
+                m_startIndex.store(other.m_startIndex.load(std::memory_order_acquire), std::memory_order_release);
+            }
+            return *this;
+        }
+
+        TA_BasicPipeline & operator = (TA_BasicPipeline &&other)
+        {
+            if(this != &other)
+            {
+                destroy();
+                m_pActivityList = std::move(other.m_pActivityList);
+                m_resultList = std::move(other.m_resultList);
+                m_pRunningActivity = std::exchange(other.m_pRunningActivity, nullptr);
+                m_state.store(State::Waiting, std::memory_order_release);
+                m_startIndex.store(0, std::memory_order_release);
+            }
+            return *this;
+        }
 
         virtual ~TA_BasicPipeline()
         {
@@ -186,7 +230,7 @@ namespace CoreAsync {
         std::list<TA_ActivityProxy *> m_pActivityList;
         std::vector<TA_DefaultVariant> m_resultList;
         std::recursive_mutex m_mutex;
-        TA_MethodActivity<std::function<void()>> *m_pRunningActivity {nullptr};
+        TA_MethodActivity<std::function<void()>> *m_pRunningActivity {new TA_MethodActivity<std::function<void()>>(std::function<void()>([this]() { run(); }))};
 
     private:
         std::atomic<State> m_state {State::Waiting};

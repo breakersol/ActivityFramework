@@ -26,9 +26,39 @@ namespace CoreAsync {
         ACTIVITY_FRAMEWORK_EXPORT TA_ManualKeyActivityChainPipeline();
         virtual ~TA_ManualKeyActivityChainPipeline(){}
 
-        TA_ManualKeyActivityChainPipeline(const TA_ManualKeyActivityChainPipeline &activity) = delete;
-        TA_ManualKeyActivityChainPipeline(TA_ManualKeyActivityChainPipeline &&activity) = delete;
-        TA_ManualKeyActivityChainPipeline & operator = (const TA_ManualKeyActivityChainPipeline &) = delete;
+        TA_ManualKeyActivityChainPipeline(const TA_ManualKeyActivityChainPipeline &other) :
+            TA_ManualChainPipeline(other),
+            m_keyIndex(other.m_keyIndex.load(std::memory_order_acquire))
+        {
+
+        }
+
+        TA_ManualKeyActivityChainPipeline(TA_ManualKeyActivityChainPipeline &&other) :
+            TA_ManualChainPipeline(std::move(other)),
+            m_keyIndex(std::move(other.m_keyIndex.load(std::memory_order_acquire)))
+        {
+
+        }
+
+        TA_ManualKeyActivityChainPipeline & operator = (const TA_ManualKeyActivityChainPipeline &other)
+        {
+            if(this != &other)
+            {
+                TA_ManualChainPipeline::operator = (other);
+                m_keyIndex.store(other.m_keyIndex.load(std::memory_order_acquire), std::memory_order_release);
+            }
+            return *this;
+        }
+
+        TA_ManualKeyActivityChainPipeline & operator = (TA_ManualKeyActivityChainPipeline &&other)
+        {
+            if(this != &other)
+            {
+                TA_ManualChainPipeline::operator = (std::move(other));
+                m_keyIndex.store(std::move(other.m_keyIndex.load(std::memory_order_acquire)), std::memory_order_release);
+            }
+            return *this;
+        }
 
         void ACTIVITY_FRAMEWORK_EXPORT setKeyActivity(int index);
         void ACTIVITY_FRAMEWORK_EXPORT skipKeyActivity();
