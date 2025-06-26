@@ -22,23 +22,23 @@ namespace CoreAsync {
 
     }
 
-    void TA_AutoChainPipeline::run()
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_BasicPipeline *pPipeline)
     {
-        auto generator {this->runningGenerator()};
-        while(generator.next());
-    }
-
-    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> TA_AutoChainPipeline::runningGenerator()
-    {
-        for(auto i = startIndex(); i < m_pActivityList.size(); ++i)
+        for(auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i)
         {
-            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
+            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
             (*pActivity)();
             auto var {pActivity->result()};
-            TA_CommonTools::replace(m_resultList, i, var);
+            TA_CommonTools::replace(pPipeline->m_resultList, i, var);
             co_yield var;
         }
-        setState(State::Ready);
+        pPipeline->setState(TA_BasicPipeline::State::Ready);
         co_return;
+    }
+
+    void TA_AutoChainPipeline::run()
+    {
+        auto generator {runningGenerator(this)};
+        while(generator.next());
     }
 }
