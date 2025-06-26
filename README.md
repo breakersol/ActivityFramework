@@ -520,12 +520,11 @@ Activity Pipeline currently offers five types of pipelines to use: **Auto Chain 
 5. _Manual Key Activity Chain Pipeline_: This pipeline inherits from _Manual Chain Pipeline_. The difference with _Manual Chain Pipeline_ is that the user can set the key activity to make the pipeline repeat selected activity.
 
 <br/>List some of the APIs about pipeline here:
-- **waitingComplete**: Continuous waiting until the pipeline execution is finished.This function will block the current thread.
 - **void setStartIndex(unsigned int index)**: Set the execution to start from the _index_ activity. Valid only in the **Waiting** state.
 - **add**: Adding activites into the pipeline. Valid only in the **Waiting** state.
 - **bool remove(ActivityIndex index)**: Delete the _index_ activity. Valid only in the **Waiting** state.
 - **void clear()**: Clear all activities and cached data, and reset the pipeline status to **Waiting**. Invalid when called in **Busy** state.
-- **bool execute()**: Start the execution and set the pipeline to **Busy** state. Valid only in the **Waiting** state.
+- **Waiter execute(ExecuteType type = ExecuteType::Async)**: Start the execution and return a *Waiter* object. Invoke it to block until the pipeline completes. Valid only in the **Waiting** state.
 - **void reset()**: Resets the pipeline status to **Waiting** and clears all cached data. Valid only in the **Ready** state. 
 - **bool result(int index, Res &res)**: Get the result of the specified activity by index. Invalid when called in **Busy** state.
 - **void setSteps(unsigned int steps)**: Set the steps for a single execution. API specific to **Manual Steps Chain Pipeline**. Invalid when called in **Busy** state.
