@@ -38,7 +38,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
     using Milliseconds = std::chrono::duration<int, std::milli>;
     using AsyncTask = TA_CoroutineTask<TA_ActivityResultFetcher, CorotuineBehavior::Eager>;
 
-    friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_AutoChainPipeline *pPipeline);
+    friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager>
+    runningGenerator(TA_AutoChainPipeline *pPipeline);
     friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy>
     runningGenerator(TA_ManualChainPipeline *pPipeline);
     friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy>
@@ -79,7 +80,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
   public:
     TA_BasicPipeline()
         : TA_MetaObject(),
-          m_pRunningActivity(new TA_MethodActivity<std::function<void()>>(std::function<void()>([this]() { run(); }))) {
+          m_pRunningActivity(new TA_MethodActivity<std::function<void()>>(
+              std::function<void()>([this]() { run(); }))) {
 
     }
     TA_BasicPipeline(const TA_BasicPipeline &other) = delete;
