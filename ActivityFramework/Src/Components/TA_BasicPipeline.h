@@ -31,6 +31,9 @@ namespace CoreAsync {
     protected:
         using Milliseconds = std::chrono::duration<int,std::milli>;
         using AsyncTask = TA_CoroutineTask<TA_ActivityResultFetcher, CorotuineBehavior::Eager>;
+
+        friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_BasicPipeline *pPipeline);
+
     public:
         using ActivityIndex = unsigned int;
         enum class State
