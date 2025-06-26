@@ -31,13 +31,14 @@ namespace CoreAsync {
         TA_ManualStepsChainPipeline & operator = (const TA_ManualStepsChainPipeline &) = delete;
 
         void ACTIVITY_FRAMEWORK_EXPORT setSteps(unsigned int steps);
+        int steps() const { return m_steps.load(std::memory_order_acquire); }
 
         void clear() override final;
         void reset() override final;
 
     protected:
         virtual void run() override final;
-        virtual TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator() override final;
+        // TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualStepsChainPipeline *pPipeline);
 
     private:
         std::atomic<unsigned int> m_steps {1};

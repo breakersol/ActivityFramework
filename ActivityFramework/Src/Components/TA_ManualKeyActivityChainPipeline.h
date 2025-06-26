@@ -32,12 +32,12 @@ namespace CoreAsync {
 
         void ACTIVITY_FRAMEWORK_EXPORT setKeyActivity(int index);
         void ACTIVITY_FRAMEWORK_EXPORT skipKeyActivity();
+        int keyIndex() const { return m_keyIndex.load(std::memory_order_acquire); }
         void clear() override final;
         void reset() override final;
 
     protected:
         virtual void run() override final;
-        virtual TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator() override final;
 
     private:
         std::atomic<int> m_keyIndex {-1};

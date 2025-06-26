@@ -35,7 +35,6 @@ namespace CoreAsync {
 
     protected:
         void run() override final;
-        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator();
 
     private:
         std::vector<TA_ActivityResultFetcher> m_resultFetchers {};

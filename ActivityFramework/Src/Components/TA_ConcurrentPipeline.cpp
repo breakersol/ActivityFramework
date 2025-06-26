@@ -24,6 +24,19 @@ namespace CoreAsync {
         
     }
 
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_ConcurrentPipeline *pPipeline)
+    {
+        for(auto i = pPipeline->startIndex();i < pPipeline->m_pActivityList.size();++i)
+        {
+            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
+            auto fetcher = co_await TA_ActivityExecutingAwaitable(pActivity, TA_ActivityExecutingAwaitable::ExecuteType::Async);
+            auto res = co_await TA_ActivityResultAwaitable(fetcher);
+            TA_CommonTools::replace(pPipeline->m_resultList, i, res);
+            co_yield fetcher;
+        }
+        co_return;
+    }
+
     void TA_ConcurrentPipeline::run()
     {
         std::size_t sIndex(std::move(startIndex()));
@@ -45,19 +58,6 @@ namespace CoreAsync {
             m_pActivityList.clear();
             setState(State::Ready);
         }  
-    }
-
-    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> TA_ConcurrentPipeline::runningGenerator()
-    {
-        for(auto i = startIndex();i < m_pActivityList.size();++i)
-        {
-            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-            auto fetcher = co_await TA_ActivityExecutingAwaitable(pActivity, TA_ActivityExecutingAwaitable::ExecuteType::Async);
-            auto res = co_await TA_ActivityResultAwaitable(fetcher);
-            TA_CommonTools::replace(m_resultList, i, res);
-            co_yield fetcher;
-        }
-        co_return;
     }
 
     void TA_ConcurrentPipeline::clear()

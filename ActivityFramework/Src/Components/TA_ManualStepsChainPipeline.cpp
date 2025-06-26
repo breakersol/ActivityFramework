@@ -18,9 +18,35 @@
 #include "Components/TA_CommonTools.h"
 
 namespace CoreAsync {
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualStepsChainPipeline *pPipeline)
+    {
+        auto step {pPipeline->steps()};
+        if(step <= pPipeline->m_pActivityList.size())
+        {
+            for(auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i)
+            {
+                decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
+                (*pActivity)();
+                auto var {pActivity->result()};
+                TA_CommonTools::replace(pPipeline->m_resultList, i, var);
+                TA_Connection::active(pPipeline, &TA_ManualStepsChainPipeline::activityCompleted, i, var);
+                if(--step == 0)
+                {
+                    co_yield var;
+                    step = pPipeline->steps();
+                    if(i + step >= pPipeline->m_pActivityList.size())
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        co_return;
+    }
+
     TA_ManualStepsChainPipeline::TA_ManualStepsChainPipeline() :TA_ManualChainPipeline()
     {
-        m_runningGenerator = runningGenerator();
+        m_runningGenerator = runningGenerator(this);
     }
 
     void TA_ManualStepsChainPipeline::run()
@@ -33,32 +59,6 @@ namespace CoreAsync {
         {
             setState(State::Ready);
         }
-    }
-
-    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> TA_ManualStepsChainPipeline::runningGenerator()
-    {
-        auto step {m_steps.load(std::memory_order_acquire)};
-        if(step <= m_pActivityList.size())
-        {
-            for(auto i = startIndex(); i < m_pActivityList.size(); ++i)
-            {
-                decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-                (*pActivity)();
-                auto var {pActivity->result()};
-                TA_CommonTools::replace(m_resultList, i, var);
-                TA_Connection::active(this, &TA_ManualStepsChainPipeline::activityCompleted, i, var);
-                if(--step == 0)
-                {
-                    co_yield var;
-                    step = m_steps.load(std::memory_order_acquire);
-                    if(i + step >= m_pActivityList.size())
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-        co_return;
     }
 
     void TA_ManualStepsChainPipeline::reset()
@@ -74,7 +74,7 @@ namespace CoreAsync {
         m_resultList.resize(m_pActivityList.size());
         m_mutex.unlock();
         m_steps.store(1,std::memory_order_release);
-        m_runningGenerator = runningGenerator();
+        m_runningGenerator = runningGenerator(this);
         setState(State::Waiting);
         setStartIndex(0); 
     }
@@ -100,7 +100,7 @@ namespace CoreAsync {
         m_resultList.clear();
         m_mutex.unlock();
         m_steps.store(1,std::memory_order_release);
-        m_runningGenerator = runningGenerator();
+        m_runningGenerator = runningGenerator(this);
         setState(State::Waiting);
         setStartIndex(0);
     }

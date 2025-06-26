@@ -26,13 +26,24 @@
 #include "TA_Coroutine.h"
 
 namespace CoreAsync {
+
+    class TA_AutoChainPipeline;
+    class TA_ManualChainPipeline;
+    class TA_ManualStepsChainPipeline;
+    class TA_ManualKeyActivityChainPipeline;
+    class TA_ConcurrentPipeline;
+
     class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject
     {
     protected:
         using Milliseconds = std::chrono::duration<int,std::milli>;
         using AsyncTask = TA_CoroutineTask<TA_ActivityResultFetcher, CorotuineBehavior::Eager>;
 
-        friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_BasicPipeline *pPipeline);
+        friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_AutoChainPipeline *pPipeline);
+        friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualChainPipeline *pPipeline);
+        friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualStepsChainPipeline *pPipeline);
+        friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualKeyActivityChainPipeline *pPipeline);
+        friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_ConcurrentPipeline *pPipeline);
 
     public:
         using ActivityIndex = unsigned int;
