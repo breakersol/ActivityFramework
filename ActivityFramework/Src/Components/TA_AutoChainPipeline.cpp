@@ -22,7 +22,7 @@ namespace CoreAsync {
 
     }
 
-    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_BasicPipeline *pPipeline)
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_AutoChainPipeline *pPipeline)
     {
         for(auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i)
         {

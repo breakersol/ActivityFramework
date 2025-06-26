@@ -18,9 +18,29 @@
 #include "Components/TA_CommonTools.h"
 
 namespace CoreAsync {
-TA_ManualKeyActivityChainPipeline::TA_ManualKeyActivityChainPipeline() : TA_ManualChainPipeline()
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualKeyActivityChainPipeline *pPipeline)
     {
-        m_runningGenerator = runningGenerator();
+        bool isAtKey {false};
+        for(auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size();)
+        {
+            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
+            (*pActivity)();
+            auto var {pActivity->result()};
+            TA_CommonTools::replace(pPipeline->m_resultList, i, var);
+            TA_Connection::active(pPipeline, &TA_ManualKeyActivityChainPipeline::activityCompleted, i, var);
+            co_yield var;
+            isAtKey = (i == pPipeline->keyIndex());
+            if(!isAtKey)
+            {
+                i++;
+            }
+        }
+        co_return;
+    }
+
+    TA_ManualKeyActivityChainPipeline::TA_ManualKeyActivityChainPipeline() : TA_ManualChainPipeline()
+    {
+        m_runningGenerator = runningGenerator(this);
     }
 
     void TA_ManualKeyActivityChainPipeline::setKeyActivity(int index)
@@ -57,26 +77,6 @@ TA_ManualKeyActivityChainPipeline::TA_ManualKeyActivityChainPipeline() : TA_Manu
         }
     }
 
-    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> TA_ManualKeyActivityChainPipeline::runningGenerator()
-    {
-        bool isAtKey {false};
-        for(auto i = startIndex(); i < m_pActivityList.size();)
-        {
-            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-            (*pActivity)();
-            auto var {pActivity->result()};
-            TA_CommonTools::replace(m_resultList, i, var);
-            TA_Connection::active(this, &TA_ManualKeyActivityChainPipeline::activityCompleted, i, var);
-            co_yield var;
-            isAtKey = (i == m_keyIndex.load(std::memory_order_acquire));
-            if(!isAtKey)
-            {
-                i++;
-            }
-        }
-        co_return;
-    }
-
     void TA_ManualKeyActivityChainPipeline::reset()
     {
         if(state() == State::Busy)
@@ -90,7 +90,7 @@ TA_ManualKeyActivityChainPipeline::TA_ManualKeyActivityChainPipeline() : TA_Manu
         m_resultList.resize(m_pActivityList.size());
         m_mutex.unlock();
         m_keyIndex.store(-1,std::memory_order_release);
-        m_runningGenerator = runningGenerator();
+        m_runningGenerator = runningGenerator(this);
         setState(State::Waiting);
         setStartIndex(0);  
     }
@@ -115,7 +115,7 @@ TA_ManualKeyActivityChainPipeline::TA_ManualKeyActivityChainPipeline() : TA_Manu
         m_pActivityList.clear();
         m_resultList.clear();
         m_mutex.unlock();
-        m_runningGenerator = runningGenerator();
+        m_runningGenerator = runningGenerator(this);
         setState(State::Waiting);
         setStartIndex(0);
         m_keyIndex.store(-1,std::memory_order_release);

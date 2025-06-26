@@ -18,7 +18,21 @@
 #include "Components/TA_CommonTools.h"
 
 namespace CoreAsync {
-TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline(), m_runningGenerator(runningGenerator())
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualChainPipeline *pPipeline)
+    {
+        for(auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i)
+        {
+            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
+            (*pActivity)();
+            auto var {pActivity->result()};
+            TA_CommonTools::replace(pPipeline->m_resultList, i, var);
+            TA_Connection::active(pPipeline, &TA_ManualChainPipeline::activityCompleted, i, var);
+            co_yield var;
+        }
+        co_return;
+    }
+
+    TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline(), m_runningGenerator(runningGenerator(this))
     {
 
     }
@@ -33,20 +47,6 @@ TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline(), m_running
         {
             setState(State::Ready);
         }
-    }
-
-    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> TA_ManualChainPipeline::runningGenerator()
-    {
-        for(auto i = startIndex(); i < m_pActivityList.size(); ++i)
-        {
-            decltype(auto) pActivity {TA_CommonTools::at<TA_ActivityProxy *>(m_pActivityList, i)};
-            (*pActivity)();
-            auto var {pActivity->result()};
-            TA_CommonTools::replace(m_resultList, i, var);
-            TA_Connection::active(this, &TA_ManualChainPipeline::activityCompleted, i, var);
-            co_yield var;
-        }
-        co_return;
     }
 
     void TA_ManualChainPipeline::setStartIndex(ActivityIndex index)
@@ -71,7 +71,7 @@ TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline(), m_running
         m_mutex.lock();
         m_resultList.clear();
         m_resultList.resize(m_pActivityList.size());
-        m_runningGenerator = runningGenerator();
+        m_runningGenerator = runningGenerator(this);
         m_mutex.unlock();
         setState(State::Waiting);
         setStartIndex(0);
@@ -96,7 +96,7 @@ TA_ManualChainPipeline::TA_ManualChainPipeline() : TA_BasicPipeline(), m_running
         }
         m_pActivityList.clear();
         m_resultList.clear();
-        m_runningGenerator = runningGenerator();
+        m_runningGenerator = runningGenerator(this);
         m_mutex.unlock();
         setState(State::Waiting);
         setStartIndex(0);

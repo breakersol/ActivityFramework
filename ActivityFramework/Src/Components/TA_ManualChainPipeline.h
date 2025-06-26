@@ -38,7 +38,6 @@ namespace CoreAsync {
 
     protected:
         virtual void run() override;
-        virtual TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator();
 
     protected:
         TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> m_runningGenerator;
