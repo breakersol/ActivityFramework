@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,43 +20,40 @@
 #include "TA_BasicPipeline.h"
 
 namespace CoreAsync {
-    class TA_ManualChainPipeline : public TA_BasicPipeline
-    {
-    public:
-        ACTIVITY_FRAMEWORK_EXPORT TA_ManualChainPipeline();
-        virtual ~TA_ManualChainPipeline() {}
+class TA_ManualChainPipeline : public TA_BasicPipeline {
+  public:
+    ACTIVITY_FRAMEWORK_EXPORT TA_ManualChainPipeline();
+    virtual ~TA_ManualChainPipeline() {}
 
-        TA_ManualChainPipeline(const TA_ManualChainPipeline &activity) = delete;
-        TA_ManualChainPipeline(TA_ManualChainPipeline &&activity) = delete;
-        TA_ManualChainPipeline & operator = (const TA_ManualChainPipeline &) = delete;
+    TA_ManualChainPipeline(const TA_ManualChainPipeline &activity) = delete;
+    TA_ManualChainPipeline(TA_ManualChainPipeline &&activity) = delete;
+    TA_ManualChainPipeline &operator=(const TA_ManualChainPipeline &) = delete;
 
-        virtual bool remove(ActivityIndex index) override final;
-        virtual void clear() override;
-        virtual void reset() override;
+    virtual bool remove(ActivityIndex index) override final;
+    virtual void clear() override;
+    virtual void reset() override;
 
-        void setStartIndex(ActivityIndex index) override;
+    void setStartIndex(ActivityIndex index) override;
 
-    protected:
-        virtual void run() override;
+  protected:
+    virtual void run() override;
 
-    protected:
-        TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> m_runningGenerator;
+  protected:
+    TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> m_runningGenerator;
+};
 
+namespace Reflex {
+template <>
+struct ACTIVITY_FRAMEWORK_EXPORT
+    TA_TypeInfo<TA_ManualChainPipeline> : TA_MetaTypeInfo<TA_ManualChainPipeline, TA_BasicPipeline> {
+    static constexpr TA_MetaFieldList fields = {
+        TA_MetaField{&Raw::remove, META_STRING("remove")},
+        TA_MetaField{&Raw::clear, META_STRING("clear")},
+        TA_MetaField{&Raw::reset, META_STRING("reset")},
+        TA_MetaField{&Raw::setStartIndex, META_STRING("setStartIndex")},
     };
-
-    namespace Reflex
-    {
-        template <>
-        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ManualChainPipeline> : TA_MetaTypeInfo<TA_ManualChainPipeline,TA_BasicPipeline>
-        {
-            static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::remove, META_STRING("remove")},
-                TA_MetaField {&Raw::clear, META_STRING("clear")},
-                TA_MetaField {&Raw::reset, META_STRING("reset")},
-                TA_MetaField {&Raw::setStartIndex, META_STRING("setStartIndex")},
-            };
-        };
-    }
-}
+};
+} // namespace Reflex
+} // namespace CoreAsync
 
 #endif // TA_MANUALCHAINPIPELINE_H

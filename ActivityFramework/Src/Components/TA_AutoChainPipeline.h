@@ -20,29 +20,26 @@
 #include "TA_BasicPipeline.h"
 
 namespace CoreAsync {
-    class TA_AutoChainPipeline : public TA_BasicPipeline
-    { 
-    public:
-        ACTIVITY_FRAMEWORK_EXPORT TA_AutoChainPipeline();
-        virtual ~TA_AutoChainPipeline(){}
+class TA_AutoChainPipeline : public TA_BasicPipeline {
+  public:
+    ACTIVITY_FRAMEWORK_EXPORT TA_AutoChainPipeline();
+    virtual ~TA_AutoChainPipeline() {}
 
-        TA_AutoChainPipeline(const TA_AutoChainPipeline &activity) = delete;
-        TA_AutoChainPipeline(TA_AutoChainPipeline &&activity) = delete;
-        TA_AutoChainPipeline & operator = (const TA_AutoChainPipeline &) = delete;
+    TA_AutoChainPipeline(const TA_AutoChainPipeline &activity) = delete;
+    TA_AutoChainPipeline(TA_AutoChainPipeline &&activity) = delete;
+    TA_AutoChainPipeline &operator=(const TA_AutoChainPipeline &) = delete;
 
-    protected:
-        virtual void run() override final;
+  protected:
+    virtual void run() override final;
+};
 
-    };
-
-    namespace Reflex
-    {
-        template <>
-        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_AutoChainPipeline> : TA_MetaTypeInfo<TA_AutoChainPipeline,TA_BasicPipeline>
-        {
-            static constexpr TA_MetaFieldList fields = {};
-        };
-    }
-}
+namespace Reflex {
+template <>
+struct ACTIVITY_FRAMEWORK_EXPORT
+    TA_TypeInfo<TA_AutoChainPipeline> : TA_MetaTypeInfo<TA_AutoChainPipeline, TA_BasicPipeline> {
+    static constexpr TA_MetaFieldList fields = {};
+};
+} // namespace Reflex
+} // namespace CoreAsync
 
 #endif // TA_AUTOCHAINPIPELINE_H

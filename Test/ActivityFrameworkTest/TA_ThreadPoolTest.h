@@ -21,12 +21,11 @@
 #include "Components/TA_ThreadPool.h"
 
 namespace CoreAsync {
-    class TA_BasicActivity;
+class TA_BasicActivity;
 }
 
-class TA_ThreadPoolTest : public :: testing :: Test
-{
-public:
+class TA_ThreadPoolTest : public ::testing ::Test {
+  public:
     TA_ThreadPoolTest();
     ~TA_ThreadPoolTest();
 
@@ -34,7 +33,6 @@ public:
     void TearDown() override;
 
     std::array<CoreAsync::TA_ActivityProxy *, 1024> activities;
-
 };
 
 #endif // TA_THREADPOOLTEST_H

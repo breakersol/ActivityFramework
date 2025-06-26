@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,35 +20,28 @@
 #include "Components/TA_PipelineCreator.h"
 
 namespace CoreAsync {
-    class ITA_PipelineCreator
-    {
-    public:
-        static TA_PipelineCreator::ConcurrentHolder * createConcurrentPipeline()
-        {
-            return TA_PipelineCreator::GetInstance().createConcurrentPipeline();
-        }
+class ITA_PipelineCreator {
+  public:
+    static TA_PipelineCreator::ConcurrentHolder *createConcurrentPipeline() {
+        return TA_PipelineCreator::GetInstance().createConcurrentPipeline();
+    }
 
-        static TA_PipelineCreator::AutoChainHolder * createAutoChainPipeline()
-        {
-            return TA_PipelineCreator::GetInstance().createAutoChainPipeline();
-        }
+    static TA_PipelineCreator::AutoChainHolder *createAutoChainPipeline() {
+        return TA_PipelineCreator::GetInstance().createAutoChainPipeline();
+    }
 
-        static TA_PipelineCreator::ManualChainHolder * createManualChainPipeline()
-        {
-            return TA_PipelineCreator::GetInstance().createManualChainPipeline();
-        }
+    static TA_PipelineCreator::ManualChainHolder *createManualChainPipeline() {
+        return TA_PipelineCreator::GetInstance().createManualChainPipeline();
+    }
 
-        static TA_PipelineCreator::ManualStepsChainHolder * createManualStepsChainPipeline()
-        {
-            return TA_PipelineCreator::GetInstance().createManualStepsChainPipeline();
-        }
+    static TA_PipelineCreator::ManualStepsChainHolder *createManualStepsChainPipeline() {
+        return TA_PipelineCreator::GetInstance().createManualStepsChainPipeline();
+    }
 
-        static TA_PipelineCreator::ManualKeyActivityChainHolder * createManualKeyActivityChainPipeline()
-        {
-            return TA_PipelineCreator::GetInstance().createManualKeyActivityChainPipeline();
-        }
-
-    };
-}
+    static TA_PipelineCreator::ManualKeyActivityChainHolder *createManualKeyActivityChainPipeline() {
+        return TA_PipelineCreator::GetInstance().createManualKeyActivityChainPipeline();
+    }
+};
+} // namespace CoreAsync
 
 #endif // ITA_PIPELINECREATOR_H

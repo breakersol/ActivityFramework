@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef TA_METAOBJECTTEST_H
 #define TA_METAOBJECTTEST_H
 
@@ -22,18 +21,17 @@
 
 class MetaTest;
 
-class TA_MetaObjectTest : public :: testing :: Test
-{
-public:
+class TA_MetaObjectTest : public ::testing ::Test {
+  public:
     TA_MetaObjectTest();
-	~TA_MetaObjectTest() override;
+    ~TA_MetaObjectTest() override;
 
-protected:
-	void SetUp() override;
-	void TearDown() override;
+  protected:
+    void SetUp() override;
+    void TearDown() override;
 
-	std::shared_ptr<MetaTest> m_pMetaTest {std::make_shared<MetaTest>()};
-	std::string m_str{ "This is a test.\n" };
+    std::shared_ptr<MetaTest> m_pMetaTest{std::make_shared<MetaTest>()};
+    std::string m_str{"This is a test.\n"};
 };
 
 #endif // TA_METAOBJECTTEST_H

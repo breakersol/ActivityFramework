@@ -17,41 +17,28 @@
 #include "TA_SerializationTest.h"
 #include "Components/TA_Serialization.h"
 
-TA_SerializationTest::TA_SerializationTest()
-{
+TA_SerializationTest::TA_SerializationTest() {}
 
-}
+TA_SerializationTest::~TA_SerializationTest() {}
 
-TA_SerializationTest::~TA_SerializationTest()
-{
+void TA_SerializationTest::SetUp() {}
 
-}
+void TA_SerializationTest::TearDown() {}
 
-void TA_SerializationTest::SetUp()
-{
-
-}
-
-void TA_SerializationTest::TearDown()
-{
-
-}
-
-TEST_F(TA_SerializationTest, CustomTypeTest)
-{
+TEST_F(TA_SerializationTest, CustomTypeTest) {
     float *ptr = new float(5.3);
     M3Test t, p1, p2;
     {
         CoreAsync::TA_Serializer output("./test.afw", 1, 1024);
-        t.setVec({2,3,4,5});
+        t.setVec({2, 3, 4, 5});
         t.setRawPtr(ptr);
-        t.setArray({2,3,4,5,6});
-        t.setList({9,9,9});
-        t.setForwardList({9,9,9});
-        t.setDeque({8,7,6,5,4});
+        t.setArray({2, 3, 4, 5, 6});
+        t.setList({9, 9, 9});
+        t.setForwardList({9, 9, 9});
+        t.setDeque({8, 7, 6, 5, 4});
         t.setStack({t.getDeque().begin(), t.getDeque().end()});
         t.mx = 999;
-        t.m_vec = {1,1,1,1};
+        t.m_vec = {1, 1, 1, 1};
         t.setQueue({t.getDeque().begin(), t.getDeque().end()});
         t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
         output << t << t;
@@ -72,28 +59,27 @@ TEST_F(TA_SerializationTest, CustomTypeTest)
     EXPECT_EQ(t.m_vec, p2.m_vec);
     EXPECT_EQ(t.getQueue(), p2.getQueue());
 
-    auto pq1 {t.getPriorityQueue()};
-    auto pq2 {p2.getPriorityQueue()};
+    auto pq1{t.getPriorityQueue()};
+    auto pq2{p2.getPriorityQueue()};
     EXPECT_TRUE(arePriorityQueueEqual(pq1, pq2));
 
     delete ptr;
 }
 
-TEST_F(TA_SerializationTest, VersionTest)
-{
+TEST_F(TA_SerializationTest, VersionTest) {
     float *ptr = new float(5.3);
     M3Test t, p1, p2;
     {
         CoreAsync::TA_Serializer output("./test.afw", 2);
-        t.setVec({2,3,4,5});
+        t.setVec({2, 3, 4, 5});
         t.setRawPtr(ptr);
-        t.setArray({2,3,4,5,6});
-        t.setList({9,9,9});
-        t.setForwardList({9,9,9});
-        t.setDeque({8,7,6,5,4});
+        t.setArray({2, 3, 4, 5, 6});
+        t.setList({9, 9, 9});
+        t.setForwardList({9, 9, 9});
+        t.setDeque({8, 7, 6, 5, 4});
         t.setStack({t.getDeque().begin(), t.getDeque().end()});
         t.mx = 999;
-        t.m_vec = {1,1,1,1};
+        t.m_vec = {1, 1, 1, 1};
         t.setQueue({t.getDeque().begin(), t.getDeque().end()});
         t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
         output << t << t;
@@ -114,13 +100,12 @@ TEST_F(TA_SerializationTest, VersionTest)
     EXPECT_EQ(t.m_vec, p2.m_vec);
     EXPECT_EQ(t.getQueue(), p2.getQueue());
 
-    auto pq1 {t.getPriorityQueue()};
-    auto pq2 {p2.getPriorityQueue()};
+    auto pq1{t.getPriorityQueue()};
+    auto pq2{p2.getPriorityQueue()};
     EXPECT_TRUE(arePriorityQueueEqual(pq1, pq2));
 
     delete ptr;
 }
-
 
 // TEST_F(TA_SerializationTest, LargeScaleTest)
 // {

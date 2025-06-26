@@ -20,9 +20,8 @@
 #include "gtest/gtest.h"
 #include "MetaTest.h"
 
-class TA_ActivityTest : public :: testing :: Test
-{
-public:
+class TA_ActivityTest : public ::testing ::Test {
+  public:
     TA_ActivityTest();
     ~TA_ActivityTest();
 
@@ -30,7 +29,6 @@ public:
     void TearDown() override;
 
     MetaTest *m_pTest;
-
 };
 
 #endif // TA_ACTIVITYTEST_H

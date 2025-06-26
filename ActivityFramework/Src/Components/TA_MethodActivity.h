@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,12 +52,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :  m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread
+//         = std::numeric_limits<std::size_t>::max()) :  m_funcActivity(nullptr),m_funcPtr(func),m_object(ins),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [&ins,func,&para...]()->Ret{return (ins.*func)(para...);};
 //         }
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread
+//         = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
 //         }
@@ -130,12 +134,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para, std::size_t affinityThread
+//         = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [&ins,func,&para...]()->Ret{return (ins->*func)(para...);};
 //         }
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
 //         }
@@ -207,12 +215,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &... para, std::size_t affinityThread
+//         = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [&ins,func,&para...]()->void{(ins.*func)(para...);};
 //         }
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins &ins, FuncPara &&... para, std::size_t affinityThread
+//         = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
 //         }
@@ -284,12 +296,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &... para, std::size_t affinityThread
+//         = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [&ins,func,&para...]()->void{(ins->*func)(para...);};
 //         }
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, Ins *&ins, FuncPara &&... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
 //         }
@@ -361,12 +377,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [&ins,func,&para...]()->Ret{return (ins.get()->*func)(para...);};
 //         }
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
 //         }
@@ -381,7 +401,6 @@
 //         {
 //             m_funcActivity.swap([&]()->Ret{return (m_object.get()->*m_funcPtr)(para...);});
 //         }
-
 
 //         template <typename ...NewPara>
 //         void setPara(NewPara &&...para)
@@ -439,12 +458,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [&ins,func,&para...]()->void{(ins.get()->*func)(para...);};
 //         }
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::shared_ptr<Ins> &ins, FuncPara &&... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_object(ins), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),ins,std::forward<FuncPara>(para)...);
 //         }
@@ -516,12 +539,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [this,func,&para...]()->Ret{return (m_pObject->*func)(para...);};
 //         }
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),m_pObject,std::forward<FuncPara>(para)...);
 //         }
@@ -540,7 +567,6 @@
 //         {
 //             m_funcActivity.swap([&]()->Ret{return (m_pObject->*m_funcPtr)(para...);});
 //         }
-
 
 //         template <typename ...NewPara>
 //         void setPara(NewPara &&...para)
@@ -598,12 +624,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [this,func,&para...]()->void{return (m_pObject->*func)(para...);};
 //         }
 
-//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
+//         TA_MethodActivity(SupportMemberFunction<Fn> &&func, std::unique_ptr<Ins> ins, FuncPara &&... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func),m_pObject(ins.release()), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),m_pObject,std::forward<FuncPara>(para)...);
 //         }
@@ -622,7 +652,6 @@
 //         {
 //             m_funcActivity.swap([&]()->void{return (m_pObject->*m_funcPtr)(para...);});
 //         }
-
 
 //         template <typename ...NewPara>
 //         void setPara(NewPara &&...para)
@@ -680,12 +709,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
+//         TA_MethodActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [func,&para...]()->Ret{return (*func)(para...);};
 //         }
 
-//         TA_MethodActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
+//         TA_MethodActivity(NonMemberFunctionPtr<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
 //         }
@@ -751,12 +784,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
+//         TA_MethodActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [func, &para...]()->void{(func)(para...);};
 //         }
 
-//         TA_MethodActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
+//         TA_MethodActivity(NonMemberFunctionPtr<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para,
+//         std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) :
+//         m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
 //         }
@@ -822,12 +859,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
+//         TA_MethodActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [&,func]()->Ret{return func(para...);};
 //         }
 
-//         TA_MethodActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
+//         TA_MethodActivity(LambdaType<Ret,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(std::forward<decltype(func)>(func),std::forward<FuncPara>(para)...);
 //         }
@@ -893,12 +934,16 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
+//         TA_MethodActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = [&,func]()->void{func(para...);};
 //         }
 
-//         TA_MethodActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func), m_affinityThread(affinityThread)
+//         TA_MethodActivity(LambdaType<void,FuncPara...> &&func, std::decay_t<FuncPara> &&... para, std::size_t
+//         affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr),m_funcPtr(func),
+//         m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = std::bind(func,std::forward<FuncPara>(para)...);
 //         }
@@ -964,7 +1009,8 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(LambdaTypeWithoutPara<Ret> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr), m_affinityThread(affinityThread)
+//         TA_MethodActivity(LambdaTypeWithoutPara<Ret> &&func, std::size_t affinityThread =
+//         std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = func;
 //         }
@@ -1016,7 +1062,8 @@
 //         TA_MethodActivity(TA_MethodActivity &&activity) = delete;
 //         TA_MethodActivity & operator = (const TA_MethodActivity &) = delete;
 
-//         TA_MethodActivity(LambdaTypeWithoutPara<void> &&func, std::size_t affinityThread = std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr), m_affinityThread(affinityThread)
+//         TA_MethodActivity(LambdaTypeWithoutPara<void> &&func, std::size_t affinityThread =
+//         std::numeric_limits<std::size_t>::max()) : m_funcActivity(nullptr), m_affinityThread(affinityThread)
 //         {
 //             m_funcActivity = func;
 //         }

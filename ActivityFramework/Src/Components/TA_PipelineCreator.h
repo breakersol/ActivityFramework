@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,39 +23,38 @@
 #include "Components/TA_PipelineHolder.h"
 
 namespace CoreAsync {
-    class ACTIVITY_FRAMEWORK_EXPORT TA_PipelineCreator
-    { 
-    public:
-        using AutoChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline> >;
-        using ManualChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline> >;
-        using ConcurrentHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline> >;
-        using ManualStepsChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline> >;
-        using ManualKeyActivityChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline> >;
+class ACTIVITY_FRAMEWORK_EXPORT TA_PipelineCreator {
+  public:
+    using AutoChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_AutoChainPipeline>>;
+    using ManualChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualChainPipeline>>;
+    using ConcurrentHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_ConcurrentPipeline>>;
+    using ManualStepsChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualStepsChainPipeline>>;
+    using ManualKeyActivityChainHolder = TA_MainPipelineHolder<TA_PipelineHolder<TA_ManualKeyActivityChainPipeline>>;
 
-        static TA_PipelineCreator & GetInstance();
+    static TA_PipelineCreator &GetInstance();
 
-        ~TA_PipelineCreator();
+    ~TA_PipelineCreator();
 
-        TA_PipelineCreator(const TA_PipelineCreator &creator) = delete;
-        TA_PipelineCreator(const TA_PipelineCreator &&creator) = delete;
+    TA_PipelineCreator(const TA_PipelineCreator &creator) = delete;
+    TA_PipelineCreator(const TA_PipelineCreator &&creator) = delete;
 
-        TA_PipelineCreator & operator = (const TA_PipelineCreator &creator) = delete;
+    TA_PipelineCreator &operator=(const TA_PipelineCreator &creator) = delete;
 
-        AutoChainHolder * createAutoChainPipeline();
-        ManualChainHolder * createManualChainPipeline();
-        ConcurrentHolder * createConcurrentPipeline();
-        ManualStepsChainHolder * createManualStepsChainPipeline();
-        ManualKeyActivityChainHolder * createManualKeyActivityChainPipeline();
+    AutoChainHolder *createAutoChainPipeline();
+    ManualChainHolder *createManualChainPipeline();
+    ConcurrentHolder *createConcurrentPipeline();
+    ManualStepsChainHolder *createManualStepsChainPipeline();
+    ManualKeyActivityChainHolder *createManualKeyActivityChainPipeline();
 
-    private:
-        TA_PipelineCreator();  
+  private:
+    TA_PipelineCreator();
 
-    private:
-        using HolderVar = std::variant<AutoChainHolder *, ManualChainHolder *, ConcurrentHolder *, ManualStepsChainHolder *, ManualKeyActivityChainHolder *>;
+  private:
+    using HolderVar = std::variant<AutoChainHolder *, ManualChainHolder *, ConcurrentHolder *, ManualStepsChainHolder *,
+                                   ManualKeyActivityChainHolder *>;
 
-        std::list<HolderVar> m_holderList;
-
-    };
-}
+    std::list<HolderVar> m_holderList;
+};
+} // namespace CoreAsync
 
 #endif // TA_PIPELINECREATOR_H

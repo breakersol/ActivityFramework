@@ -17,25 +17,13 @@
 #include "TA_EndianSwapTest.h"
 #include "Components/TA_EndianConversion.h"
 
-TA_EndianSwapTest::TA_EndianSwapTest()
-{
+TA_EndianSwapTest::TA_EndianSwapTest() {}
 
-}
+TA_EndianSwapTest::~TA_EndianSwapTest() {}
 
-TA_EndianSwapTest::~TA_EndianSwapTest()
-{
+void TA_EndianSwapTest::SetUp() {}
 
-}
-
-void TA_EndianSwapTest::SetUp()
-{
-
-}
-
-void TA_EndianSwapTest::TearDown()
-{
-
-}
+void TA_EndianSwapTest::TearDown() {}
 
 TEST_F(TA_EndianSwapTest, SwapEndianUint16) {
     uint16_t input = 0x1234;

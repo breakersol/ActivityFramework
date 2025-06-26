@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,4 +16,4 @@
 
 #include "MetaTest.h"
 
-std::string MetaTest::str ="123";
+std::string MetaTest::str = "123";

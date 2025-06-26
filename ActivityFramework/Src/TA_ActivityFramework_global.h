@@ -17,10 +17,10 @@
 #ifndef TA_ACTIVITYFRAMEWORK_GLOBAL_H
 #define TA_ACTIVITYFRAMEWORK_GLOBAL_H
 
-#pragma warning(disable: 4251)
+#pragma warning(disable : 4251)
 
-#if defined( _WIN32 )
-#if defined( ACTIVITY_FRAMEWORK_LIBRARY )
+#if defined(_WIN32)
+#if defined(ACTIVITY_FRAMEWORK_LIBRARY)
 #define ACTIVITY_FRAMEWORK_EXPORT __declspec(dllexport)
 #else
 #define ACTIVITY_FRAMEWORK_EXPORT __declspec(dllimport)

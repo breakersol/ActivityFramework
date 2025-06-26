@@ -20,16 +20,15 @@
 #include "gtest/gtest.h"
 #include "MetaTest.h"
 
-class TA_VariantTest : public :: testing :: Test
-{
-public:
+class TA_VariantTest : public ::testing ::Test {
+  public:
     TA_VariantTest();
     ~TA_VariantTest();
 
     void SetUp() override;
     void TearDown() override;
 
-    MetaTest *m_pTest {nullptr};
+    MetaTest *m_pTest{nullptr};
 };
 
 #endif // TA_VARIANTTEST_H

@@ -20,35 +20,32 @@
 #include "TA_BasicPipeline.h"
 
 namespace CoreAsync {
-    class ACTIVITY_FRAMEWORK_EXPORT TA_ConcurrentPipeline : public TA_BasicPipeline
-    {
-    public:
-        TA_ConcurrentPipeline();
-        virtual ~TA_ConcurrentPipeline() {}
+class ACTIVITY_FRAMEWORK_EXPORT TA_ConcurrentPipeline : public TA_BasicPipeline {
+  public:
+    TA_ConcurrentPipeline();
+    virtual ~TA_ConcurrentPipeline() {}
 
-        TA_ConcurrentPipeline(const TA_ConcurrentPipeline &activity) = delete;
-        TA_ConcurrentPipeline(TA_ConcurrentPipeline &&activity) = delete;
-        TA_ConcurrentPipeline & operator = (const TA_ConcurrentPipeline &) = delete;
+    TA_ConcurrentPipeline(const TA_ConcurrentPipeline &activity) = delete;
+    TA_ConcurrentPipeline(TA_ConcurrentPipeline &&activity) = delete;
+    TA_ConcurrentPipeline &operator=(const TA_ConcurrentPipeline &) = delete;
 
-        void clear() override final;
-        void reset() override final;
+    void clear() override final;
+    void reset() override final;
 
-    protected:
-        void run() override final;
+  protected:
+    void run() override final;
 
-    private:
-        std::vector<TA_ActivityResultFetcher> m_resultFetchers {};
+  private:
+    std::vector<TA_ActivityResultFetcher> m_resultFetchers{};
+};
 
-    };
-
-    namespace Reflex
-    {
-        template <>
-        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ConcurrentPipeline> : TA_MetaTypeInfo<TA_ConcurrentPipeline,TA_BasicPipeline>
-        {
-            static constexpr TA_MetaFieldList fields = {};
-        };
-    }
-}
+namespace Reflex {
+template <>
+struct ACTIVITY_FRAMEWORK_EXPORT
+    TA_TypeInfo<TA_ConcurrentPipeline> : TA_MetaTypeInfo<TA_ConcurrentPipeline, TA_BasicPipeline> {
+    static constexpr TA_MetaFieldList fields = {};
+};
+} // namespace Reflex
+} // namespace CoreAsync
 
 #endif // TA_CONCURRENTPIPELINE_H

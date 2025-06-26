@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef TA_COROUTINETEST_H
 #define TA_COROUTINETEST_H
 
@@ -22,36 +21,31 @@
 #include "Components/TA_Coroutine.h"
 #include "MetaTest.h"
 
-class TA_CoroutineTest : public ::testing::Test
-{
-public:
+class TA_CoroutineTest : public ::testing::Test {
+  public:
     TA_CoroutineTest();
     virtual ~TA_CoroutineTest();
 
     void SetUp() override;
     void TearDown() override;
 
-    CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender)
-    {
+    CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender) {
         auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
         co_return val * 3;
     }
 
-    CoreAsync::TA_CoroutineGenerator<int, CoreAsync::Eager> testCoroutineGenerator(CoroutineTestSender *pSender)
-    {
-		while (true)
-		{
+    CoreAsync::TA_CoroutineGenerator<int, CoreAsync::Eager> testCoroutineGenerator(CoroutineTestSender *pSender) {
+        while (true) {
             auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
             co_yield val * 3;
-			if (val > 10)
-			{
-				break;
-			}
-		}
+            if (val > 10) {
+                break;
+            }
+        }
         co_return;
     }
 
-    std::size_t m_count { 0 };
+    std::size_t m_count{0};
 };
 
 #endif // TA_COROUTINETEST_H

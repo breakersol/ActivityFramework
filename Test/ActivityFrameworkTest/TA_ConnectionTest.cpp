@@ -18,69 +18,56 @@
 #include "ITA_Connection.h"
 #include "MetaTest.h"
 
-TA_ConnectionTest::TA_ConnectionTest()
-{
+TA_ConnectionTest::TA_ConnectionTest() {}
 
-}
+TA_ConnectionTest::~TA_ConnectionTest() {}
 
-TA_ConnectionTest::~TA_ConnectionTest()
-{
+void TA_ConnectionTest::SetUp() { m_pTest = new MetaTest(); }
 
-}
-
-void TA_ConnectionTest::SetUp()
-{
-    m_pTest = new MetaTest();
-}
-
-void TA_ConnectionTest::TearDown()
-{
-    if(m_pTest)
+void TA_ConnectionTest::TearDown() {
+    if (m_pTest)
         delete m_pTest;
     m_pTest = nullptr;
 }
 
-TEST_F(TA_ConnectionTest, connectSyncTest)
-{
+TEST_F(TA_ConnectionTest, connectSyncTest) {
     EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
     EXPECT_FALSE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
     CoreAsync::ITA_Connection::disconnect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM);
 }
 
-TEST_F(TA_ConnectionTest, connectAsyncTest)
-{
-    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print));
+TEST_F(TA_ConnectionTest, connectAsyncTest) {
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(m_pTest, &MetaTest::printTest,
+                                                                                         m_pTest, &MetaTest::print));
     EXPECT_FALSE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print));
     CoreAsync::ITA_Connection::disconnect(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print);
 }
 
-TEST_F(TA_ConnectionTest, disconnectTest)
-{
+TEST_F(TA_ConnectionTest, disconnectTest) {
     EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
     EXPECT_TRUE(CoreAsync::ITA_Connection::disconnect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    EXPECT_FALSE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,2,3));
+    EXPECT_FALSE(CoreAsync::ITA_Connection::active(m_pTest, &MetaTest::startTest, 2, 3));
 }
 
-TEST_F(TA_ConnectionTest, activeTest)
-{
+TEST_F(TA_ConnectionTest, activeTest) {
     EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest,&MetaTest::startTest,5,5));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest, &MetaTest::startTest, 5, 5));
 }
 
-TEST_F(TA_ConnectionTest, asyncActiveTest)
-{
+TEST_F(TA_ConnectionTest, asyncActiveTest) {
     MetaTest *pTempTest = new MetaTest();
-    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(pTempTest, &MetaTest::startTest, pTempTest, &MetaTest::productMM));
-    //CoreAsync::TA_ThreadHolder::get().setThreadDetached(CoreAsync::TA_ThreadHolder::get().topPriorityThread());
-    EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest,&MetaTest::startTest, 6, 6));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(
+        pTempTest, &MetaTest::startTest, pTempTest, &MetaTest::productMM));
+    // CoreAsync::TA_ThreadHolder::get().setThreadDetached(CoreAsync::TA_ThreadHolder::get().topPriorityThread());
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest, &MetaTest::startTest, 6, 6));
 }
 
-TEST_F(TA_ConnectionTest, lambdaExpTest)
-{
+TEST_F(TA_ConnectionTest, lambdaExpTest) {
     MetaTest *pTempTest = new MetaTest();
     int c = 9;
-    auto conn = CoreAsync::ITA_Connection::connect(pTempTest, &MetaTest::startTest, [c](int a, int b){std::printf("The numbers are: %d, %d, %d\n.",a, b, c);});
+    auto conn = CoreAsync::ITA_Connection::connect(
+        pTempTest, &MetaTest::startTest, [c](int a, int b) { std::printf("The numbers are: %d, %d, %d\n.", a, b, c); });
     EXPECT_TRUE(conn.valid());
-    EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest,&MetaTest::startTest, 8, 8));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest, &MetaTest::startTest, 8, 8));
     EXPECT_TRUE(CoreAsync::ITA_Connection::disconnect(conn));
 }
