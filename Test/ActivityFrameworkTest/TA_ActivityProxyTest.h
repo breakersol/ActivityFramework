@@ -20,9 +20,8 @@
 #include "gtest/gtest.h"
 #include "MetaTest.h"
 
-class TA_ActivityProxyTest : public :: testing :: Test
-{
-public:
+class TA_ActivityProxyTest : public ::testing ::Test {
+  public:
     TA_ActivityProxyTest();
     ~TA_ActivityProxyTest();
 

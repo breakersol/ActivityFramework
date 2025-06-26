@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,43 +20,41 @@
 #include "TA_ManualChainPipeline.h"
 
 namespace CoreAsync {
-    class TA_ManualStepsChainPipeline : public TA_ManualChainPipeline
-    {
-    public:
-        ACTIVITY_FRAMEWORK_EXPORT TA_ManualStepsChainPipeline();
-        virtual ~TA_ManualStepsChainPipeline(){}
+class TA_ManualStepsChainPipeline : public TA_ManualChainPipeline {
+  public:
+    ACTIVITY_FRAMEWORK_EXPORT TA_ManualStepsChainPipeline();
+    virtual ~TA_ManualStepsChainPipeline() {}
 
-        TA_ManualStepsChainPipeline(const TA_ManualStepsChainPipeline &activity) = delete;
-        TA_ManualStepsChainPipeline(TA_ManualStepsChainPipeline &&activity) = delete;
-        TA_ManualStepsChainPipeline & operator = (const TA_ManualStepsChainPipeline &) = delete;
+    TA_ManualStepsChainPipeline(const TA_ManualStepsChainPipeline &activity) = delete;
+    TA_ManualStepsChainPipeline(TA_ManualStepsChainPipeline &&activity) = delete;
+    TA_ManualStepsChainPipeline &operator=(const TA_ManualStepsChainPipeline &) = delete;
 
-        void ACTIVITY_FRAMEWORK_EXPORT setSteps(unsigned int steps);
-        int steps() const { return m_steps.load(std::memory_order_acquire); }
+    void ACTIVITY_FRAMEWORK_EXPORT setSteps(unsigned int steps);
+    int steps() const { return m_steps.load(std::memory_order_acquire); }
 
-        void clear() override final;
-        void reset() override final;
+    void clear() override final;
+    void reset() override final;
 
-    protected:
-        virtual void run() override final;
-        // TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualStepsChainPipeline *pPipeline);
+  protected:
+    virtual void run() override final;
+    // TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualStepsChainPipeline
+    // *pPipeline);
 
-    private:
-        std::atomic<unsigned int> m_steps {1};
+  private:
+    std::atomic<unsigned int> m_steps{1};
+};
 
+namespace Reflex {
+template <>
+struct ACTIVITY_FRAMEWORK_EXPORT
+    TA_TypeInfo<TA_ManualStepsChainPipeline> : TA_MetaTypeInfo<TA_ManualStepsChainPipeline, TA_BasicPipeline> {
+    static constexpr TA_MetaFieldList fields = {
+        TA_MetaField{&Raw::setSteps, META_STRING("setSteps")},
+        TA_MetaField{&Raw::clear, META_STRING("clear")},
+        TA_MetaField{&Raw::reset, META_STRING("reset")},
     };
-
-    namespace Reflex
-    {
-        template <>
-        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ManualStepsChainPipeline> : TA_MetaTypeInfo<TA_ManualStepsChainPipeline,TA_BasicPipeline>
-        {
-            static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::setSteps, META_STRING("setSteps")},
-                TA_MetaField {&Raw::clear, META_STRING("clear")},
-                TA_MetaField {&Raw::reset, META_STRING("reset")},
-            };
-        };
-    }
-}
+};
+} // namespace Reflex
+} // namespace CoreAsync
 
 #endif // TA_MANUALSTEPSCHAINPIPELINE_H

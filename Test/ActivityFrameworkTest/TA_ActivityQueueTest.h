@@ -20,9 +20,8 @@
 #include "gtest/gtest.h"
 #include "MetaTest.h"
 
-class TA_ActivityQueueTest : public :: testing :: Test
-{
-public:
+class TA_ActivityQueueTest : public ::testing ::Test {
+  public:
     TA_ActivityQueueTest();
     ~TA_ActivityQueueTest();
 

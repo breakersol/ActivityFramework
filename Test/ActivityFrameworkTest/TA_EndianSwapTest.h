@@ -19,9 +19,8 @@
 
 #include "gtest/gtest.h"
 
-class TA_EndianSwapTest : public :: testing :: Test
-{
-public:
+class TA_EndianSwapTest : public ::testing ::Test {
+  public:
     TA_EndianSwapTest();
     ~TA_EndianSwapTest();
 

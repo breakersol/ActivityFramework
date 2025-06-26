@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,80 +25,63 @@
 
 namespace CoreAsync {
 
-template <typename Ins>
-struct IsSmartPointer
-{
+template <typename Ins> struct IsSmartPointer {
     static constexpr bool value = false;
 };
 
-template <typename Ins>
-struct IsSmartPointer<std::shared_ptr<Ins> >
-{
+template <typename Ins> struct IsSmartPointer<std::shared_ptr<Ins>> {
     static constexpr bool value = true;
 };
 
-template <typename Ins>
-struct IsSmartPointer<std::unique_ptr<Ins> >
-{
+template <typename Ins> struct IsSmartPointer<std::unique_ptr<Ins>> {
     static constexpr bool value = true;
 };
 
-template <typename Ins>
-struct IsSmartPointer<std::weak_ptr<Ins> >
-{
+template <typename Ins> struct IsSmartPointer<std::weak_ptr<Ins>> {
     static constexpr bool value = true;
 };
 
-template <typename T>
-struct IsStdFunction : std::false_type {};
+template <typename T> struct IsStdFunction : std::false_type {};
 
-template <typename R, typename ...Args>
-struct IsStdFunction<std::function<R(Args...)>> : std::true_type {};
+template <typename R, typename... Args> struct IsStdFunction<std::function<R(Args...)>> : std::true_type {};
 
-template <typename Func>
-static constexpr bool IsStdFunction_v = IsStdFunction<std::decay_t<Func>>::value;
+template <typename Func> static constexpr bool IsStdFunction_v = IsStdFunction<std::decay_t<Func>>::value;
 
 template <typename Func>
 concept StdFunctionType = IsStdFunction_v<Func>;
 
 template <typename T>
-concept LambdaExpType = requires(T t)
-{
-    {&T::operator()};
+concept LambdaExpType = requires(T t) {
+    { &T::operator() };
 };
 
 template <typename T>
 concept NonLambdaExpType = !LambdaExpType<T>;
 
-template <typename T>
-struct IsInstanceVariable
-{
-   static constexpr bool value = false;
+template <typename T> struct IsInstanceVariable {
+    static constexpr bool value = false;
 };
 
-template <typename CL, typename T>
-struct IsInstanceVariable<T CL::*>
-{
+template <typename CL, typename T> struct IsInstanceVariable<T CL::*> {
     static constexpr bool value = !std::is_function_v<T> && std::is_member_pointer_v<T CL::*>;
 };
 
-template <typename T>
-struct IsInstanceMethod
-{
-   static constexpr bool value = false;
+template <typename T> struct IsInstanceMethod {
+    static constexpr bool value = false;
 };
 
-template <typename CL, typename T, typename ...PARAS>
-struct IsInstanceMethod<T(CL:: *)(PARAS...)>
-{
-   static constexpr bool value = std::is_member_function_pointer_v<T(CL::*)(PARAS...)>;
+template <typename CL, typename T, typename... PARAS> struct IsInstanceMethod<T (CL::*)(PARAS...)> {
+    static constexpr bool value = std::is_member_function_pointer_v<T (CL::*)(PARAS...)>;
 };
 
 template <typename T>
-struct IsStaticVariable : std::integral_constant<bool, !std::is_member_object_pointer_v<T> && !std::is_member_function_pointer_v<T>> {};
+struct IsStaticVariable
+    : std::integral_constant<bool, !std::is_member_object_pointer_v<T> && !std::is_member_function_pointer_v<T>> {};
 
 template <typename T>
-struct IsStaticMethod : std::integral_constant<bool, !std::is_member_function_pointer_v<T> && !std::is_member_object_pointer_v<T> && std::is_function_v<std::remove_pointer_t<T>>> {};
+struct IsStaticMethod
+    : std::integral_constant<bool, !std::is_member_function_pointer_v<T> && !std::is_member_object_pointer_v<T> &&
+                                       std::is_function_v<std::remove_pointer_t<T>>> {};
 
 template <typename T>
 concept MethodType = IsInstanceMethod<T>::value || IsStaticMethod<T>::value;
@@ -106,163 +89,127 @@ concept MethodType = IsInstanceMethod<T>::value || IsStaticMethod<T>::value;
 template <typename T>
 concept GenernalMethodType = MethodType<T> || LambdaExpType<T> || StdFunctionType<T>;
 
-template <typename ST, typename FUNC, template <typename S, typename D> class FILTER>
-struct IsReturnTypeEqual;
+template <typename ST, typename FUNC, template <typename S, typename D> class FILTER> struct IsReturnTypeEqual;
 
-template <typename ST, typename R, typename ...Args, template <typename S, typename D> class FILTER>
-struct IsReturnTypeEqual<ST,R(*)(Args...),FILTER>
-{
+template <typename ST, typename R, typename... Args, template <typename S, typename D> class FILTER>
+struct IsReturnTypeEqual<ST, R (*)(Args...), FILTER> {
     using SelectType = ST;
-    using Func = R(*)(Args...);
+    using Func = R (*)(Args...);
     using RetType = R;
 
     static constexpr bool value = FILTER<SelectType, RetType>::value;
 };
 
-template <typename ST, typename C, typename R ,typename ...Args, template <typename S, typename D> class FILTER>
-struct IsReturnTypeEqual<ST,R(C::*)(Args...),FILTER>
-{
+template <typename ST, typename C, typename R, typename... Args, template <typename S, typename D> class FILTER>
+struct IsReturnTypeEqual<ST, R (C::*)(Args...), FILTER> {
     using SelectType = ST;
-    using Func = R(*)(Args...);
+    using Func = R (*)(Args...);
     using RetType = R;
 
     static constexpr bool value = FILTER<SelectType, RetType>::value;
 };
 
-template <typename ST, typename C, typename R ,typename ...Args, template <typename S, typename D> class FILTER>
-struct IsReturnTypeEqual<ST,R(C::*)(Args...) const, FILTER>
-{
+template <typename ST, typename C, typename R, typename... Args, template <typename S, typename D> class FILTER>
+struct IsReturnTypeEqual<ST, R (C::*)(Args...) const, FILTER> {
     using SelectType = ST;
-    using Func = R(*)(Args...);
+    using Func = R (*)(Args...);
     using RetType = R;
 
     static constexpr bool value = FILTER<SelectType, RetType>::value;
 };
 
-template <typename MemberFunc>
-struct ParentObject;
+template <typename MemberFunc> struct ParentObject;
 
-template <typename C, typename R ,typename ...Args>
-struct ParentObject<R(C::*)(Args...)>
-{
+template <typename C, typename R, typename... Args> struct ParentObject<R (C::*)(Args...)> {
     using type = C;
 };
 
-template <typename C, typename R ,typename ...Args>
-struct ParentObject<R(C::*)(Args...) const>
-{
+template <typename C, typename R, typename... Args> struct ParentObject<R (C::*)(Args...) const> {
     using type = C;
 };
 
-template <typename Func>
-struct MethodTypeInfo;
+template <typename Func> struct MethodTypeInfo;
 
-template <typename C, typename R, typename ...Args>
-struct MethodTypeInfo<R(C::* &&)(Args...)>
-{
+template <typename C, typename R, typename... Args> struct MethodTypeInfo<R (C::*&&)(Args...)> {
     using RetType = R;
     using ParentClass = C;
     using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
     static constexpr std::size_t argSize = sizeof...(Args);
 
-    template <std::size_t Idx>
-    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
+    template <std::size_t Idx> using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
-template <typename C, typename R, typename ...Args>
-struct MethodTypeInfo<R(C::*)(Args...)>
-{
+template <typename C, typename R, typename... Args> struct MethodTypeInfo<R (C::*)(Args...)> {
     using RetType = R;
     using ParentClass = C;
     using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
     static constexpr std::size_t argSize = sizeof...(Args);
-    static constexpr bool isMemberFunction {true};
+    static constexpr bool isMemberFunction{true};
 
-    template <std::size_t Idx>
-    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
+    template <std::size_t Idx> using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
-template <typename C, typename R, typename ...Args>
-struct MethodTypeInfo<R(C::* &&)(Args...) const>
-{
+template <typename C, typename R, typename... Args> struct MethodTypeInfo<R (C::*&&)(Args...) const> {
     using RetType = R;
     using ParentClass = C;
     using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
     static constexpr std::size_t argSize = sizeof...(Args);
 
-    template <std::size_t Idx>
-    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
+    template <std::size_t Idx> using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
-template <typename C, typename R, typename ...Args>
-struct MethodTypeInfo<R(C::*)(Args...) const>
-{
+template <typename C, typename R, typename... Args> struct MethodTypeInfo<R (C::*)(Args...) const> {
     using RetType = R;
     using ParentClass = C;
     using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
     static constexpr std::size_t argSize = sizeof...(Args);
-    static constexpr bool isMemberFunction {true};
+    static constexpr bool isMemberFunction{true};
 
-    template <std::size_t Idx>
-    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
+    template <std::size_t Idx> using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
-template <typename R, typename ...Args>
-struct MethodTypeInfo<R(* &&)(Args...)>
-{
+template <typename R, typename... Args> struct MethodTypeInfo<R (*&&)(Args...)> {
     using RetType = R;
     using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
     static constexpr std::size_t argSize = sizeof...(Args);
 
-    template <std::size_t Idx>
-    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
+    template <std::size_t Idx> using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
-template <typename R, typename ...Args>
-struct MethodTypeInfo<R(*)(Args...)>
-{
+template <typename R, typename... Args> struct MethodTypeInfo<R (*)(Args...)> {
     using RetType = R;
     using ArgGroup = TA_MetaTypelist<std::decay_t<Args>...>;
     static constexpr std::size_t argSize = sizeof...(Args);
-    static constexpr bool isMemberFunction {false};
+    static constexpr bool isMemberFunction{false};
 
-    template <std::size_t Idx>
-    using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
+    template <std::size_t Idx> using ArgType = MetaTypeAt<ArgGroup, Idx>::type;
 };
 
-template <typename Var>
-struct VariableTypeInfo;
+template <typename Var> struct VariableTypeInfo;
 
-template <typename C, typename R>
-struct VariableTypeInfo<R C::*>
-{
+template <typename C, typename R> struct VariableTypeInfo<R C::*> {
     using RetType = R;
     using ParentClass = C;
 };
 
-template <typename R>
-struct VariableTypeInfo<R *>
-{
+template <typename R> struct VariableTypeInfo<R *> {
     using RetType = R;
 };
 
 template <typename T>
-concept Iterator = requires (T t)
-{
-    {*std::declval<std::decay_t<T>>()};
-    {++std::declval<std::decay_t<T> &>()};
+concept Iterator = requires(T t) {
+    { *std::declval<std::decay_t<T>>() };
+    { ++std::declval<std::decay_t<T> &>() };
 };
 
 template <typename AType>
-concept StdAdaptorType = requires(AType at)
-{
+concept StdAdaptorType = requires(AType at) {
     typename std::decay_t<AType>::size_type;
     typename std::decay_t<AType>::container_type;
 };
 
 template <typename CType>
-concept StdContainerType = requires(CType ct)
-{
+concept StdContainerType = requires(CType ct) {
     typename std::decay_t<CType>::value_type;
     typename std::decay_t<CType>::iterator;
     typename std::decay_t<CType>::const_iterator;
@@ -270,20 +217,15 @@ concept StdContainerType = requires(CType ct)
 };
 
 template <typename CSType>
-concept ValidCST = !std::is_fundamental<std::remove_cvref_t<CSType>>::value &&
-                   !std::is_enum<std::remove_cvref_t<CSType>>::value &&
-                   !std::is_union<std::remove_cvref_t<CSType>>::value &&
-                   !std::is_array<std::remove_cvref_t<CSType>>::value &&
-                   !std::is_pointer<std::remove_cvref_t<CSType>>::value &&
-                   !std::is_null_pointer<std::remove_cvref_t<CSType>>::value &&
-                   !StdContainerType<CSType> &&
-                   !StdAdaptorType<CSType> &&
-                   std::is_class<std::remove_cvref_t<CSType>>::value;
+concept ValidCST =
+    !std::is_fundamental<std::remove_cvref_t<CSType>>::value && !std::is_enum<std::remove_cvref_t<CSType>>::value &&
+    !std::is_union<std::remove_cvref_t<CSType>>::value && !std::is_array<std::remove_cvref_t<CSType>>::value &&
+    !std::is_pointer<std::remove_cvref_t<CSType>>::value && !std::is_null_pointer<std::remove_cvref_t<CSType>>::value &&
+    !StdContainerType<CSType> && !StdAdaptorType<CSType> && std::is_class<std::remove_cvref_t<CSType>>::value;
 
 template <typename CSType>
-concept CustomType = requires(CSType ct)
-{
-    {ct} -> ValidCST;
+concept CustomType = requires(CSType ct) {
+    { ct } -> ValidCST;
 };
 
 template <typename NCSType>
@@ -293,23 +235,20 @@ template <typename T>
 concept IsRawPtr = std::is_pointer_v<std::decay_t<T>>;
 
 template <typename T>
-concept RawPtr = requires(T t)
-{
-    {t} -> IsRawPtr;
+concept RawPtr = requires(T t) {
+    { t } -> IsRawPtr;
 };
 
 template <typename T>
 concept IsEnumType = std::is_enum_v<std::decay_t<T>>;
 
 template <typename T>
-concept EnumType = requires(T t)
-{
-    {t} -> IsEnumType;
+concept EnumType = requires(T t) {
+    { t } -> IsEnumType;
 };
 
 template <typename FType>
-concept FieldType = requires(FType ct)
-{
+concept FieldType = requires(FType ct) {
     { ct.m_isProperty } -> std::convertible_to<bool>;
 };
 
@@ -320,22 +259,19 @@ template <typename T>
 concept IsTrivalCopyable = std::is_trivially_copyable_v<T>;
 
 template <typename T>
-concept TrivalCopyableType = requires(T t)
-{
-    {t}->IsTrivalCopyable;
+concept TrivalCopyableType = requires(T t) {
+    { t } -> IsTrivalCopyable;
 };
 
 template <typename T>
 concept IsStandLayout = std::is_standard_layout_v<T>;
 
 template <typename T>
-concept StandLayoutType = requires(T t)
-{
-    {t}->IsStandLayout;
+concept StandLayoutType = requires(T t) {
+    { t } -> IsStandLayout;
 };
 
-template <typename T>
-struct LambdaExpTraits : MethodTypeInfo<decltype(&T::operator())> {};
+template <typename T> struct LambdaExpTraits : MethodTypeInfo<decltype(&T::operator())> {};
 
 template <typename T>
 concept InstanceMethodType = IsInstanceMethod<T>::value;
@@ -343,6 +279,6 @@ concept InstanceMethodType = IsInstanceMethod<T>::value;
 template <typename T>
 concept StaticMethodType = IsStaticMethod<T>::value;
 
-}
+} // namespace CoreAsync
 
 #endif // TA_TYPEFILTER_H

@@ -16,28 +16,15 @@
 
 #include "TA_CoroutineTest.h"
 
-TA_CoroutineTest::TA_CoroutineTest()
-{
+TA_CoroutineTest::TA_CoroutineTest() {}
 
-}
+TA_CoroutineTest::~TA_CoroutineTest() {}
 
-TA_CoroutineTest::~TA_CoroutineTest()
-{
+void TA_CoroutineTest::SetUp() {}
 
-}
+void TA_CoroutineTest::TearDown() {}
 
-void TA_CoroutineTest::SetUp()
-{
-
-}
-
-void TA_CoroutineTest::TearDown()
-{
-
-}
-
-TEST_F(TA_CoroutineTest, testCoroutineTask)
-{
+TEST_F(TA_CoroutineTest, testCoroutineTask) {
     CoroutineTestSender sender;
 
     auto task_1 = testCoroutineTask(&sender);
@@ -51,14 +38,13 @@ TEST_F(TA_CoroutineTest, testCoroutineTask)
     EXPECT_EQ(r2, 12);
 }
 
-TEST_F(TA_CoroutineTest, testCoroutineGenerator)
-{
+TEST_F(TA_CoroutineTest, testCoroutineGenerator) {
     CoroutineTestSender sender;
     auto gen = testCoroutineGenerator(&sender);
 
     int r1, r2, r3;
     CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 3);
-    if(gen.next())
+    if (gen.next())
         r1 = gen.value();
     CoreAsync::TA_Connection::active(&sender, &CoroutineTestSender::sendSignal, 4);
     if (gen.next())

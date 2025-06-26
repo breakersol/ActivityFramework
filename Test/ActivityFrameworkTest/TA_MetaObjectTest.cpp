@@ -14,36 +14,22 @@
  * limitations under the License.
  */
 
-
 #include "TA_MetaObjectTest.h"
 #include "MetaTest.h"
 #include "Components/TA_MetaObject.h"
 
-TA_MetaObjectTest::TA_MetaObjectTest()
-{
+TA_MetaObjectTest::TA_MetaObjectTest() {}
 
-}
+TA_MetaObjectTest::~TA_MetaObjectTest() {}
 
-TA_MetaObjectTest::~TA_MetaObjectTest()
-{
+void TA_MetaObjectTest::SetUp() {}
 
-}
+void TA_MetaObjectTest::TearDown() {}
 
-void TA_MetaObjectTest::SetUp()
-{
-
-}
-
-void TA_MetaObjectTest::TearDown()
-{
-
-}
-
-TEST_F(TA_MetaObjectTest, InvokeMethodTest)
-{
-	auto fetcher = CoreAsync::TA_MetaObject::invokeMethod(META_STRING("contains<int>"), m_pMetaTest, 3);
-	EXPECT_TRUE(fetcher().get<bool>());
-	EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod([](int a) {std::cout << a << std::endl;}, 1));
-	EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::productMM, m_pMetaTest, 2, 5));
-	EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::printStr, m_str));
+TEST_F(TA_MetaObjectTest, InvokeMethodTest) {
+    auto fetcher = CoreAsync::TA_MetaObject::invokeMethod(META_STRING("contains<int>"), m_pMetaTest, 3);
+    EXPECT_TRUE(fetcher().get<bool>());
+    EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod([](int a) { std::cout << a << std::endl; }, 1));
+    EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::productMM, m_pMetaTest, 2, 5));
+    EXPECT_TRUE(CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::printStr, m_str));
 }

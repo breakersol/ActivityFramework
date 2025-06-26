@@ -21,9 +21,8 @@
 
 class MetaTest;
 
-class TA_ConnectionTest : public :: testing :: Test
-{
-public:
+class TA_ConnectionTest : public ::testing ::Test {
+  public:
     TA_ConnectionTest();
     ~TA_ConnectionTest();
 

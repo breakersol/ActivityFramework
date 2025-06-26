@@ -18,18 +18,11 @@
 #include "Components/TA_Activity.h"
 #include "ITA_PipelineCreator.h"
 
-TA_PipelineTest::TA_PipelineTest()
-{
+TA_PipelineTest::TA_PipelineTest() {}
 
-}
+TA_PipelineTest::~TA_PipelineTest() {}
 
-TA_PipelineTest::~TA_PipelineTest()
-{
-
-}
-
-void TA_PipelineTest::SetUp()
-{
+void TA_PipelineTest::SetUp() {
     m_pTest = new MetaTest();
     m_pAutoChainPipeline = new CoreAsync::TA_AutoChainPipeline();
     m_pManualChainPipeline = new CoreAsync::TA_ManualChainPipeline();
@@ -38,201 +31,190 @@ void TA_PipelineTest::SetUp()
     m_pConcurrentPipeline = new CoreAsync::TA_ConcurrentPipeline();
 }
 
-void TA_PipelineTest::TearDown()
-{
-    if(m_pTest)
+void TA_PipelineTest::TearDown() {
+    if (m_pTest)
         delete m_pTest;
     m_pTest = nullptr;
-    if(m_pAutoChainPipeline)
+    if (m_pAutoChainPipeline)
         delete m_pAutoChainPipeline;
     m_pAutoChainPipeline = nullptr;
-    if(m_pManualChainPipeline)
+    if (m_pManualChainPipeline)
         delete m_pManualChainPipeline;
     m_pManualChainPipeline = nullptr;
-    if(m_pManualKeyActivityChainPipeline)
+    if (m_pManualKeyActivityChainPipeline)
         delete m_pManualKeyActivityChainPipeline;
     m_pManualKeyActivityChainPipeline = nullptr;
-    if(m_pManualStepsChainPipeline)
+    if (m_pManualStepsChainPipeline)
         delete m_pManualStepsChainPipeline;
     m_pManualStepsChainPipeline = nullptr;
-    if(m_pConcurrentPipeline)
+    if (m_pConcurrentPipeline)
         delete m_pConcurrentPipeline;
     m_pConcurrentPipeline = nullptr;
 }
 
-TEST_F(TA_PipelineTest, activitySizeTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, activitySizeTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
+    m_pAutoChainPipeline->add(activity_1, activity_2, activity_3);
     std::size_t size = m_pAutoChainPipeline->activitySize();
 
-    EXPECT_EQ(3,size);
+    EXPECT_EQ(3, size);
 }
 
-TEST_F(TA_PipelineTest, removeTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, removeTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
+    m_pAutoChainPipeline->add(activity_1, activity_2, activity_3);
     m_pAutoChainPipeline->remove(1);
 
-    std::size_t size {m_pAutoChainPipeline->activitySize()};
-    EXPECT_EQ(2,size);
+    std::size_t size{m_pAutoChainPipeline->activitySize()};
+    EXPECT_EQ(2, size);
 
-    auto waiter =  m_pAutoChainPipeline->execute();
+    auto waiter = m_pAutoChainPipeline->execute();
     int res_0, res_1;
     waiter();
     {
-        m_pAutoChainPipeline->result(0,res_0);
-        m_pAutoChainPipeline->result(1,res_1);
+        m_pAutoChainPipeline->result(0, res_0);
+        m_pAutoChainPipeline->result(1, res_1);
     }
-    EXPECT_EQ(-1,res_0);
-    EXPECT_EQ(9,res_1);
+    EXPECT_EQ(-1, res_0);
+    EXPECT_EQ(9, res_1);
 }
 
-TEST_F(TA_PipelineTest, resetTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, resetTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
-    auto waiter =  m_pAutoChainPipeline->execute();
+    m_pAutoChainPipeline->add(activity_1, activity_2, activity_3);
+    auto waiter = m_pAutoChainPipeline->execute();
     int res_0, res_1, res_2;
     waiter();
     {
-        m_pAutoChainPipeline->result(0,res_0);
-        m_pAutoChainPipeline->result(1,res_1);
-        m_pAutoChainPipeline->result(2,res_2);
+        m_pAutoChainPipeline->result(0, res_0);
+        m_pAutoChainPipeline->result(1, res_1);
+        m_pAutoChainPipeline->result(2, res_2);
 
-        EXPECT_EQ(-1,res_0);
-        EXPECT_EQ(0,res_1);
-        EXPECT_EQ(9,res_2);
+        EXPECT_EQ(-1, res_0);
+        EXPECT_EQ(0, res_1);
+        EXPECT_EQ(9, res_2);
     }
     m_pAutoChainPipeline->reset();
-    m_pAutoChainPipeline->result(0,res_0);
-    m_pAutoChainPipeline->result(1,res_1);
-    m_pAutoChainPipeline->result(2,res_2);
+    m_pAutoChainPipeline->result(0, res_0);
+    m_pAutoChainPipeline->result(1, res_1);
+    m_pAutoChainPipeline->result(2, res_2);
 
-    EXPECT_EQ(0,res_0);
-    EXPECT_EQ(0,res_1);
-    EXPECT_EQ(0,res_2);
+    EXPECT_EQ(0, res_0);
+    EXPECT_EQ(0, res_1);
+    EXPECT_EQ(0, res_2);
 }
 
-TEST_F(TA_PipelineTest, clearTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, clearTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
+    m_pAutoChainPipeline->add(activity_1, activity_2, activity_3);
     m_pAutoChainPipeline->clear();
 
-    EXPECT_EQ(0,m_pAutoChainPipeline->activitySize());
+    EXPECT_EQ(0, m_pAutoChainPipeline->activitySize());
 }
 
-TEST_F(TA_PipelineTest, stateTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, stateTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
     EXPECT_EQ(CoreAsync::TA_BasicPipeline::State::Waiting, m_pAutoChainPipeline->state());
-    m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
-    auto waiter =  m_pAutoChainPipeline->execute();
+    m_pAutoChainPipeline->add(activity_1, activity_2, activity_3);
+    auto waiter = m_pAutoChainPipeline->execute();
     waiter();
     {
         EXPECT_EQ(CoreAsync::TA_BasicPipeline::State::Ready, m_pAutoChainPipeline->state());
     }
 }
 
-TEST_F(TA_PipelineTest, startIndexTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, startIndexTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
+    m_pAutoChainPipeline->add(activity_1, activity_2, activity_3);
     m_pAutoChainPipeline->setStartIndex(1);
-    auto waiter =  m_pAutoChainPipeline->execute();
+    auto waiter = m_pAutoChainPipeline->execute();
     int res_0, res_1, res_2;
     waiter();
     {
-        m_pAutoChainPipeline->result(0,res_0);
-        m_pAutoChainPipeline->result(1,res_1);
-        m_pAutoChainPipeline->result(2,res_2);
+        m_pAutoChainPipeline->result(0, res_0);
+        m_pAutoChainPipeline->result(1, res_1);
+        m_pAutoChainPipeline->result(2, res_2);
     }
-    EXPECT_EQ(0,res_0);
-    EXPECT_EQ(0,res_1);
-    EXPECT_EQ(9,res_2);
+    EXPECT_EQ(0, res_0);
+    EXPECT_EQ(0, res_1);
+    EXPECT_EQ(9, res_2);
 }
 
+TEST_F(TA_PipelineTest, autoChainPipeline_executeTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-TEST_F(TA_PipelineTest, autoChainPipeline_executeTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
-
-    m_pAutoChainPipeline->add(activity_1,activity_2,activity_3);
-    auto waiter =  m_pAutoChainPipeline->execute();
+    m_pAutoChainPipeline->add(activity_1, activity_2, activity_3);
+    auto waiter = m_pAutoChainPipeline->execute();
     int res_0, res_1, res_2;
     waiter();
     {
-        m_pAutoChainPipeline->result(0,res_0);
-        m_pAutoChainPipeline->result(1,res_1);
-        m_pAutoChainPipeline->result(2,res_2);
+        m_pAutoChainPipeline->result(0, res_0);
+        m_pAutoChainPipeline->result(1, res_1);
+        m_pAutoChainPipeline->result(2, res_2);
     }
-    EXPECT_EQ(-1,res_0);
-    EXPECT_EQ(0,res_1);
-    EXPECT_EQ(9,res_2);
+    EXPECT_EQ(-1, res_0);
+    EXPECT_EQ(0, res_1);
+    EXPECT_EQ(9, res_2);
 }
 
-TEST_F(TA_PipelineTest, manualChainPipeline_executeTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, manualChainPipeline_executeTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pManualChainPipeline->add(activity_1,activity_2,activity_3);
-    auto waiter =  m_pManualChainPipeline->execute();
+    m_pManualChainPipeline->add(activity_1, activity_2, activity_3);
+    auto waiter = m_pManualChainPipeline->execute();
     int res_0, res_1, res_2;
     waiter();
     {
-        m_pManualChainPipeline->result(0,res_0);
-        m_pManualChainPipeline->result(1,res_1);
-        m_pManualChainPipeline->result(2,res_2);
+        m_pManualChainPipeline->result(0, res_0);
+        m_pManualChainPipeline->result(1, res_1);
+        m_pManualChainPipeline->result(2, res_2);
     }
-    EXPECT_EQ(-1,res_0);
-    EXPECT_EQ(0,res_1);
-    EXPECT_EQ(0,res_2);
+    EXPECT_EQ(-1, res_0);
+    EXPECT_EQ(0, res_1);
+    EXPECT_EQ(0, res_2);
 
-    waiter =  m_pManualChainPipeline->execute();
+    waiter = m_pManualChainPipeline->execute();
     waiter();
     {
-        m_pManualChainPipeline->result(0,res_0);
-        m_pManualChainPipeline->result(1,res_1);
-        m_pManualChainPipeline->result(2,res_2);
+        m_pManualChainPipeline->result(0, res_0);
+        m_pManualChainPipeline->result(1, res_1);
+        m_pManualChainPipeline->result(2, res_2);
     }
-    EXPECT_EQ(-1,res_0);
-    EXPECT_EQ(3,res_1);
-    EXPECT_EQ(0,res_2);
+    EXPECT_EQ(-1, res_0);
+    EXPECT_EQ(3, res_1);
+    EXPECT_EQ(0, res_2);
 }
 
-TEST_F(TA_PipelineTest, manualKeyActivityChainPipeline_executeTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, manualKeyActivityChainPipeline_executeTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pManualKeyActivityChainPipeline->add(activity_1,activity_2,activity_3);
+    m_pManualKeyActivityChainPipeline->add(activity_1, activity_2, activity_3);
     m_pManualKeyActivityChainPipeline->setKeyActivity(1);
-    auto waiter =  m_pManualKeyActivityChainPipeline->execute();
+    auto waiter = m_pManualKeyActivityChainPipeline->execute();
     waiter();
     waiter = m_pManualKeyActivityChainPipeline->execute();
     waiter();
@@ -240,22 +222,21 @@ TEST_F(TA_PipelineTest, manualKeyActivityChainPipeline_executeTest)
     int res_0, res_1, res_2;
     waiter();
     {
-        m_pManualKeyActivityChainPipeline->result(0,res_0);
-        m_pManualKeyActivityChainPipeline->result(1,res_1);
-        m_pManualKeyActivityChainPipeline->result(2,res_2);
+        m_pManualKeyActivityChainPipeline->result(0, res_0);
+        m_pManualKeyActivityChainPipeline->result(1, res_1);
+        m_pManualKeyActivityChainPipeline->result(2, res_2);
     }
-    EXPECT_EQ(-1,res_0);
-    EXPECT_EQ(3,res_1);
-    EXPECT_EQ(0,res_2);
+    EXPECT_EQ(-1, res_0);
+    EXPECT_EQ(3, res_1);
+    EXPECT_EQ(0, res_2);
 }
 
-TEST_F(TA_PipelineTest, manualStepsChainPipeline_executeTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, manualStepsChainPipeline_executeTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 5, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pManualStepsChainPipeline->add(activity_1,activity_2,activity_3);
+    m_pManualStepsChainPipeline->add(activity_1, activity_2, activity_3);
     m_pManualStepsChainPipeline->setSteps(2);
     auto waiter = m_pManualStepsChainPipeline->execute();
     int res_0, res_1, res_2;
@@ -263,51 +244,50 @@ TEST_F(TA_PipelineTest, manualStepsChainPipeline_executeTest)
     waiter = m_pManualStepsChainPipeline->execute();
     waiter();
     {
-        m_pManualStepsChainPipeline->result(0,res_0);
-        m_pManualStepsChainPipeline->result(1,res_1);
-        m_pManualStepsChainPipeline->result(2,res_2);
+        m_pManualStepsChainPipeline->result(0, res_0);
+        m_pManualStepsChainPipeline->result(1, res_1);
+        m_pManualStepsChainPipeline->result(2, res_2);
     }
-    EXPECT_EQ(-1,res_0);
-    EXPECT_EQ(3,res_1);
-    EXPECT_EQ(0,res_2);
+    EXPECT_EQ(-1, res_0);
+    EXPECT_EQ(3, res_1);
+    EXPECT_EQ(0, res_2);
 }
 
-TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
-{
-    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+TEST_F(TA_PipelineTest, parallelPipeline_executeTest) {
+    auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-    m_pConcurrentPipeline->add(activity_1,activity_2,activity_3);
+    m_pConcurrentPipeline->add(activity_1, activity_2, activity_3);
     auto waiter = m_pConcurrentPipeline->execute();
     int res_0, res_1, res_2;
     waiter();
     {
-        m_pConcurrentPipeline->result(0,res_0);
-        m_pConcurrentPipeline->result(1,res_1);
-        m_pConcurrentPipeline->result(2,res_2);
+        m_pConcurrentPipeline->result(0, res_0);
+        m_pConcurrentPipeline->result(1, res_1);
+        m_pConcurrentPipeline->result(2, res_2);
     }
-    EXPECT_EQ(-1,res_0);
-    EXPECT_EQ(0,res_1);
-    EXPECT_EQ(9,res_2);
+    EXPECT_EQ(-1, res_0);
+    EXPECT_EQ(0, res_1);
+    EXPECT_EQ(9, res_2);
 
-    std::function<bool()> testFunc = [&]()->bool {
+    std::function<bool()> testFunc = [&]() -> bool {
         m_pConcurrentPipeline->reset();
 
-        auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1,2);
-        auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2,2);
-        auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10,1);
+        auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+        auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+        auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
 
-        m_pConcurrentPipeline->add(activity_1,activity_2,activity_3);
+        m_pConcurrentPipeline->add(activity_1, activity_2, activity_3);
         auto waiter = m_pConcurrentPipeline->execute();
         int res_0, res_1, res_2;
         waiter();
         {
-            m_pConcurrentPipeline->result(0,res_0);
-            m_pConcurrentPipeline->result(1,res_1);
-            m_pConcurrentPipeline->result(2,res_2);
+            m_pConcurrentPipeline->result(0, res_0);
+            m_pConcurrentPipeline->result(1, res_1);
+            m_pConcurrentPipeline->result(2, res_2);
         }
-        if(res_0 != -1 || res_1 != 0 || res_2 != 9)
+        if (res_0 != -1 || res_1 != 0 || res_2 != 9)
             return false;
         return true;
     };
@@ -315,16 +295,16 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest)
     EXPECT_EQ(testFunc(), true);
     EXPECT_EQ(testFunc(), true);
 
-    //line->clear();
+    // line->clear();
 
-    //line = CoreAsync::ITA_PipelineCreator::createConcurrentPipeline();
-    //auto a1 = CoreAsync::TA_ActivityCreator::create<bool>(testFunc);
-    //line->add(a1);
-    //line->execute();
-    //if(line->waitingComplete())
+    // line = CoreAsync::ITA_PipelineCreator::createConcurrentPipeline();
+    // auto a1 = CoreAsync::TA_ActivityCreator::create<bool>(testFunc);
+    // line->add(a1);
+    // line->execute();
+    // if(line->waitingComplete())
     //{
-    //    bool res {false};
-    //    line->result(0, res);
-    //    EXPECT_EQ(true,res);
-    //}
+    //     bool res {false};
+    //     line->result(0, res);
+    //     EXPECT_EQ(true,res);
+    // }
 }

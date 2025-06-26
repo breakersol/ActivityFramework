@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright [2025] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,44 +20,40 @@
 #include "TA_ManualChainPipeline.h"
 
 namespace CoreAsync {
-    class TA_ManualKeyActivityChainPipeline : public TA_ManualChainPipeline
-    {
-    public:
-        ACTIVITY_FRAMEWORK_EXPORT TA_ManualKeyActivityChainPipeline();
-        virtual ~TA_ManualKeyActivityChainPipeline(){}
+class TA_ManualKeyActivityChainPipeline : public TA_ManualChainPipeline {
+  public:
+    ACTIVITY_FRAMEWORK_EXPORT TA_ManualKeyActivityChainPipeline();
+    virtual ~TA_ManualKeyActivityChainPipeline() {}
 
-        TA_ManualKeyActivityChainPipeline(const TA_ManualKeyActivityChainPipeline &activity) = delete;
-        TA_ManualKeyActivityChainPipeline(TA_ManualKeyActivityChainPipeline &&activity) = delete;
-        TA_ManualKeyActivityChainPipeline & operator = (const TA_ManualKeyActivityChainPipeline &) = delete;
+    TA_ManualKeyActivityChainPipeline(const TA_ManualKeyActivityChainPipeline &activity) = delete;
+    TA_ManualKeyActivityChainPipeline(TA_ManualKeyActivityChainPipeline &&activity) = delete;
+    TA_ManualKeyActivityChainPipeline &operator=(const TA_ManualKeyActivityChainPipeline &) = delete;
 
-        void ACTIVITY_FRAMEWORK_EXPORT setKeyActivity(int index);
-        void ACTIVITY_FRAMEWORK_EXPORT skipKeyActivity();
-        int keyIndex() const { return m_keyIndex.load(std::memory_order_acquire); }
-        void clear() override final;
-        void reset() override final;
+    void ACTIVITY_FRAMEWORK_EXPORT setKeyActivity(int index);
+    void ACTIVITY_FRAMEWORK_EXPORT skipKeyActivity();
+    int keyIndex() const { return m_keyIndex.load(std::memory_order_acquire); }
+    void clear() override final;
+    void reset() override final;
 
-    protected:
-        virtual void run() override final;
+  protected:
+    virtual void run() override final;
 
-    private:
-        std::atomic<int> m_keyIndex {-1};
+  private:
+    std::atomic<int> m_keyIndex{-1};
+};
 
+namespace Reflex {
+template <>
+struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ManualKeyActivityChainPipeline>
+    : TA_MetaTypeInfo<TA_ManualKeyActivityChainPipeline, TA_BasicPipeline> {
+    static constexpr TA_MetaFieldList fields = {
+        TA_MetaField{&Raw::setKeyActivity, META_STRING("setKeyActivity")},
+        TA_MetaField{&Raw::skipKeyActivity, META_STRING("skipKeyActivity")},
+        TA_MetaField{&Raw::clear, META_STRING("clear")},
+        TA_MetaField{&Raw::reset, META_STRING("reset")},
     };
-
-    namespace Reflex
-    {
-        template <>
-        struct ACTIVITY_FRAMEWORK_EXPORT TA_TypeInfo<TA_ManualKeyActivityChainPipeline> : TA_MetaTypeInfo<TA_ManualKeyActivityChainPipeline,TA_BasicPipeline>
-        {
-            static constexpr TA_MetaFieldList fields = {
-                TA_MetaField {&Raw::setKeyActivity, META_STRING("setKeyActivity")},
-                TA_MetaField {&Raw::skipKeyActivity, META_STRING("skipKeyActivity")},
-                TA_MetaField {&Raw::clear, META_STRING("clear")},
-                TA_MetaField {&Raw::reset, META_STRING("reset")},
-            };
-        };
-    }
-}
-
+};
+} // namespace Reflex
+} // namespace CoreAsync
 
 #endif // TA_ManualKeyActivityChainPipeline_H

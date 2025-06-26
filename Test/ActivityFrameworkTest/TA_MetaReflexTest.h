@@ -21,9 +21,8 @@
 
 class MetaTest;
 
-class TA_MetaReflexTest : public :: testing :: Test
-{
-public:
+class TA_MetaReflexTest : public ::testing ::Test {
+  public:
     TA_MetaReflexTest();
     ~TA_MetaReflexTest();
 
@@ -31,7 +30,6 @@ public:
     void TearDown() override;
 
     MetaTest *m_pTest;
-
 };
 
 #endif // TA_METAREFLEXTEST_H
