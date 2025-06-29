@@ -36,12 +36,12 @@ These instructions will guide you through setting up the project on your local m
 
 ### Installing
 
-To build the project, use the `CMakeLists.txt` at **/ActivityFramework/ActivityFramework/CMakeList.txt** and set the build directory to **/ActivityFramework/build**.
+To build the project, use the `CMakeLists.txt` at **ActivityFramework/CMakeLists.txt** and set the build directory to **/ActivityFramework/build**.
 
 ### Running the Tests
 
 1. Build the Google Test framework under **ActivityFramework/Test/ThirdParty/googletest/**.
-2. Utilize **ActivityFramework/Test/CMakeList.txt** to prepare the unit test project.
+2. Utilize **ActivityFramework/Test/CMakeLists.txt** to prepare the unit test project.
 3. Execute `ActivityFrameworkTest` to run the tests.
 
 ### Versioning
@@ -58,7 +58,7 @@ Email: breakersol@outlook.com
 
 ### License
 
-This project is licensed under the Apache-2.0 License - see the [LICENSE.md](https://github.com/breakersol/ActivityPipeline/blob/master/LICENSE) file for details.
+This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
@@ -469,7 +469,7 @@ Activity defines a generic, reflective activity (function/method call) system in
 <br/>If the parameters binded when creating an activity are left-value, modifying the original left-valued object before executing the activity will affect the final execution result.
 ---
 ### Thread Pool
-A lightweight thread pool has been implemented within the framework, which is associated with Activities. The main interfaces for the thread pool are as follows.
+A lightweight thread pool has been implemented within the framework, which is associated with Activities. It can be used directly or accessed via the singleton `TA_ThreadHolder::get()`. The main interfaces for the thread pool are as follows.
 - **postActivity**: This interface allows us to post tasks to the thread pool with a flag of type bool indicating whether the task object can be automatically released after being executed. This function returns a std::future object and an activity id, which you can use to get the result of the execution.
 ```cpp
     CoreAsync::TA_ThreadPool threadPool;
@@ -495,6 +495,8 @@ A lightweight thread pool has been implemented within the framework, which is as
 - **Coroutine Task**: Supports both lazy and eager execution models for asynchronous tasks (`TA_CoroutineTask`).
 - **Coroutine Generator**: Yields multiple values over time, supporting both lazy and eager evaluation (`TA_CoroutineGenerator`).
 - **Signal Awaitable**: Enables awaiting Qt-like signal emissions within coroutines (`TA_SignalAwaitable`).
+- **Activity Result Awaitable**: Waits for an activity to finish and returns its result (`TA_ActivityResultAwaitable`).
+- **Activity Executing Awaitable**: Runs an activity asynchronously or synchronously and yields a result fetcher (`TA_ActivityExecutingAwaitable`).
 - **Exception Handling**: Robust management of exceptions within coroutine flows.
 - **RAII and Resource Safety**: Ensures proper cleanup of coroutine handles and resources.
 
@@ -512,15 +514,15 @@ You can get detailed usage from the unit test use cases.
 ---
 ### Pipelines
 Activity Pipeline currently offers five types of pipelines to use: **Auto Chain Pipeline, Concurrent Pipeline, Manual Chain Pipeline, Manual Steps Chain Pipeline, and Manual Key Activity Chain Pipeline**, and all types of pipelines can be created through **ITA_PipelineCreator**.
-1. _Auto Chain Pipeline_: The pipeline will automatically execute all activites in order.
+1. _Auto Chain Pipeline_: The pipeline will automatically execute all activities in order.
 2. _Concurrent Pipeline_: All the activities in this pipeline will be executed in concurrency.
 3. _Manual Chain Pipeline_: Calling the execute function will only execute the next activity in order.
-4. _Manual Steps Chain Pipeline_: This pipeline inherits from _Manual Chain Pipeline_. The difference with _Manual Chain Pipeline_ is that the user can set the step value so that the pipeline executes as many activites as the step value each time.
+4. _Manual Steps Chain Pipeline_: This pipeline inherits from _Manual Chain Pipeline_. The difference with _Manual Chain Pipeline_ is that the user can set the step value so that the pipeline executes as many activities as the step value each time.
 5. _Manual Key Activity Chain Pipeline_: This pipeline inherits from _Manual Chain Pipeline_. The difference with _Manual Chain Pipeline_ is that the user can set the key activity to make the pipeline repeat selected activity.
 
 <br/>List some of the APIs about pipeline here:
 - **void setStartIndex(unsigned int index)**: Set the execution to start from the _index_ activity. Valid only in the **Waiting** state.
-- **add**: Adding activites into the pipeline. Valid only in the **Waiting** state.
+- **add**: Adding activities into the pipeline. Valid only in the **Waiting** state.
 - **bool remove(ActivityIndex index)**: Delete the _index_ activity. Valid only in the **Waiting** state.
 - **void clear()**: Clear all activities and cached data, and reset the pipeline status to **Waiting**. Invalid when called in **Busy** state.
 - **Waiter execute(ExecuteType type = ExecuteType::Async)**: Start the execution and return a *Waiter* object. Invoke it to block until the pipeline completes. Valid only in the **Waiting** state.
