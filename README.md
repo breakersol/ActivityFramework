@@ -47,10 +47,9 @@ To build the project, use the `CMakeLists.txt` at **/ActivityFramework/ActivityF
 ### Versioning
 
 Recent versions can be accessed at:
-- [v0.2.2](https://github.com/breakersol/ActivityFramework/releases/tag/v0.2.2)
-- [v0.3.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.3.0)
 - [v0.3.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.3.1)
 - [v0.4.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.4.0)
+- [v0.4.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.4.1)
 
 ### Authors
 
