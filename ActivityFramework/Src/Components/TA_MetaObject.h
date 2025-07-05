@@ -422,10 +422,6 @@ class TA_MetaObject {
                     (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto)) {
                     m_pActivity->operator()();
                 } else {
-                    if (m_type == TA_ConnectionType::Direct &&
-                        pSender->affinityThread() != pReceiver->affinityThread()) {
-                        m_pSlotProxy->moveToThread(pSender->affinityThread());
-                    }
                     auto fetcher = TA_ThreadHolder::get().postActivity(m_pSlotProxy);
                     m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
                 }
