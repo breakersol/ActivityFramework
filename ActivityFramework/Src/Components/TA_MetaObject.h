@@ -262,17 +262,11 @@ class TA_MetaObject {
         if (!pSender) {
             return false;
         }
-        auto &&[startIter, endIter] = pSender->m_outputConnections.equal_range(
-            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal)));
-        if (startIter == endIter)
-            return false;
-        while (startIter != endIter) {
-            auto cpIter = startIter;
-            auto obj = startIter++->second;
-            obj->setPara(std::forward<Args>(args)...);
-            obj->callSlot();
-        }
-        return true;
+
+        auto activity = TA_ActivityCreator::create(m_emitSignalImpl<Sender, Signal, Args...>, pSender,
+                                                   std::forward<Signal>(signal), std::forward<Args>(args)...);
+        auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+        return fetcher().template get<bool>();
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -511,7 +505,7 @@ class TA_MetaObject {
 
   private:
     template <typename Sender, typename Receiver>
-    static auto m_isConnectionExistedImpl =
+    static auto inline m_isConnectionExistedImpl =
         [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal,
            Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
         auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
@@ -523,6 +517,21 @@ class TA_MetaObject {
             startSendIter++;
         }
         return false;
+    };
+
+    template <typename Sender, typename Signal, typename ...Args>
+    static auto inline m_emitSignalImpl = [](Sender *pSender, Signal &&signal, Args &&...args) -> bool {
+        auto &&[startIter, endIter] = pSender->m_outputConnections.equal_range(
+            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal)));
+        if (startIter == endIter)
+            return false;
+        while (startIter != endIter) {
+            auto cpIter = startIter;
+            auto obj = startIter++->second;
+            obj->setPara(std::forward<Args>(args)...);
+            obj->callSlot();
+        }
+        return true;
     };
 };
 } // namespace CoreAsync
