@@ -20,6 +20,7 @@
 #include <coroutine>
 #include <optional>
 #include <exception>
+#include <memory>
 
 #include "TA_MetaObject.h"
 #include "TA_Connection.h"
@@ -69,35 +70,36 @@ class TA_ActivityResultAwaitable {
   public:
     TA_ActivityResultAwaitable() = delete;
 
-    explicit TA_ActivityResultAwaitable(const TA_ActivityResultFetcher &fetcher) : m_fetcher(fetcher) {
+    explicit TA_ActivityResultAwaitable(const TA_ActivityResultFetcher &fetcher)
+        : m_fetcher(fetcher), m_res(std::make_shared<TA_DefaultVariant>()) {
         if (!m_fetcher.pProxy->isValid()) {
             throw std::runtime_error("TA_ActivityResultAwaitable: Fetcher is not valid!");
         }
     }
 
-    ~TA_ActivityResultAwaitable() { 
-        std::cout << "TA_ActivityResultAwaitable destroyed!" << std::endl;
-    }
+    ~TA_ActivityResultAwaitable() = default;
 
     bool await_ready() const noexcept { return m_fetcher.pProxy->isExecuted() || !m_fetcher.pProxy->isValid(); }
 
     void await_suspend(std::coroutine_handle<> handle) noexcept {
-        auto activity = TA_ActivityCreator::create([this, handle]() {
-            if (!m_fetcher.pProxy->isExecuted()) {
+        auto resultPtr = m_res;
+        auto fetcher = m_fetcher;
+        auto activity = TA_ActivityCreator::create([resultPtr, fetcher, handle]() mutable {
+            if (!fetcher.pProxy->isExecuted()) {
                 handle.resume();
             } else {
-                m_res = m_fetcher();
+                *resultPtr = fetcher();
                 handle.resume();
             }
         });
-        auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+        auto postFetcher = TA_ThreadHolder::get().postActivity(activity, true);
     }
 
-    auto await_resume() noexcept { return m_res; }
+    auto await_resume() noexcept { return *m_res; }
 
   private:
     TA_ActivityResultFetcher m_fetcher{};
-    TA_DefaultVariant m_res{};
+    std::shared_ptr<TA_DefaultVariant> m_res{};
 };
 
 class TA_ActivityExecutingAwaitable {
