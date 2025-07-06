@@ -33,7 +33,6 @@ TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_A
 
 void TA_AutoChainPipeline::run() {
     auto generator{runningGenerator(this)};
-    while (generator.next())
-        ;
+    while (generator.next());
 }
 } // namespace CoreAsync

@@ -16,42 +16,47 @@
 
 #include "Components/TA_ConcurrentPipeline.h"
 #include "Components/TA_CommonTools.h"
-#include "Components/TA_ThreadPool.h"
 
 namespace CoreAsync {
-TA_ConcurrentPipeline::TA_ConcurrentPipeline() : TA_BasicPipeline() {}
-
 TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_ConcurrentPipeline *pPipeline) {
     for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i) {
         decltype(auto) pActivity{TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
         auto fetcher =
             co_await TA_ActivityExecutingAwaitable(pActivity, TA_ActivityExecutingAwaitable::ExecuteType::Async);
-        auto res = co_await TA_ActivityResultAwaitable(fetcher);
+        auto res = co_await TA_ActivityResultAwaitable(fetcher);   
         TA_CommonTools::replace(pPipeline->m_resultList, i, res);
-        co_yield fetcher;
+        //TA_Connection::active(pPipeline, &TA_ConcurrentPipeline::activityCompleted, i, pPipeline->m_resultList[i]);
+        co_yield pPipeline->m_resultList[i];
     }
+    pPipeline->m_pActivityList.clear();
+    pPipeline->setState(TA_BasicPipeline::State::Ready);
     co_return;
 }
 
+TA_ConcurrentPipeline::TA_ConcurrentPipeline() : TA_BasicPipeline() {}
+
 void TA_ConcurrentPipeline::run() {
-    std::size_t sIndex(std::move(startIndex()));
-    std::size_t activitySize = m_pActivityList.size();
-    if (activitySize > 0) {
-        m_resultFetchers.resize(activitySize);
-        for (std::size_t i = sIndex; i < activitySize; ++i) {
-            m_resultFetchers[i] =
-                TA_ThreadHolder::get().postActivity(TA_CommonTools::ref<TA_ActivityProxy *>(m_pActivityList, i));
-        }
-        std::size_t idx{0};
-        for (auto &fetcher : m_resultFetchers) {
-            m_resultList[idx] = fetcher();
-            TA_Connection::active(this, &TA_ConcurrentPipeline::activityCompleted, idx,
-                                  std::forward<TA_DefaultVariant>(m_resultList[idx]));
-            idx++;
-        }
-        m_pActivityList.clear();
-        setState(State::Ready);
-    }
+    auto generator{runningGenerator(this)};
+    while (generator.next());
+
+    //std::size_t sIndex(std::move(startIndex()));
+    //std::size_t activitySize = m_pActivityList.size();
+    //if (activitySize > 0) {
+    //    m_resultFetchers.resize(activitySize);
+    //    for (std::size_t i = sIndex; i < activitySize; ++i) {
+    //        m_resultFetchers[i] =
+    //            TA_ThreadHolder::get().postActivity(TA_CommonTools::ref<TA_ActivityProxy *>(m_pActivityList, i));
+    //    }
+    //    std::size_t idx{0};
+    //    for (auto &fetcher : m_resultFetchers) {
+    //        m_resultList[idx] = fetcher();
+    //        TA_Connection::active(this, &TA_ConcurrentPipeline::activityCompleted, idx,
+    //                              std::forward<TA_DefaultVariant>(m_resultList[idx]));
+    //        idx++;
+    //    }
+    //    m_pActivityList.clear();
+    //    setState(State::Ready);
+    //}
 }
 
 void TA_ConcurrentPipeline::clear() {
@@ -69,7 +74,6 @@ void TA_ConcurrentPipeline::clear() {
     }
     m_pActivityList.clear();
     m_resultList.clear();
-    m_resultFetchers.clear();
     m_mutex.unlock();
     setState(State::Waiting);
 }
@@ -83,7 +87,6 @@ void TA_ConcurrentPipeline::reset() {
     m_mutex.lock();
     m_resultList.clear();
     m_resultList.resize(m_pActivityList.size());
-    m_resultFetchers.clear();
     m_mutex.unlock();
     setState(State::Waiting);
 }
