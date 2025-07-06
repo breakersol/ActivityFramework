@@ -75,13 +75,15 @@ class TA_ActivityResultAwaitable {
         }
     }
 
-    ~TA_ActivityResultAwaitable() = default;
+    ~TA_ActivityResultAwaitable() { 
+        std::cout << "TA_ActivityResultAwaitable destroyed!" << std::endl;
+    }
 
     bool await_ready() const noexcept { return m_fetcher.pProxy->isExecuted() || !m_fetcher.pProxy->isValid(); }
 
     void await_suspend(std::coroutine_handle<> handle) noexcept {
         auto activity = TA_ActivityCreator::create([this, handle]() {
-            if (m_fetcher.pProxy->isExecuted()) {
+            if (!m_fetcher.pProxy->isExecuted()) {
                 handle.resume();
             } else {
                 m_res = m_fetcher();

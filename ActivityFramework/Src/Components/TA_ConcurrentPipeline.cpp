@@ -19,14 +19,16 @@
 
 namespace CoreAsync {
 TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_ConcurrentPipeline *pPipeline) {
+    std::vector<TA_ActivityResultFetcher> m_resultFetchers(pPipeline->m_pActivityList.size());
     for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i) {
         decltype(auto) pActivity{TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
-        auto fetcher =
+        m_resultFetchers[i] =
             co_await TA_ActivityExecutingAwaitable(pActivity, TA_ActivityExecutingAwaitable::ExecuteType::Async);
-        auto res = co_await TA_ActivityResultAwaitable(fetcher);   
+        auto res = co_await TA_ActivityResultAwaitable(m_resultFetchers[i]);   
+        //TA_DefaultVariant res;
         TA_CommonTools::replace(pPipeline->m_resultList, i, res);
         //TA_Connection::active(pPipeline, &TA_ConcurrentPipeline::activityCompleted, i, pPipeline->m_resultList[i]);
-        co_yield pPipeline->m_resultList[i];
+        //co_yield res;
     }
     pPipeline->m_pActivityList.clear();
     pPipeline->setState(TA_BasicPipeline::State::Ready);
@@ -37,7 +39,9 @@ TA_ConcurrentPipeline::TA_ConcurrentPipeline() : TA_BasicPipeline() {}
 
 void TA_ConcurrentPipeline::run() {
     auto generator{runningGenerator(this)};
-    while (generator.next());
+    //while (generator.next()) {
+        // The generator will yield results as activities complete
+    //}
 
     //std::size_t sIndex(std::move(startIndex()));
     //std::size_t activitySize = m_pActivityList.size();
