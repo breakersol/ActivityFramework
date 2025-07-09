@@ -19,14 +19,14 @@
 
 namespace CoreAsync {
 TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_ConcurrentPipeline *pPipeline) {
-    std::vector<TA_ActivityResultFetcher> m_resultFetchers(pPipeline->m_pActivityList.size());
+    std::vector<TA_ActivityResultFetcher> resultFetchers(pPipeline->m_pActivityList.size());
     for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i) {
         decltype(auto) pActivity{TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
-        m_resultFetchers[i] =
+        resultFetchers[i] =
             co_await TA_ActivityExecutingAwaitable(pActivity, TA_ActivityExecutingAwaitable::ExecuteType::Async);  
     }
-    for (std::size_t idx = 0; idx < m_resultFetchers.size(); ++idx) {
-        pPipeline->m_resultList[idx] = m_resultFetchers[idx]();
+    for (std::size_t idx = 0; idx < resultFetchers.size(); ++idx) {
+        pPipeline->m_resultList[idx] = resultFetchers[idx]();
         TA_Connection::active(pPipeline, &TA_ConcurrentPipeline::activityCompleted, idx,
                               std::forward<TA_DefaultVariant>(pPipeline->m_resultList[idx]));
     }
