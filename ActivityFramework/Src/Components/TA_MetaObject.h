@@ -346,7 +346,7 @@ class TA_MetaObject {
 
     template <MetaStringType Method, typename... Args> static constexpr auto invokeMethod(Method, Args &&...args) {
         return TA_ThreadHolder::get().postActivity(
-            new TA_MetaActivity<Method, Args...>(Method{}, std::forward<Args>(args)...), true);
+            TA_ActivityCreator::create(Method{}, std::forward<Args>(args)...), true);
     }
 
   private:
