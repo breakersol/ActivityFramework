@@ -254,12 +254,34 @@ TEST_F(TA_PipelineTest, manualStepsChainPipeline_executeTest) {
 }
 
 TEST_F(TA_PipelineTest, parallelPipeline_executeTest) {
+    std::function<bool()> testFunc = [&]() -> bool {
+       auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+       auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+       auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
+
+       m_pConcurrentPipeline->add(activity_1, activity_2, activity_3);
+       auto waiter = m_pConcurrentPipeline->execute(CoreAsync::TA_BasicPipeline::ExecuteType::Async);
+       int res_0, res_1, res_2;
+       waiter();
+       {
+           m_pConcurrentPipeline->result(0, res_0);
+           m_pConcurrentPipeline->result(1, res_1);
+           m_pConcurrentPipeline->result(2, res_2);
+       }
+       m_pConcurrentPipeline->reset();
+       if (res_0 != -1 || res_1 != 0 || res_2 != 9)
+           return false;
+       return true;
+    };
+
+    EXPECT_EQ(testFunc(), true);
+    EXPECT_EQ(testFunc(), true);
+
     auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
     auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
     auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
-
     m_pConcurrentPipeline->add(activity_1, activity_2, activity_3);
-    auto waiter = m_pConcurrentPipeline->execute();
+    auto waiter = m_pConcurrentPipeline->execute(CoreAsync::TA_BasicPipeline::ExecuteType::Async);
     int res_0, res_1, res_2;
     waiter();
     {
@@ -270,30 +292,6 @@ TEST_F(TA_PipelineTest, parallelPipeline_executeTest) {
     EXPECT_EQ(-1, res_0);
     EXPECT_EQ(0, res_1);
     EXPECT_EQ(9, res_2);
-
-    std::function<bool()> testFunc = [&]() -> bool {
-        m_pConcurrentPipeline->reset();
-
-        auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
-        auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
-        auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
-
-        m_pConcurrentPipeline->add(activity_1, activity_2, activity_3);
-        auto waiter = m_pConcurrentPipeline->execute();
-        int res_0, res_1, res_2;
-        waiter();
-        {
-            m_pConcurrentPipeline->result(0, res_0);
-            m_pConcurrentPipeline->result(1, res_1);
-            m_pConcurrentPipeline->result(2, res_2);
-        }
-        if (res_0 != -1 || res_1 != 0 || res_2 != 9)
-            return false;
-        return true;
-    };
-
-    EXPECT_EQ(testFunc(), true);
-    EXPECT_EQ(testFunc(), true);
 
     // line->clear();
 
