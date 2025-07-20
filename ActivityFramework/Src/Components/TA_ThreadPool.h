@@ -30,8 +30,11 @@ namespace CoreAsync {
 class TA_ThreadPool {
     using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
 
-    struct ThreadState {
+    struct ThreadState {     
+        ThreadState() = default;
+
         std::counting_semaphore<ActivityQueue::capacity()> resource{0};
+        std::atomic_bool isBusy{false};
     };
 
   public:
@@ -52,16 +55,55 @@ class TA_ThreadPool {
         for (std::size_t idx = 0; idx < m_threads.size(); ++idx) {
             m_threads[idx].request_stop();
             m_states[idx].resource.release();
+            m_states[idx].isBusy.store(false, std::memory_order_release);
         }
         m_threads.clear();
     }
 
-    std::size_t topPriorityThread() const {
+    std::size_t topPriorityThread(std::thread::id depencyThread) const {
         std::size_t lowIdx{std::numeric_limits<std::size_t>::max()}, lowSize{std::numeric_limits<std::size_t>::max()};
         for (std::size_t idx = 0; idx < m_activityQueues.size(); ++idx) {
-            if (m_activityQueues[idx].size() < lowSize) {
+            if (m_threads[idx].get_id() == depencyThread) {
+                continue;
+            }
+            std::size_t curSize = m_activityQueues[idx].size();
+            if (curSize < lowSize) {
                 lowIdx = idx;
-                lowSize = m_activityQueues[idx].size();
+                lowSize = curSize;
+            } else if (curSize == lowSize) {
+                bool curState = m_states[idx].isBusy.load(std::memory_order_acquire);
+                bool isLowState = m_states[lowIdx].isBusy.load(std::memory_order_acquire);
+                if (!curState && isLowState) {
+                    lowIdx = idx;
+                } else if (curState == isLowState) {
+                    if (idx < lowIdx) {
+                        lowIdx = idx;
+                    }
+                }
+            }
+        }
+        return lowIdx;
+    }
+
+        std::size_t topPriorityThread() const {
+        std::size_t lowIdx{std::numeric_limits<std::size_t>::max()}, lowSize{std::numeric_limits<std::size_t>::max()};
+        for (std::size_t idx = 0; idx < m_activityQueues.size(); ++idx) {
+            std::size_t curSize = m_activityQueues[idx].size();
+            if (curSize < lowSize) {
+                lowIdx = idx;
+                lowSize = curSize;
+            } else if (curSize == lowSize) {
+                bool curState = m_states[idx].isBusy.load(std::memory_order_acquire);
+                bool isLowState = m_states[lowIdx].isBusy.load(std::memory_order_acquire);
+                if (curState && !isLowState) {
+                    lowIdx = idx;
+                    lowSize = curSize;
+                } else if (curState == isLowState) {
+                    if (idx < lowIdx) {
+                        lowIdx = idx;
+                        lowSize = curSize;
+                    }
+                }
             }
         }
         return lowIdx;
@@ -74,7 +116,9 @@ class TA_ThreadPool {
         std::shared_ptr<TA_ActivityProxy> pProxy{std::make_shared<TA_ActivityProxy>(pActivity, autoDelete)};
         auto activityId{pActivity->id()};
         auto affinityId{pActivity->affinityThread()};
-        std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
+        std::size_t idx =
+            affinityId < m_threads.size() ? affinityId : topPriorityThread(pActivity->dependencyThreadId());
+        //std::cout << "Post activity to thread: " << idx << "\n";
         if (!m_activityQueues[idx].push(pProxy))
             throw std::runtime_error("Failed to push activity to queue");
         m_states[idx].resource.release();
@@ -87,8 +131,10 @@ class TA_ThreadPool {
         std::shared_ptr<TA_ActivityProxy> pProxy{pActivity};
         auto activityId{pActivity->id()};
         auto affinityId{pActivity->affinityThread()};
+        auto dependencyThreadId{pActivity->dependencyThreadId()};
         pActivity = nullptr;
-        std::size_t idx = affinityId < m_threads.size() ? affinityId : activityId % m_threads.size();
+        std::size_t idx = affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
+        //std::cout << "Post activity to thread: " << idx << "\n";
         if (!m_activityQueues[idx].push(pProxy))
             throw std::runtime_error("Failed to push activity to queue");
         m_states[idx].resource.release();
@@ -112,6 +158,7 @@ class TA_ThreadPool {
                 std::shared_ptr<TA_ActivityProxy> pActivity{nullptr};
                 while (!st.stop_requested()) {
                     m_states[idx].resource.acquire();
+                    m_states[idx].isBusy.store(true, std::memory_order_release);
                     while (!m_activityQueues[idx].isEmpty()) {
                         if (m_activityQueues[idx].pop(pActivity) && pActivity) {
                             (*pActivity)();
@@ -120,6 +167,7 @@ class TA_ThreadPool {
                     if (trySteal(pActivity, idx) && pActivity) {
                         (*pActivity)();
                     }
+                    m_states[idx].isBusy.store(false, std::memory_order_release);
                 }
                 TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
             });
@@ -142,7 +190,6 @@ class TA_ThreadPool {
 
   private:
     std::vector<ThreadState> m_states;
-    ;
     std::vector<std::jthread> m_threads;
     std::vector<ActivityQueue> m_activityQueues;
     std::vector<std::size_t> m_stealIdxs;

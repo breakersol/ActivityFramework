@@ -79,8 +79,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
 
   public:
     TA_BasicPipeline()
-        : TA_MetaObject(),
-          m_pRunningActivity(new TA_MethodActivity<std::function<void()>>(
+        : TA_MetaObject(), m_pRunningActivity(TA_ActivityCreator::create(
               std::function<void()>([this]() { run(); }))) {
 
     }

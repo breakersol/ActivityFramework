@@ -150,6 +150,8 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
 
     std::size_t affinityThread() const { return m_affinityThread.affinityThread(); }
 
+    auto dependencyThreadId() const { return m_dependencyThreadId; }
+
     bool moveToThread(std::size_t thread) { return m_affinityThread.moveToThread(thread); }
 
     std::int64_t id() const { return m_id.id(); }
@@ -172,6 +174,7 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
     const std::tuple<StorageType<Paras>...> m_paras;
     TA_ActivityAffinityThread m_affinityThread{};
     TA_ActivityId m_id{};
+    const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
 };
 
 template <typename Method, typename... Args> class TA_MethodActivity {
@@ -190,6 +193,8 @@ template <typename Method, typename... Args> class TA_MethodActivity {
     decltype(auto) operator()() { return run(); }
 
     std::size_t affinityThread() const { return m_affinityThread.affinityThread(); }
+
+    auto dependencyThreadId() const { return m_dependencyThreadId; }
 
     bool moveToThread(std::size_t thread) { return m_affinityThread.moveToThread(thread); }
 
@@ -214,6 +219,7 @@ template <typename Method, typename... Args> class TA_MethodActivity {
     Method m_method;
     const std::tuple<StorageType<Args>...> m_args;
     TA_ActivityAffinityThread m_affinityThread{};
+    const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
     TA_ActivityId m_id{};
 };
 
