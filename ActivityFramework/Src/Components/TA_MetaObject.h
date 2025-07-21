@@ -226,28 +226,9 @@ class TA_MetaObject {
     }
 
     static bool unregisterConnection(const TA_ConnectionObjectHolder &holder) {
-        if (!holder.valid()) {
-            return false;
-        }
-        auto &&pConnection = holder.m_pConnection;
-        if (!pConnection) {
-            return false;
-        }
-        auto &&pSender = pConnection->sender();
-        auto &&pReceiver = pConnection->receiver();
-        auto &&signalMark = pConnection->signalMark();
-        auto &&slotMark = pConnection->slotMark();
-        auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
-        if (startSendIter == endSendIter)
-            return false;
-        while (startSendIter != endSendIter) {
-            if (startSendIter->second == pConnection) {
-                pSender->m_outputConnections.erase(startSendIter);
-                break;
-            }
-            startSendIter++;
-        }
-        return true;
+        auto fetcher = invokeMethod(m_unregisterConnectionImpl<TA_MetaObject>, holder);
+        auto res = fetcher();
+        return res.template get<bool>();
     }
 
     template <EnableConnectObjectType Sender, typename Signal, typename... Args>
@@ -263,7 +244,7 @@ class TA_MetaObject {
             return false;
         }
 
-        auto fetcher = invokeMethod(std::move(m_emitSignalImpl<Sender, Signal, Args...>),
+        auto fetcher = invokeMethod(m_emitSignalImpl<Sender, Signal, Args...>,
                                     pSender, std::forward<Signal>(signal),
                                     std::forward<Args>(args)...);
         auto res = fetcher();
@@ -303,6 +284,14 @@ class TA_MetaObject {
 
     template <LambdaExpType LambdaExp, typename... Args>
     static constexpr auto invokeMethod(LambdaExp &&exp, Args &&...args) {
+        static_assert(LambdaExpTraits<std::decay_t<LambdaExp>>::argSize == sizeof...(Args),
+                      "The number of arguments does not match the lambda expression.");
+        return TA_ThreadHolder::get().postActivity(
+            TA_ActivityCreator::create(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
+    }
+
+    template <LambdaExpType LambdaExp, typename... Args>
+    static constexpr auto invokeMethod(LambdaExp &exp, Args &&...args) {
         static_assert(LambdaExpTraits<std::decay_t<LambdaExp>>::argSize == sizeof...(Args),
                       "The number of arguments does not match the lambda expression.");
         return TA_ThreadHolder::get().postActivity(
@@ -525,6 +514,31 @@ class TA_MetaObject {
             auto obj = startIter++->second;
             obj->setPara(std::forward<Args>(args)...);
             obj->callSlot();
+        }
+        return true;
+    };
+
+    template <typename Sender>
+    inline static auto m_unregisterConnectionImpl = [](const TA_ConnectionObjectHolder &holder) -> bool {
+        if (!holder.valid()) {
+            return false;
+        }
+        auto &&pConnection = holder.m_pConnection;
+        if (!pConnection) {
+            return false;
+        }
+        Sender *pSender = pConnection->sender();
+        auto &&signalMark = pConnection->signalMark();
+        auto &&slotMark = pConnection->slotMark();
+        auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+        if (startSendIter == endSendIter)
+            return false;
+        while (startSendIter != endSendIter) {
+            if (startSendIter->second == pConnection) {
+                pSender->m_outputConnections.erase(startSendIter);
+                break;
+            }
+            startSendIter++;
         }
         return true;
     };
