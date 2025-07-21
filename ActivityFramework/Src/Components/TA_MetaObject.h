@@ -263,21 +263,7 @@ class TA_MetaObject {
             return false;
         }
 
-        auto emitSignalImpl = [](Sender *pSender, Signal signal, Args ...args) {
-            auto [startIter, endIter] =  pSender->m_outputConnections.equal_range(
-                Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))
-                );
-            if (startIter == endIter)
-                return false;
-            while (startIter != endIter) {
-                auto obj = startIter++->second;
-                obj->setPara(std::forward<Args>(args)...);
-                obj->callSlot();
-            }
-            return true;
-        };
-
-        auto fetcher = invokeMethod(std::move(emitSignalImpl),
+        auto fetcher = invokeMethod(std::move(m_emitSignalImpl<Sender, Signal, Args...>),
                                     pSender, std::forward<Signal>(signal),
                                     std::forward<Args>(args)...);
         auto res = fetcher();
@@ -515,7 +501,7 @@ class TA_MetaObject {
 
   private:
     template <typename Sender, typename Receiver>
-    static auto m_isConnectionExistedImpl =
+    inline static auto m_isConnectionExistedImpl =
         [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal,
            Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
         auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
@@ -527,6 +513,20 @@ class TA_MetaObject {
             startSendIter++;
         }
         return false;
+    };
+
+    template <typename Sender, typename Signal, typename... Args>
+    inline static auto m_emitSignalImpl = [](Sender *pSender, Signal signal, Args... args) {
+        auto [startIter, endIter] = pSender->m_outputConnections.equal_range(
+            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal)));
+        if (startIter == endIter)
+            return false;
+        while (startIter != endIter) {
+            auto obj = startIter++->second;
+            obj->setPara(std::forward<Args>(args)...);
+            obj->callSlot();
+        }
+        return true;
     };
 };
 } // namespace CoreAsync
