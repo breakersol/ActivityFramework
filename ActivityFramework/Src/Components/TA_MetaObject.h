@@ -159,22 +159,27 @@ class TA_MetaObject {
         if constexpr (MethodTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize) {
             return {nullptr};
         }
-        TA_ConnectionObject::FuncMark signalMark{
-            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
-        TA_ConnectionObject::FuncMark slotMark{typeid(LambdaExp).name()};
-        auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
-        while (startSendIter != endSendIter) {
-            if (startSendIter->second->receiver() == pSender && startSendIter->second->slotMark() == slotMark) {
-                return {nullptr};
-            }
-            startSendIter++;
-        }
-        auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::forward<Signal>(signal),
-                                                            std::forward<LambdaExp>(exp), type, autoDestroy);
-        pSender->m_outputConnections.emplace(signalMark, conn);
-        if (autoDestroy)
-            return {nullptr};
-        return {conn};
+        auto fetcher = invokeMethod(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>,
+                                    pSender, signal, exp,
+                                    type, autoDestroy);
+        auto res = fetcher();
+        return res.template get<TA_ConnectionObjectHolder>();
+        // TA_ConnectionObject::FuncMark signalMark{
+        //                                          Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
+        // TA_ConnectionObject::FuncMark slotMark{typeid(LambdaExp).name()};
+        // auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+        // while (startSendIter != endSendIter) {
+        //     if (startSendIter->second->receiver() == pSender && startSendIter->second->slotMark() == slotMark) {
+        //         return {nullptr};
+        //     }
+        //     startSendIter++;
+        // }
+        // auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::forward<Signal>(signal),
+        //                                                     std::forward<LambdaExp>(exp), type, autoDestroy);
+        // pSender->m_outputConnections.emplace(signalMark, conn);
+        // if (autoDestroy)
+        //     return {nullptr};
+        // return {conn};
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -200,33 +205,13 @@ class TA_MetaObject {
             Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
-        auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
-        if (startSendIter == endSendIter)
-            return false;
-        std::shared_ptr<TA_ConnectionObject> pConnecton{nullptr};
-        while (startSendIter != endSendIter) {
-            if (startSendIter->second->receiver() == pReceiver && startSendIter->second->slotMark() == slotMark) {
-                pConnecton = startSendIter->second;
-                pSender->m_outputConnections.erase(startSendIter);
-                break;
-            }
-            startSendIter++;
-        }
-        auto &&[startRecIter, endRecIter] = pReceiver->m_inputConnections.equal_range(slotMark);
-        if (startRecIter == endRecIter)
-            return false;
-        while (startRecIter != endRecIter) {
-            if (startRecIter->second == pConnecton) {
-                pReceiver->m_inputConnections.erase(startRecIter);
-                break;
-            }
-            startRecIter++;
-        }
-        return true;
+        return m_unregisterConnectionImpl<Sender, Receiver>(
+            pSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
+            pReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
     }
 
     static bool unregisterConnection(const TA_ConnectionObjectHolder &holder) {
-        auto fetcher = invokeMethod(m_unregisterConnectionImpl<TA_MetaObject>, holder);
+        auto fetcher = invokeMethod(m_unregisterConnectionHolderImpl<TA_MetaObject>, holder);
         auto res = fetcher();
         return res.template get<bool>();
     }
@@ -519,7 +504,7 @@ class TA_MetaObject {
     };
 
     template <typename Sender>
-    inline static auto m_unregisterConnectionImpl = [](const TA_ConnectionObjectHolder &holder) -> bool {
+    inline static auto m_unregisterConnectionHolderImpl = [](const TA_ConnectionObjectHolder &holder) -> bool {
         if (!holder.valid()) {
             return false;
         }
@@ -541,6 +526,69 @@ class TA_MetaObject {
             startSendIter++;
         }
         return true;
+    };
+
+    template <typename Sender, typename Receiver>
+    inline static auto m_unregisterConnectionImpl = [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal,
+                                                        Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
+        std::shared_ptr<TA_ConnectionObject> pConnection{nullptr};
+        auto opFetcher = invokeMethod(
+            [&pConnection, pSender, &signal, pReceiver, &slot]() ->bool {
+            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
+            if (startSendIter == endSendIter)
+                return false;
+            while (startSendIter != endSendIter) {
+                if (startSendIter->second->receiver() == pReceiver &&
+                    startSendIter->second->slotMark() == slot) {
+                    pConnection = startSendIter->second;
+                    pSender->m_outputConnections.erase(startSendIter);
+                    break;
+                }
+                startSendIter++;
+            }
+            return true;
+        });
+        auto res = opFetcher().template get<bool>();
+        if(!res) {
+            return false;
+        }
+        opFetcher = invokeMethod([&pConnection, pReceiver, &slot]() -> bool {
+            auto &&[startRecIter, endRecIter] = pReceiver->m_inputConnections.equal_range(slot);
+            if (startRecIter == endRecIter)
+                return false;
+            while (startRecIter != endRecIter) {
+                if (startRecIter->second == pConnection) {
+                    pReceiver->m_inputConnections.erase(startRecIter);
+                    break;
+                }
+                startRecIter++;
+            }
+            return true;
+        });
+        return opFetcher().template get<bool>();
+    };
+
+    template <typename Sender, typename Signal, LambdaExpType Exp>
+    inline static auto m_registerLambdaConnectionImpl = [](Sender *pSender, Signal signal,
+                                                           Exp exp, TA_ConnectionType type,
+                                                           bool autoDestroy) -> TA_ConnectionObjectHolder {
+        TA_ConnectionObject::FuncMark signalMark{
+            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
+        TA_ConnectionObject::FuncMark slotMark{typeid(Exp).name()};
+        auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+        while (startSendIter != endSendIter) {
+            if (startSendIter->second->receiver() == pSender && startSendIter->second->slotMark() == slotMark) {
+                return {nullptr};
+            }
+            startSendIter++;
+        }
+        auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::move(signal),
+                                                            std::move(exp), type,
+                                                            autoDestroy);
+        pSender->m_outputConnections.emplace(signalMark, conn);
+        if (autoDestroy)
+            return {nullptr};
+        return {conn};
     };
 };
 } // namespace CoreAsync
