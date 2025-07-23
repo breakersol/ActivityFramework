@@ -106,6 +106,48 @@ class TA_MetaObject {
         return true;
     }
 
+    template <LambdaExpType LambdaExp, typename... Args>
+    static constexpr auto invokeMethod(LambdaExp &&exp, Args &&...args) {
+        static_assert(LambdaExpTraits<std::decay_t<LambdaExp>>::argSize == sizeof...(Args),
+                      "The number of arguments does not match the lambda expression.");
+        return TA_ThreadHolder::get().postActivity(
+            TA_ActivityCreator::create(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
+    }
+
+    template <LambdaExpType LambdaExp, typename... Args>
+    static constexpr auto invokeMethod(LambdaExp &exp, Args &&...args) {
+        static_assert(LambdaExpTraits<std::decay_t<LambdaExp>>::argSize == sizeof...(Args),
+                      "The number of arguments does not match the lambda expression.");
+        return TA_ThreadHolder::get().postActivity(
+            TA_ActivityCreator::create(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
+    }
+
+    template <InstanceMethodType Method, typename Ins, typename... Args>
+    static constexpr auto invokeMethod(Method &&method, Ins &ins, Args &&...args) {
+        static_assert(MethodTypeInfo<std::decay_t<Method>>::argSize == sizeof...(Args),
+                      "The number of arguments does not match the method signature.");
+        using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
+        return TA_ThreadHolder::get().postActivity(
+            TA_ActivityCreator::create(std::forward<Method>(method),
+                                       std::forward<Ins>(ins),
+                                       std::forward<Args>(args)...),
+            true);
+    }
+
+    template <StaticMethodType Method, typename... Args>
+    static constexpr auto invokeMethod(Method &&method, Args &&...args) {
+        static_assert(MethodTypeInfo<std::decay_t<Method>>::argSize == sizeof...(Args),
+                      "The number of arguments does not match the method signature.");
+        using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
+        return TA_ThreadHolder::get().postActivity(
+            TA_ActivityCreator::create(std::forward<Method>(method), std::forward<Args>(args)...), true);
+    }
+
+    template <MetaStringType Method, typename... Args> static constexpr auto invokeMethod(Method, Args &&...args) {
+        return TA_ThreadHolder::get().postActivity(
+            TA_ActivityCreator::create(Method{}, std::forward<Args>(args)...), true);
+    }
+
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
     static constexpr bool registerConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot,
                                              TA_ConnectionType type) {
@@ -265,48 +307,6 @@ class TA_MetaObject {
                                                    pSender, signalMark, pReceiver, slotMark);
         auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
         return fetcher().template get<bool>();
-    }
-
-    template <LambdaExpType LambdaExp, typename... Args>
-    static constexpr auto invokeMethod(LambdaExp &&exp, Args &&...args) {
-        static_assert(LambdaExpTraits<std::decay_t<LambdaExp>>::argSize == sizeof...(Args),
-                      "The number of arguments does not match the lambda expression.");
-        return TA_ThreadHolder::get().postActivity(
-            TA_ActivityCreator::create(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
-    }
-
-    template <LambdaExpType LambdaExp, typename... Args>
-    static constexpr auto invokeMethod(LambdaExp &exp, Args &&...args) {
-        static_assert(LambdaExpTraits<std::decay_t<LambdaExp>>::argSize == sizeof...(Args),
-                      "The number of arguments does not match the lambda expression.");
-        return TA_ThreadHolder::get().postActivity(
-            TA_ActivityCreator::create(std::forward<LambdaExp>(exp), std::forward<Args>(args)...), true);
-    }
-
-    template <InstanceMethodType Method, typename Ins, typename... Args>
-    static constexpr auto invokeMethod(Method &&method, Ins &ins, Args &&...args) {
-        static_assert(MethodTypeInfo<std::decay_t<Method>>::argSize == sizeof...(Args),
-                      "The number of arguments does not match the method signature.");
-        using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
-        return TA_ThreadHolder::get().postActivity(
-            TA_ActivityCreator::create(std::forward<Method>(method),
-                                       std::forward<Ins>(ins),
-                                       std::forward<Args>(args)...),
-                                      true);
-    }
-
-    template <StaticMethodType Method, typename... Args>
-    static constexpr auto invokeMethod(Method &&method, Args &&...args) {
-        static_assert(MethodTypeInfo<std::decay_t<Method>>::argSize == sizeof...(Args),
-                      "The number of arguments does not match the method signature.");
-        using Ret = typename MethodTypeInfo<std::decay_t<Method>>::RetType;
-        return TA_ThreadHolder::get().postActivity(
-            TA_ActivityCreator::create(std::forward<Method>(method), std::forward<Args>(args)...), true);
-    }
-
-    template <MetaStringType Method, typename... Args> static constexpr auto invokeMethod(Method, Args &&...args) {
-        return TA_ThreadHolder::get().postActivity(
-            TA_ActivityCreator::create(Method{}, std::forward<Args>(args)...), true);
     }
 
   private:
