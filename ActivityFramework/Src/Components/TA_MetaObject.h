@@ -139,6 +139,10 @@ class TA_MetaObject {
             TA_ActivityCreator::create(Method{}, std::forward<Args>(args)...), true);
     }
 
+    void deleteLater() {
+        invokeMethod([this]() { delete this; });
+    }
+
     std::size_t affinityThread() const { return m_affinityThreadIdx.load(std::memory_order_acquire); }
 
     bool moveToThread(std::size_t idx) {
