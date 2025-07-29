@@ -114,7 +114,6 @@ class TA_ThreadPool {
         if (!pActivity)
             throw std::invalid_argument("Activity is null");
         std::shared_ptr<TA_ActivityProxy> pProxy{std::make_shared<TA_ActivityProxy>(pActivity, autoDelete)};
-        auto activityId{pActivity->id()};
         auto affinityId{pActivity->affinityThread()};
         std::size_t idx =
             affinityId < m_threads.size() ? affinityId : topPriorityThread(pActivity->dependencyThreadId());
@@ -129,7 +128,6 @@ class TA_ThreadPool {
         if (!pActivity)
             throw std::invalid_argument("Activity proxy is null");
         std::shared_ptr<TA_ActivityProxy> pProxy{pActivity};
-        auto activityId{pActivity->id()};
         auto affinityId{pActivity->affinityThread()};
         auto dependencyThreadId{pActivity->dependencyThreadId()};
         pActivity = nullptr;
@@ -142,6 +140,13 @@ class TA_ThreadPool {
     }
 
     std::size_t size() const { return m_threads.size(); }
+
+    std::thread::id threadId(std::size_t idx) const {
+        if (idx >= m_threads.size()) {
+            throw std::invalid_argument("Idx is out of the range of thread size");
+        }
+        return m_threads[idx].get_id();
+    }
 
     void setThreadDetached(std::size_t idx) {
         if (idx >= m_threads.size()) {

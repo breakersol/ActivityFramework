@@ -63,8 +63,8 @@ class TA_MetaObject {
         std::shared_ptr<TA_ConnectionObject> m_pConnection{nullptr};
     };
 
-    TA_MetaObject()
-        : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
+    TA_MetaObject() : m_sourceThread(std::this_thread::get_id()),
+                      m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
 
     virtual ~TA_MetaObject() { destroyConnections(); }
 
@@ -351,7 +351,8 @@ class TA_MetaObject {
             };
             {
                 m_pActivity = TA_ActivityCreator::create(std::move(slotExp));
-                m_pActivity->moveToThread(m_pSender->affinityThread());
+                // Don't need to ensure the activity is moved to the sender's affinity thread
+                // m_pActivity->moveToThread(m_pSender->affinityThread());
                 m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
             }
         }
@@ -369,7 +370,7 @@ class TA_MetaObject {
             if (m_pActivity) {
                 TA_MetaObject *pSender = reinterpret_cast<TA_MetaObject *>(m_pSender);
                 TA_MetaObject *pReceiver = reinterpret_cast<TA_MetaObject *>(m_pReceiver);
-                if (pReceiver->sourceThread() == pSender->sourceThread() &&
+                if (pReceiver->affinityThread() == pSender->affinityThread() &&
                     (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto)) {
                     m_pActivity->operator()();
                 } else {
@@ -383,22 +384,9 @@ class TA_MetaObject {
         }
 
         void removeConnectionReferences() {
-            auto rangeSender = m_pSender->m_outputConnections.equal_range(m_senderFunc);
-            for (auto iter = rangeSender.first; iter != rangeSender.second; ++iter) {
-                if (iter->second.get() == this) {
-                    m_pSender->m_outputConnections.erase(iter);
-                    break;
-                }
-            }
-            if (m_pSender != m_pReceiver) {
-                auto rangeReceiver = m_pReceiver->m_inputConnections.equal_range(m_receiverFunc);
-                for (auto iter = rangeReceiver.first; iter != rangeReceiver.second; ++iter) {
-                    if (iter->second.get() == this) {
-                        m_pReceiver->m_inputConnections.erase(iter);
-                        break;
-                    }
-                }
-            }
+            m_removeConnectionReferenceImpl<TA_MetaObject, TA_MetaObject>(
+                m_pSender, m_pReceiver,
+                std::forward<FuncMark>(m_senderFunc), std::forward<FuncMark>(m_receiverFunc));
         }
 
         TA_MetaObject *sender() const { return m_pSender; }
@@ -410,7 +398,7 @@ class TA_MetaObject {
         const FuncMark &slotMark() const { return m_receiverFunc; }
 
         bool isSync() const {
-            return m_pSender->sourceThread() == m_pReceiver->sourceThread() &&
+            return m_pSender->affinityThread() == m_pReceiver->affinityThread() &&
                    (m_type == TA_ConnectionType::Auto || m_type == TA_ConnectionType::Direct);
         }
 
@@ -622,6 +610,41 @@ class TA_MetaObject {
         }
         affintyThread.store(idx, std::memory_order_release);
         return true;
+    };
+
+    template <typename Sender, typename Receiver>
+    inline static auto m_removeConnectionReferenceImpl = [](Sender *pSender, Receiver *pReceiver,
+                                                             TA_ConnectionObject::FuncMark &&signal,
+                                                             TA_ConnectionObject::FuncMark &&slot) -> void {
+       auto senderExp =
+            [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal) -> void {
+            auto rangeSender = pSender->m_outputConnections.equal_range(signal);
+            for (auto iter = rangeSender.first; iter != rangeSender.second; ++iter) {
+                if (iter->second->sender() == pSender) {
+                    pSender->m_outputConnections.erase(iter);
+                    break;
+                }
+            }
+        };
+        senderExp(pSender, std::forward<TA_ConnectionObject::FuncMark>(signal));
+        if(pSender == pReceiver) {
+            return;
+        }
+        std::function<void(Receiver *, TA_ConnectionObject::FuncMark)> receiverExp =
+            [](Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> void {
+            auto rangeReceiver = pReceiver->m_inputConnections.equal_range(slot);
+            for (auto iter = rangeReceiver.first; iter != rangeReceiver.second; ++iter) {
+                if (iter->second->receiver() == pReceiver) {
+                    pReceiver->m_inputConnections.erase(iter);
+                    break;
+                }
+            }
+        };
+        auto receiverActivity = TA_ActivityCreator::create(std::move(receiverExp), pReceiver,
+                                                           std::forward<TA_ConnectionObject::FuncMark>(slot));
+        receiverActivity->moveToThread(pReceiver->affinityThread());
+        auto fetcher_2 = TA_ThreadHolder::get().postActivity(receiverActivity, true);
+        fetcher_2();
     };
 };
 } // namespace CoreAsync
