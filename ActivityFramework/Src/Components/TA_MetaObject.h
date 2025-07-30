@@ -146,8 +146,11 @@ class TA_MetaObject {
     std::size_t affinityThread() const { return m_affinityThreadIdx.load(std::memory_order_acquire); }
 
     bool moveToThread(std::size_t idx) {
-        auto fetcher = invokeMethod(std::forward<bool(*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl),
-                                    idx, m_affinityThreadIdx);
+        auto activity = TA_ActivityCreator::create(
+            std::forward<bool(*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl),
+            idx, m_affinityThreadIdx);
+        activity->moveToThread(affinityThread());
+        auto fetcher = TA_ThreadHolder::get().postActivity(std::move(activity), true);
         return fetcher().template get<bool>();
     }
 
@@ -630,8 +633,7 @@ class TA_MetaObject {
         if(pSender == pReceiver) {
             return;
         }
-        std::function<void(Receiver *, TA_ConnectionObject::FuncMark)> receiverExp =
-            [](Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> void {
+        auto receiverExp = [pReceiver, &slot]() -> void {
             auto rangeReceiver = pReceiver->m_inputConnections.equal_range(slot);
             for (auto iter = rangeReceiver.first; iter != rangeReceiver.second; ++iter) {
                 if (iter->second->receiver() == pReceiver) {
@@ -640,11 +642,10 @@ class TA_MetaObject {
                 }
             }
         };
-        auto receiverActivity = TA_ActivityCreator::create(std::move(receiverExp), pReceiver,
-                                                           std::forward<TA_ConnectionObject::FuncMark>(slot));
+        auto receiverActivity = TA_ActivityCreator::create(std::move(receiverExp));
         receiverActivity->moveToThread(pReceiver->affinityThread());
-        auto fetcher_2 = TA_ThreadHolder::get().postActivity(receiverActivity, true);
-        fetcher_2();
+        auto fetcher = TA_ThreadHolder::get().postActivity(receiverActivity, true);
+        fetcher();
     };
 };
 } // namespace CoreAsync
