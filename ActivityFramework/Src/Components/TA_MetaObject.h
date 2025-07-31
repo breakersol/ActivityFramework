@@ -95,6 +95,17 @@ class TA_MetaObject {
         return *this;
     }
 
+  private:
+    template <ActivityType Activity>
+    inline static auto invokeActivity(Activity *pActivity, std::size_t idx, bool autoDelete = true) {
+        if (idx >= TA_ThreadHolder::get().size()) {
+            throw std::out_of_range("Thread index out of range.");
+        }
+        pActivity->moveToThread(idx);
+        return TA_ThreadHolder::get().postActivity(pActivity, autoDelete);
+    }
+
+  public:
     const std::thread::id &sourceThread() const { return m_sourceThread; }
 
     template <LambdaExpType LambdaExp, typename... Args>
@@ -149,8 +160,7 @@ class TA_MetaObject {
         auto activity = TA_ActivityCreator::create(
             std::forward<bool(*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl),
             idx, m_affinityThreadIdx);
-        activity->moveToThread(affinityThread());
-        auto fetcher = TA_ThreadHolder::get().postActivity(std::move(activity), true);
+        auto fetcher = invokeActivity(activity, affinityThread());
         return fetcher().template get<bool>();
     }
 
@@ -577,31 +587,34 @@ class TA_MetaObject {
             Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
-        auto searchFetcher = invokeMethod([pSender, signalMark, pReceiver, slotMark]() -> bool {
-                auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
-                while (startSendIter != endSendIter) {
-                    if (startSendIter->second->receiver() == pReceiver &&
-                        startSendIter->second->slotMark() == slotMark) {
-                        return false;
-                    }
-                    startSendIter++;
+        auto searchActivity = TA_ActivityCreator::create([pSender, signalMark, pReceiver, slotMark]() -> bool {
+            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+            while (startSendIter != endSendIter) {
+                if (startSendIter->second->receiver() == pReceiver &&
+                    startSendIter->second->slotMark() == slotMark) {
+                    return false;
                 }
-                return true;
+                startSendIter++;
             }
-        );
+            return true;
+        });
+        auto searchFetcher = invokeActivity(searchActivity, pSender->affinityThread());
         bool res = searchFetcher().template get<bool>();
         if(!res)
             return false;
         auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::move(signal), type);
         conn->initSlotObject(pReceiver, std::forward<Slot>(slot));
-        auto addIntoSenderFetcher = invokeMethod([pSender, &signalMark, &conn]() -> void {
+        auto addIntoSenderActivity = TA_ActivityCreator::create(
+            [pSender, &signalMark, &conn]() -> void {
                 pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
             }
         );
+        auto addIntoSenderFetcher = invokeActivity(addIntoSenderActivity, pSender->affinityThread());
         addIntoSenderFetcher();
-        auto addIntoReceiverFetcher = invokeMethod([pReceiver, &slotMark, &conn]() -> void {
+        auto addIntoReceiverActivity = TA_ActivityCreator::create([pReceiver, &slotMark, &conn]() -> void {
             pReceiver->m_inputConnections.emplace(slotMark, conn->getSharedPtr());
         });
+        auto addIntoReceiverFetcher = invokeActivity(addIntoReceiverActivity, pReceiver->affinityThread());
         addIntoReceiverFetcher();
         return true;
     };
