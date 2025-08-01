@@ -204,9 +204,11 @@ class TA_MetaObject {
         if constexpr (MethodTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize) {
             return {nullptr};
         }
-        auto fetcher = invokeMethod(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>,
-                                    pSender, signal, exp,
-                                    type, autoDestroy);
+        using ExpType = decltype(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>);
+        auto registerActivity = TA_ActivityCreator::create(
+            std::forward<ExpType>(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>),
+            pSender, signal, exp, type, autoDestroy);
+        auto fetcher = invokeActivity(registerActivity, pSender->affinityThread());
         auto res = fetcher();
         return res.template get<TA_ConnectionObjectHolder>();
     }
@@ -240,7 +242,10 @@ class TA_MetaObject {
     }
 
     static bool unregisterConnection(const TA_ConnectionObjectHolder &holder) {
-        auto fetcher = invokeMethod(m_unregisterConnectionHolderImpl<TA_MetaObject>, holder);
+        using ExpType = decltype(m_unregisterConnectionHolderImpl<TA_MetaObject>);
+        auto activity = TA_ActivityCreator::create(
+            std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), holder);
+        auto fetcher = invokeActivity(activity, holder.m_pConnection->sender()->affinityThread());
         auto res = fetcher();
         return res.template get<bool>();
     }
@@ -520,8 +525,7 @@ class TA_MetaObject {
     inline static auto m_unregisterConnectionImpl = [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal,
                                                         Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
         std::shared_ptr<TA_ConnectionObject> pConnection{nullptr};
-        auto opFetcher = invokeMethod(
-            [&pConnection, pSender, &signal, pReceiver, &slot]() ->bool {
+        auto senderActivity = TA_ActivityCreator::create([&pConnection, pSender, &signal, pReceiver, &slot]() ->bool {
             auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
             if (startSendIter == endSendIter)
                 return false;
@@ -536,11 +540,12 @@ class TA_MetaObject {
             }
             return true;
         });
+        auto opFetcher = invokeActivity(senderActivity, pSender->affinityThread());
         auto res = opFetcher().template get<bool>();
         if(!res) {
             return false;
         }
-        opFetcher = invokeMethod([&pConnection, pReceiver, &slot]() -> bool {
+        auto receiverActivity = TA_ActivityCreator::create([&pConnection, pReceiver, &slot]() -> bool {
             auto &&[startRecIter, endRecIter] = pReceiver->m_inputConnections.equal_range(slot);
             if (startRecIter == endRecIter)
                 return false;
@@ -553,6 +558,7 @@ class TA_MetaObject {
             }
             return true;
         });
+        opFetcher = invokeActivity(receiverActivity, pReceiver->affinityThread());
         return opFetcher().template get<bool>();
     };
 
