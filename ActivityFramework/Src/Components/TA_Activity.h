@@ -153,8 +153,13 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
     auto dependencyThreadId() const { return m_dependencyThreadId; }
 
     bool moveToThread(std::size_t thread) {
-        if(m_dependencyThreadId == TA_ThreadHolder::get().threadId(thread)) {
-            throw std::runtime_error("Activity is already in the thread: " + std::to_string(thread));
+        auto &holder = TA_ThreadHolder::get();
+        auto size = holder.size();
+        if (thread >= size) {
+            return false;
+        }
+        if (m_dependencyThreadId == holder.threadId(thread)) {
+            return false;
         }
         return m_affinityThread.moveToThread(thread);
     }
@@ -202,8 +207,13 @@ template <typename Method, typename... Args> class TA_MethodActivity {
     auto dependencyThreadId() const { return m_dependencyThreadId; }
 
     bool moveToThread(std::size_t thread) {
-        if(m_dependencyThreadId == TA_ThreadHolder::get().threadId(thread)) {
-            throw std::runtime_error("Activity is already in the thread: " + std::to_string(thread));
+        auto &holder = TA_ThreadHolder::get();
+        auto size = holder.size();
+        if (thread >= size) {
+            return false;
+        }
+        if (m_dependencyThreadId == holder.threadId(thread)) {
+            return false;
         }
         return m_affinityThread.moveToThread(thread);
     }
