@@ -155,7 +155,6 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
     bool moveToThread(std::size_t thread) {
         if(m_dependencyThreadId == TA_ThreadHolder::get().threadId(thread)) {
             throw std::runtime_error("Activity is already in the thread: " + std::to_string(thread));
-            return false;
         }
         return m_affinityThread.moveToThread(thread);
     }
