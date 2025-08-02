@@ -262,10 +262,11 @@ class TA_MetaObject {
         if (!pSender) {
             return false;
         }
-
-        auto fetcher = invokeMethod(m_emitSignalImpl<Sender, Signal, Args...>,
-                                    pSender, std::forward<Signal>(signal),
-                                    std::forward<Args>(args)...);
+        using ExpType = decltype(m_emitSignalImpl<Sender, Signal, Args...>);
+        auto activity = TA_ActivityCreator::create(
+            std::forward<ExpType>(m_emitSignalImpl<Sender, Signal, Args...>),
+            pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
+        auto fetcher = invokeActivity(activity, pSender->affinityThread());
         auto res = fetcher();
         return res.template get<bool>();
     }
@@ -297,7 +298,7 @@ class TA_MetaObject {
 
         auto activity = TA_ActivityCreator::create(m_isConnectionExistedImpl<Sender, Receiver>,
                                                    pSender, signalMark, pReceiver, slotMark);
-        auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+        auto fetcher = invokeActivity(activity, pSender->affinityThread());
         return fetcher().template get<bool>();
     }
 
