@@ -32,6 +32,25 @@ int main(int argc, char *argv[]) {
 
     return RUN_ALL_TESTS();
 
+    //MetaTest *m_pTest = new MetaTest();
+    //auto m_pConcurrentPipeline = new CoreAsync::TA_ConcurrentPipeline();
+    //auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
+    //auto activity_2 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 2, 2);
+    //auto activity_3 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 10, 1);
+
+    //m_pConcurrentPipeline->add(activity_1, activity_2, activity_3);
+    //auto waiter = m_pConcurrentPipeline->execute();
+    //int res_0, res_1, res_2;
+    //waiter();
+    //{
+    //    m_pConcurrentPipeline->result(0, res_0);
+    //    m_pConcurrentPipeline->result(1, res_1);
+    //    m_pConcurrentPipeline->result(2, res_2);
+    //}
+    //if (res_0 != -1 || res_1 != 0 || res_2 != 9)
+    //    return false;
+    //return true;
+
     //   std::function<void()> testFunction = []() {
     //       std::cout << "Test function executed!" << std::endl;
     // };

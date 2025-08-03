@@ -61,6 +61,10 @@ class TA_ActivityProxy {
                 return static_cast<RawActivity *>(pObj.get())->affinityThread();
             };
 
+            m_pDependThreadIdExp = [](auto const &pObj) -> std::thread::id {
+                return static_cast<RawActivity *>(pObj.get())->dependencyThreadId();
+            };
+
             m_pIdExp = [](auto const &pObj) -> int64_t { return static_cast<RawActivity *>(pObj.get())->id(); };
 
             m_pMoveThreadExp = [](auto &pObj, std::size_t thread) -> bool {
@@ -76,6 +80,7 @@ class TA_ActivityProxy {
         : m_pActivity(std::exchange(other.m_pActivity, nullptr)),
           m_pExecuteExp(std::exchange(other.m_pExecuteExp, nullptr)),
           m_pAffinityThreadExp(std::exchange(other.m_pAffinityThreadExp, nullptr)),
+          m_pDependThreadIdExp(std::exchange(other.m_pDependThreadIdExp, nullptr)),
           m_pIdExp(std::exchange(other.m_pIdExp, nullptr)),
           m_pMoveThreadExp(std::exchange(other.m_pMoveThreadExp, nullptr)), m_future(std::move(other.m_future)) {}
 
@@ -85,6 +90,7 @@ class TA_ActivityProxy {
             m_pActivity = std::exchange(other.m_pActivity, nullptr);
             m_pExecuteExp = std::exchange(other.m_pExecuteExp, nullptr);
             m_pAffinityThreadExp = std::exchange(other.m_pAffinityThreadExp, nullptr);
+            m_pDependThreadIdExp = std::exchange(other.m_pDependThreadIdExp, nullptr);
             m_pIdExp = std::exchange(other.m_pIdExp, nullptr);
             m_pMoveThreadExp = std::exchange(other.m_pMoveThreadExp, nullptr);
             m_future = std::move(other.m_future);
@@ -107,6 +113,8 @@ class TA_ActivityProxy {
 
     std::size_t affinityThread() const { return m_pAffinityThreadExp(m_pActivity); }
 
+    std::thread::id dependencyThreadId() const { return m_pDependThreadIdExp(m_pActivity); }
+
     int64_t id() const { return m_pIdExp(m_pActivity); }
 
     bool moveToThread(std::size_t thread) { return m_pMoveThreadExp(m_pActivity, thread); }
@@ -115,6 +123,7 @@ class TA_ActivityProxy {
     std::unique_ptr<void, void (*)(void *)> m_pActivity;
     Executor<void, std::unique_ptr<void, void (*)(void *)> &, std::promise<TA_DefaultVariant> &&> m_pExecuteExp;
     Executor<std::size_t, std::unique_ptr<void, void (*)(void *)> const &> m_pAffinityThreadExp;
+    Executor<std::thread::id, std::unique_ptr<void, void (*)(void *)> const &> m_pDependThreadIdExp;
     Executor<std::int64_t, std::unique_ptr<void, void (*)(void *)> const &> m_pIdExp;
     Executor<bool, std::unique_ptr<void, void (*)(void *)> &, std::size_t> m_pMoveThreadExp;
     std::promise<TA_DefaultVariant> m_promise{};

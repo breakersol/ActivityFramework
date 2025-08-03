@@ -35,8 +35,6 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ConcurrentPipeline : public TA_BasicPipeline 
   protected:
     void run() override final;
 
-  private:
-    std::vector<TA_ActivityResultFetcher> m_resultFetchers{};
 };
 
 namespace Reflex {

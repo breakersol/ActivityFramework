@@ -122,8 +122,9 @@ class TA_ActivityExecutingAwaitable {
         if (m_executeType == ExecuteType::Async) {
             m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
         } else {
-            m_pProxy->operator()();
-            m_fetcher = {std::make_shared<TA_ActivityProxy>(m_pProxy)};
+            std::shared_ptr<TA_ActivityProxy> sharedProxy(std::make_shared<TA_ActivityProxy>(m_pProxy));
+            sharedProxy->operator()();
+            m_fetcher = {sharedProxy};
         }
         handle.resume();
     }
