@@ -95,7 +95,7 @@ class TA_MetaObject {
         return *this;
     }
 
-  private:
+  protected:
     template <ActivityType Activity>
     inline static auto invokeActivity(Activity *pActivity, std::size_t idx, bool autoDelete = true) {
         if (idx >= TA_ThreadHolder::get().size()) {
@@ -103,6 +103,13 @@ class TA_MetaObject {
         }
         pActivity->moveToThread(idx);
         return TA_ThreadHolder::get().postActivity(pActivity, autoDelete);
+    }
+
+    inline static bool isOnCurrentThread(TA_MetaObject *pObject) {
+        if (!pObject) {
+            return false;
+        }
+        return TA_ThreadHolder::get().threadId(pObject->affinityThread()) == std::this_thread::get_id();
     }
 
   public:
@@ -157,6 +164,9 @@ class TA_MetaObject {
     std::size_t affinityThread() const { return m_affinityThreadIdx.load(std::memory_order_acquire); }
 
     bool moveToThread(std::size_t idx) {
+        if(isOnCurrentThread(this)) {
+            return m_moveToThreadImpl(idx, m_affinityThreadIdx);
+        }
         auto activity = TA_ActivityCreator::create(
             std::forward<bool(*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl),
             idx, m_affinityThreadIdx);
@@ -204,6 +214,10 @@ class TA_MetaObject {
         if constexpr (MethodTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize) {
             return {nullptr};
         }
+        if(isOnCurrentThread(pSender)) {
+            return m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>(
+                pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
+        }
         using ExpType = decltype(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>);
         auto registerActivity = TA_ActivityCreator::create(
             std::forward<ExpType>(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>),
@@ -242,6 +256,9 @@ class TA_MetaObject {
     }
 
     static bool unregisterConnection(const TA_ConnectionObjectHolder &holder) {
+        if(isOnCurrentThread(holder.m_pConnection->sender())) {
+            return m_unregisterConnectionHolderImpl<TA_MetaObject>(holder);
+        }
         using ExpType = decltype(m_unregisterConnectionHolderImpl<TA_MetaObject>);
         auto activity = TA_ActivityCreator::create(
             std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), holder);
@@ -261,6 +278,10 @@ class TA_MetaObject {
         }
         if (!pSender) {
             return false;
+        }
+        if(isOnCurrentThread(pSender)) {
+            return m_emitSignalImpl<Sender, Signal, Args...>(pSender, std::forward<Signal>(signal),
+                                                            std::forward<Args>(args)...);
         }
         using ExpType = decltype(m_emitSignalImpl<Sender, Signal, Args...>);
         auto activity = TA_ActivityCreator::create(
@@ -295,7 +316,11 @@ class TA_MetaObject {
             Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
-
+        if(isOnCurrentThread(pSender)) {
+            return m_isConnectionExistedImpl<Sender, Receiver>(
+                pSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
+                pReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
+        }
         auto activity = TA_ActivityCreator::create(m_isConnectionExistedImpl<Sender, Receiver>,
                                                    pSender, signalMark, pReceiver, slotMark);
         auto fetcher = invokeActivity(activity, pSender->affinityThread());
@@ -526,7 +551,8 @@ class TA_MetaObject {
     inline static auto m_unregisterConnectionImpl = [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal,
                                                         Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
         std::shared_ptr<TA_ConnectionObject> pConnection{nullptr};
-        auto senderActivity = TA_ActivityCreator::create([&pConnection, pSender, &signal, pReceiver, &slot]() ->bool {
+        bool res {false};
+        auto senderUnregisterExp = [&pConnection, pSender, &signal, pReceiver, &slot]() ->bool {
             auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
             if (startSendIter == endSendIter)
                 return false;
@@ -540,13 +566,21 @@ class TA_MetaObject {
                 startSendIter++;
             }
             return true;
-        });
-        auto opFetcher = invokeActivity(senderActivity, pSender->affinityThread());
-        auto res = opFetcher().template get<bool>();
+        };
+        if(isOnCurrentThread(pSender)) {
+            res = senderUnregisterExp();
+        } else {
+            auto senderActivity = TA_ActivityCreator::create(std::move(senderUnregisterExp));
+            auto opFetcher = invokeActivity(senderActivity, pSender->affinityThread());
+            res = opFetcher().template get<bool>();
+        }
         if(!res) {
             return false;
         }
-        auto receiverActivity = TA_ActivityCreator::create([&pConnection, pReceiver, &slot]() -> bool {
+        auto receiverUnregisterExp = [&pConnection, pReceiver, &slot]() -> bool {
+            if (!pConnection) {
+                return false;
+            }
             auto &&[startRecIter, endRecIter] = pReceiver->m_inputConnections.equal_range(slot);
             if (startRecIter == endRecIter)
                 return false;
@@ -558,8 +592,12 @@ class TA_MetaObject {
                 startRecIter++;
             }
             return true;
-        });
-        opFetcher = invokeActivity(receiverActivity, pReceiver->affinityThread());
+        };
+        if(isOnCurrentThread(pReceiver)) {
+            return receiverUnregisterExp();
+        }
+        auto receiverActivity = TA_ActivityCreator::create(std::move(receiverUnregisterExp));
+        auto opFetcher = invokeActivity(receiverActivity, pReceiver->affinityThread());
         return opFetcher().template get<bool>();
     };
 
@@ -668,6 +706,7 @@ class TA_MetaObject {
         fetcher();
     };
 };
+
 } // namespace CoreAsync
 
 template <typename T> struct TA_MetaObjectTraits {
