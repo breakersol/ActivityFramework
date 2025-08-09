@@ -628,40 +628,78 @@ class TA_MetaObject {
     inline static auto m_registerConnectionImpl = [](Sender *pSender, Signal &&signal,
                                                      Receiver *pReceiver, Slot &&slot,
                                                      TA_ConnectionType type) -> bool {
-        TA_ConnectionObject::FuncMark signalMark{
-            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
+        using SharedConnection = std::shared_ptr<TA_ConnectionObject>;
         TA_ConnectionObject::FuncMark slotMark{
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
-        auto searchActivity = TA_ActivityCreator::create([pSender, signalMark, pReceiver, slotMark]() -> bool {
-            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
-            while (startSendIter != endSendIter) {
-                if (startSendIter->second->receiver() == pReceiver &&
-                    startSendIter->second->slotMark() == slotMark) {
-                    return false;
+        if(pSender->affinityThread() == pReceiver->affinityThread()) {
+            auto syncRegisterExp = [pSender, &signal, pReceiver, &slot, type, &slotMark]() -> bool {
+                TA_ConnectionObject::FuncMark signalMark{
+                    Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
+                auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+                while (startSendIter != endSendIter) {
+                    if (startSendIter->second->receiver() == pReceiver &&
+                        startSendIter->second->slotMark() == slotMark) {
+                        return false;
+                    }
+                    startSendIter++;
                 }
-                startSendIter++;
+
+                auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::move(signal), type);
+                conn->initSlotObject(pReceiver, std::forward<Slot>(slot));
+                pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
+                pReceiver->m_inputConnections.emplace(slotMark, conn->getSharedPtr());
+                return true;
+            };
+            if(isOnCurrentThread(pSender)) {
+                return syncRegisterExp();
+            } else {
+                auto syncActivity = TA_ActivityCreator::create(std::move(syncRegisterExp));
+                auto syncFetcher = invokeActivity(syncActivity, pSender->affinityThread());
+                auto res = syncFetcher();
+                return res.template get<bool>();
+            }
+        } else {
+            auto senderRegisterExp = [pSender, &signal, pReceiver, &slot, type, &slotMark]() -> SharedConnection {
+                TA_ConnectionObject::FuncMark signalMark{
+                    Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
+                auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+                while (startSendIter != endSendIter) {
+                    if (startSendIter->second->receiver() == pReceiver &&
+                        startSendIter->second->slotMark() == slotMark) {
+                        return nullptr;
+                    }
+                    startSendIter++;
+                }
+
+                auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::move(signal), type);
+                conn->initSlotObject(pReceiver, std::forward<Slot>(slot));
+                pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
+                return conn;
+            };
+            SharedConnection connectionObj {nullptr};
+            if(isOnCurrentThread(pSender)) {
+                connectionObj = senderRegisterExp();
+            } else {
+                auto senderRegisterActivity = TA_ActivityCreator::create(std::move(senderRegisterExp));
+                auto addIntoSenderFetcher = invokeActivity(senderRegisterActivity, pSender->affinityThread());
+                connectionObj = addIntoSenderFetcher().template get<SharedConnection>();
+
+            }
+            if(!connectionObj) {
+                return false;
+            }
+            auto receiverRegisterExp = [pReceiver, &slotMark, &connectionObj]() -> void {
+                pReceiver->m_inputConnections.emplace(slotMark, connectionObj->getSharedPtr());
+            };
+            if(isOnCurrentThread(pReceiver)) {
+                receiverRegisterExp();
+            } else {
+                auto addIntoReceiverActivity = TA_ActivityCreator::create(std::move(receiverRegisterExp));
+                auto addIntoReceiverFetcher = invokeActivity(addIntoReceiverActivity, pReceiver->affinityThread());
+                addIntoReceiverFetcher();
             }
             return true;
-        });
-        auto searchFetcher = invokeActivity(searchActivity, pSender->affinityThread());
-        bool res = searchFetcher().template get<bool>();
-        if(!res)
-            return false;
-        auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::move(signal), type);
-        conn->initSlotObject(pReceiver, std::forward<Slot>(slot));
-        auto addIntoSenderActivity = TA_ActivityCreator::create(
-            [pSender, &signalMark, &conn]() -> void {
-                pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
-            }
-        );
-        auto addIntoSenderFetcher = invokeActivity(addIntoSenderActivity, pSender->affinityThread());
-        addIntoSenderFetcher();
-        auto addIntoReceiverActivity = TA_ActivityCreator::create([pReceiver, &slotMark, &conn]() -> void {
-            pReceiver->m_inputConnections.emplace(slotMark, conn->getSharedPtr());
-        });
-        auto addIntoReceiverFetcher = invokeActivity(addIntoReceiverActivity, pReceiver->affinityThread());
-        addIntoReceiverFetcher();
-        return true;
+        }
     };
 
     bool(*m_moveToThreadImpl)(std::size_t idx, std::atomic_size_t &affintyThread) =
