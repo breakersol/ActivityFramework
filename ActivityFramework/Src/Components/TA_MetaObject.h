@@ -164,6 +164,9 @@ class TA_MetaObject {
     std::size_t affinityThread() const { return m_affinityThreadIdx.load(std::memory_order_acquire); }
 
     bool moveToThread(std::size_t idx) {
+        if(m_affinityThreadIdx.load(std::memory_order_acquire) == idx) {
+            return false;
+        }
         if(isOnCurrentThread(this)) {
             return m_moveToThreadImpl(idx, m_affinityThreadIdx);
         }
@@ -629,7 +632,7 @@ class TA_MetaObject {
                                                      Receiver *pReceiver, Slot &&slot,
                                                      TA_ConnectionType type) -> bool {
         using SharedConnection = std::shared_ptr<TA_ConnectionObject>;
-        TA_ConnectionObject::FuncMark slotMark{
+        TA_ConnectionObject::FuncMark slotMark {
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
         if(pSender->affinityThread() == pReceiver->affinityThread()) {
             auto syncRegisterExp = [pSender, &signal, pReceiver, &slot, type, &slotMark]() -> bool {
