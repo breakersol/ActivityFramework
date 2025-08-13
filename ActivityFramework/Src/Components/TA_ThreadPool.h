@@ -183,13 +183,16 @@ class TA_ThreadPool {
         std::size_t startIdx{m_stealIdxs[excludedIdx]};
         std::size_t idx{(startIdx + 1) % m_threads.size()};
         while (idx != startIdx) {
-            if (idx != excludedIdx && !m_activityQueues[idx].isEmpty()) {
-                if (m_activityQueues[idx].pop(stolenActivity)) {
+            if (idx != excludedIdx) {
+                std::shared_ptr<TA_ActivityProxy> activity{};
+                if (m_activityQueues[idx].top(activity) && activity && activity->stolenEnabled() &&
+                    m_activityQueues[idx].pop(stolenActivity)) {
                     return true;
                 }
             }
             idx = (idx + 1) % m_threads.size();
         }
+        stolenActivity = nullptr;
         return false;
     }
 

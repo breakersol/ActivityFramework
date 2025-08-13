@@ -173,6 +173,7 @@ class TA_MetaObject {
         auto activity = TA_ActivityCreator::create(
             std::forward<bool(*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl),
             idx, m_affinityThreadIdx);
+        activity->setStolenEnabled(false);
         auto fetcher = invokeActivity(activity, affinityThread());
         return fetcher().template get<bool>();
     }
@@ -225,6 +226,7 @@ class TA_MetaObject {
         auto registerActivity = TA_ActivityCreator::create(
             std::forward<ExpType>(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>),
             pSender, signal, exp, type, autoDestroy);
+        registerActivity->setStolenEnabled(false);
         auto fetcher = invokeActivity(registerActivity, pSender->affinityThread());
         auto res = fetcher();
         return res.template get<TA_ConnectionObjectHolder>();
@@ -265,6 +267,7 @@ class TA_MetaObject {
         using ExpType = decltype(m_unregisterConnectionHolderImpl<TA_MetaObject>);
         auto activity = TA_ActivityCreator::create(
             std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), holder);
+        activity->setStolenEnabled(false);
         auto fetcher = invokeActivity(activity, holder.m_pConnection->sender()->affinityThread());
         auto res = fetcher();
         return res.template get<bool>();
@@ -290,6 +293,7 @@ class TA_MetaObject {
         auto activity = TA_ActivityCreator::create(
             std::forward<ExpType>(m_emitSignalImpl<Sender, Signal, Args...>),
             pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
+        activity->setStolenEnabled(false);
         auto fetcher = invokeActivity(activity, pSender->affinityThread());
         auto res = fetcher();
         return res.template get<bool>();
@@ -326,6 +330,7 @@ class TA_MetaObject {
         }
         auto activity = TA_ActivityCreator::create(m_isConnectionExistedImpl<Sender, Receiver>,
                                                    pSender, signalMark, pReceiver, slotMark);
+        activity->setStolenEnabled(false);
         auto fetcher = invokeActivity(activity, pSender->affinityThread());
         return fetcher().template get<bool>();
     }
@@ -382,6 +387,7 @@ class TA_MetaObject {
             {
                 m_pActivity = TA_ActivityCreator::create(std::move(slotExp));
                 m_pActivity->moveToThread(pReceiver->affinityThread());
+                m_pActivity->setStolenEnabled(false);
                 m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
             }
         }
@@ -400,6 +406,7 @@ class TA_MetaObject {
                 m_pActivity = TA_ActivityCreator::create(std::move(slotExp));
                 // Don't need to ensure the activity is moved to the sender's affinity thread
                 // m_pActivity->moveToThread(m_pSender->affinityThread());
+                m_pActivity->setStolenEnabled(false);
                 m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
             }
         }
@@ -574,6 +581,7 @@ class TA_MetaObject {
             res = senderUnregisterExp();
         } else {
             auto senderActivity = TA_ActivityCreator::create(std::move(senderUnregisterExp));
+            senderActivity->setStolenEnabled(false);
             auto opFetcher = invokeActivity(senderActivity, pSender->affinityThread());
             res = opFetcher().template get<bool>();
         }
@@ -600,6 +608,7 @@ class TA_MetaObject {
             return receiverUnregisterExp();
         }
         auto receiverActivity = TA_ActivityCreator::create(std::move(receiverUnregisterExp));
+        receiverActivity->setStolenEnabled(false);
         auto opFetcher = invokeActivity(receiverActivity, pReceiver->affinityThread());
         return opFetcher().template get<bool>();
     };
@@ -657,6 +666,7 @@ class TA_MetaObject {
                 return syncRegisterExp();
             } else {
                 auto syncActivity = TA_ActivityCreator::create(std::move(syncRegisterExp));
+                syncActivity->setStolenEnabled(false);
                 auto syncFetcher = invokeActivity(syncActivity, pSender->affinityThread());
                 auto res = syncFetcher();
                 return res.template get<bool>();
@@ -684,6 +694,7 @@ class TA_MetaObject {
                 connectionObj = senderRegisterExp();
             } else {
                 auto senderRegisterActivity = TA_ActivityCreator::create(std::move(senderRegisterExp));
+                senderRegisterActivity->setStolenEnabled(false);
                 auto addIntoSenderFetcher = invokeActivity(senderRegisterActivity, pSender->affinityThread());
                 connectionObj = addIntoSenderFetcher().template get<SharedConnection>();
 
@@ -698,6 +709,7 @@ class TA_MetaObject {
                 receiverRegisterExp();
             } else {
                 auto addIntoReceiverActivity = TA_ActivityCreator::create(std::move(receiverRegisterExp));
+                addIntoReceiverActivity->setStolenEnabled(false);
                 auto addIntoReceiverFetcher = invokeActivity(addIntoReceiverActivity, pReceiver->affinityThread());
                 addIntoReceiverFetcher();
             }
@@ -743,6 +755,7 @@ class TA_MetaObject {
         };
         auto receiverActivity = TA_ActivityCreator::create(std::move(receiverExp));
         receiverActivity->moveToThread(pReceiver->affinityThread());
+        receiverActivity->setStolenEnabled(false);
         auto fetcher = TA_ThreadHolder::get().postActivity(receiverActivity, true);
         fetcher();
     };
