@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <array>
+#include <stdexcept>
 
 namespace CoreAsync {
 template <typename T, std::size_t N> class TA_ActivityQueue {
@@ -95,6 +96,15 @@ template <typename T, std::size_t N> class TA_ActivityQueue {
         } while (!m_frontIndex.compare_exchange_weak(frontIndexOld, frontIndexNew, std::memory_order_acq_rel));
 
         t = m_data[frontIndexOld].load(std::memory_order_acquire);
+        return true;
+    }
+
+    bool top(T &t) {
+        std::size_t frontIndex = m_frontIndex.load(std::memory_order_acquire);
+        if (frontIndex == m_rearIndex.load(std::memory_order_acquire)) {
+            return false; // Queue is empty
+        }
+        t= m_data[frontIndex].load(std::memory_order_acquire);
         return true;
     }
 

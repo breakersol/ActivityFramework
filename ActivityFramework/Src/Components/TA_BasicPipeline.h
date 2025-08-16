@@ -82,6 +82,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
         : TA_MetaObject(), m_pRunningActivity(TA_ActivityCreator::create(
               std::function<void()>([this]() { run(); }))) {
         m_pRunningActivity->moveToThread(affinityThread());
+        m_pRunningActivity->setStolenEnabled(false);
     }
     TA_BasicPipeline(const TA_BasicPipeline &other) = delete;
     TA_BasicPipeline(TA_BasicPipeline &&other) = delete;

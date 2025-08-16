@@ -152,6 +152,14 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
 
     auto dependencyThreadId() const { return m_dependencyThreadId; }
 
+    void setStolenEnabled(bool enabled) {
+        m_stolenEnabled.store(enabled, std::memory_order_release);
+    }
+
+    bool stolenEnabled() const {
+        return m_stolenEnabled.load(std::memory_order_acquire);
+    }
+
     bool moveToThread(std::size_t thread) {
         auto &holder = TA_ThreadHolder::get();
         auto size = holder.size();
@@ -185,6 +193,7 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
     TA_ActivityAffinityThread m_affinityThread{};
     TA_ActivityId m_id{};
     const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
+    std::atomic_bool m_stolenEnabled {true};
 };
 
 template <typename Method, typename... Args> class TA_MethodActivity {
@@ -205,6 +214,14 @@ template <typename Method, typename... Args> class TA_MethodActivity {
     std::size_t affinityThread() const { return m_affinityThread.affinityThread(); }
 
     auto dependencyThreadId() const { return m_dependencyThreadId; }
+
+    void setStolenEnabled(bool enabled) {
+        m_stolenEnabled.store(enabled, std::memory_order_release);
+    }
+
+    bool stolenEnabled() const {
+        return m_stolenEnabled.load(std::memory_order_acquire);
+    }
 
     bool moveToThread(std::size_t thread) {
         auto &holder = TA_ThreadHolder::get();
@@ -241,6 +258,7 @@ template <typename Method, typename... Args> class TA_MethodActivity {
     TA_ActivityAffinityThread m_affinityThread{};
     const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
     TA_ActivityId m_id{};
+    std::atomic_bool m_stolenEnabled {true};
 };
 
 class TA_ActivityCreator {
