@@ -96,6 +96,30 @@ class TA_MetaObject {
     }
 
   protected:
+    struct PendingCounter {
+        std::atomic_size_t m_counter{0};
+        void reset() {
+            m_counter.store(0, std::memory_order_release);
+        }
+        void increment() {
+            m_counter.fetch_add(1, std::memory_order_acquire);
+        }
+        void decrement() {
+            m_counter.fetch_sub(1, std::memory_order_acquire);
+        }
+        bool isIdle() const {
+            return m_counter.load(std::memory_order_acquire) == 0; 
+        }
+        auto operator ++ () -> PendingCounter & {
+            increment();
+            return *this;
+        }
+        auto operator -- () -> PendingCounter & {
+            decrement();
+            return *this;
+        }
+    };
+
     template <ActivityType Activity>
     inline static auto invokeActivity(Activity *pActivity, std::size_t idx, bool autoDelete = true) {
         if (idx >= TA_ThreadHolder::get().size()) {
@@ -498,6 +522,7 @@ class TA_MetaObject {
   private:
     const std::thread::id m_sourceThread;
     std::atomic_size_t m_affinityThreadIdx;
+    PendingCounter m_pendingCounter {};
 
     std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject>> m_outputConnections{};
     std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject>> m_inputConnections{};
