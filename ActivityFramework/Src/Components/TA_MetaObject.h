@@ -95,6 +95,11 @@ class TA_MetaObject {
         return *this;
     }
 
+    class PendingCounter;
+    auto pendingCounter() -> PendingCounter & {
+        return m_pendingCounter; 
+    }
+
   protected:
     struct PendingCounter {
         std::atomic_size_t m_counter{0};
@@ -784,6 +789,16 @@ class TA_MetaObject {
         auto fetcher = TA_ThreadHolder::get().postActivity(receiverActivity, true);
         fetcher();
     };
+};
+
+struct TA_TrackedActivityResultFetcher : public TA_ActivityResultFetcher {
+    std::shared_ptr<TA_MetaObject> pMetaObject{nullptr};
+    TA_DefaultVariant operator()() {
+        if (pMetaObject) {
+            pMetaObject->pendingCounter().decrement();
+        }
+        return pProxy->result();
+    }
 };
 
 } // namespace CoreAsync
