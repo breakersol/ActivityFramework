@@ -70,18 +70,18 @@ class TA_ActivityResultAwaitable {
     TA_ActivityResultAwaitable() = delete;
 
     explicit TA_ActivityResultAwaitable(const TA_ActivityResultFetcher &fetcher) : m_fetcher(fetcher) {
-        if (!m_fetcher.pProxy->isValid()) {
+        if (!m_fetcher.isValid()) {
             throw std::runtime_error("TA_ActivityResultAwaitable: Fetcher is not valid!");
         }
     }
 
     ~TA_ActivityResultAwaitable() = default;
 
-    bool await_ready() const noexcept { return m_fetcher.pProxy->isExecuted() || !m_fetcher.pProxy->isValid(); }
+    bool await_ready() const noexcept { return m_fetcher.isExecuted() || !m_fetcher.isValid(); }
 
     void await_suspend(std::coroutine_handle<> handle) noexcept {
         auto activity = TA_ActivityCreator::create([this, handle]() {
-            if (m_fetcher.pProxy->isExecuted()) {
+            if (m_fetcher.isExecuted()) {
                 handle.resume();
             } else {
                 m_res = m_fetcher();

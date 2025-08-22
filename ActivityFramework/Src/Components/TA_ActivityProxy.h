@@ -142,10 +142,18 @@ class TA_ActivityProxy {
     std::atomic_bool m_isExecuted{false};
 };
 
-struct TA_ActivityResultFetcher {
+class TA_ActivityResultFetcher {
+  public:
+    TA_ActivityResultFetcher() = default;
+    TA_ActivityResultFetcher(std::shared_ptr<TA_ActivityProxy> proxy) : pProxy(proxy) {}
+
+    virtual TA_DefaultVariant operator()() { return pProxy->result(); }
+    bool isValid() const { return pProxy && pProxy->isValid(); }
+    bool isExecuted() const { return pProxy && pProxy->isExecuted(); }
+
+  private:
     std::shared_ptr<TA_ActivityProxy> pProxy{nullptr};
 
-    TA_DefaultVariant operator()() { return pProxy->result(); }
 };
 } // namespace CoreAsync
 

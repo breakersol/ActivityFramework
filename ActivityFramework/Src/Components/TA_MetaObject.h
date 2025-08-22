@@ -27,6 +27,7 @@
 #include "TA_Activity.h"
 
 namespace CoreAsync {
+
 #define TA_Signals public
 
 class TA_MetaObject;
@@ -37,6 +38,22 @@ concept EnableConnectObjectType = requires(T *t) {
 };
 
 enum class TA_ConnectionType { Auto, Direct, Queued };
+
+class TA_TrackedActivityResultFetcher : public TA_ActivityResultFetcher {
+  public:
+    TA_TrackedActivityResultFetcher() = default;
+    TA_TrackedActivityResultFetcher(std::shared_ptr<TA_ActivityProxy> proxy) : TA_ActivityResultFetcher(proxy) {}
+    TA_TrackedActivityResultFetcher(std::shared_ptr<TA_ActivityProxy> proxy, TA_MetaObject *pMetaObject)
+        : TA_ActivityResultFetcher(proxy), m_pMetaObject(pMetaObject) {}
+    TA_TrackedActivityResultFetcher(TA_ActivityResultFetcher &&other, TA_MetaObject *pMetaObject) noexcept
+        : TA_ActivityResultFetcher(std::move(other)), m_pMetaObject(pMetaObject) {}
+    ~TA_TrackedActivityResultFetcher();
+
+    [[nodiscard]] auto metaObject() const -> TA_MetaObject * { return m_pMetaObject; }
+
+  private:
+    TA_MetaObject *m_pMetaObject{nullptr};
+};
 
 class TA_MetaObject {
     class TA_ConnectionObject;
@@ -95,9 +112,20 @@ class TA_MetaObject {
         return *this;
     }
 
-    class PendingCounter;
-    auto pendingCounter() -> PendingCounter & {
-        return m_pendingCounter; 
+    void pendingCountIncrement() {
+        m_pendingCounter.increment(); 
+    }
+
+    void pendingCountDecrement() {
+        m_pendingCounter.decrement(); 
+    }
+
+    bool isIdle() const {
+        return m_pendingCounter.isIdle(); 
+    }
+
+    void resetPendingCount() {
+        m_pendingCounter.reset(); 
     }
 
   protected:
@@ -126,14 +154,28 @@ class TA_MetaObject {
     };
 
     template <ActivityType Activity>
-    inline static auto invokeActivity(Activity *pActivity, std::size_t idx, bool autoDelete = true) {
+    inline static auto invokeActivity(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete = true) {
+        if (!pActivity) {
+            throw std::invalid_argument("Activity is null");
+        }
+        if (!pHost) {
+            throw std::invalid_argument("Host object is null");
+        }
+        std::size_t idx = pHost->affinityThread();
         if (idx >= TA_ThreadHolder::get().size()) {
             throw std::out_of_range("Thread index out of range.");
         }
+        if (pHost->isIdle()) {
+            pHost->updateAffinityThread();
+            idx = pHost->affinityThread();
+        }
+        pHost->pendingCountIncrement();
         pActivity->moveToThread(idx);
-        return TA_ThreadHolder::get().postActivity(pActivity, autoDelete);
+        return TA_TrackedActivityResultFetcher{
+            std::move(TA_ThreadHolder::get().postActivity(pActivity, autoDelete)), pHost
+        };
     }
-
+    
     inline static bool isOnCurrentThread(TA_MetaObject *pObject) {
         if (!pObject) {
             return false;
@@ -203,7 +245,7 @@ class TA_MetaObject {
             std::forward<bool(*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl),
             idx, m_affinityThreadIdx);
         activity->setStolenEnabled(false);
-        auto fetcher = invokeActivity(activity, affinityThread());
+        auto fetcher = invokeActivity(activity, this);
         return fetcher().template get<bool>();
     }
 
@@ -256,7 +298,7 @@ class TA_MetaObject {
             std::forward<ExpType>(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>),
             pSender, signal, exp, type, autoDestroy);
         registerActivity->setStolenEnabled(false);
-        auto fetcher = invokeActivity(registerActivity, pSender->affinityThread());
+        auto fetcher = invokeActivity(registerActivity, pSender);
         auto res = fetcher();
         return res.template get<TA_ConnectionObjectHolder>();
     }
@@ -297,7 +339,7 @@ class TA_MetaObject {
         auto activity = TA_ActivityCreator::create(
             std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), holder);
         activity->setStolenEnabled(false);
-        auto fetcher = invokeActivity(activity, holder.m_pConnection->sender()->affinityThread());
+        auto fetcher = invokeActivity(activity, holder.m_pConnection->sender());
         auto res = fetcher();
         return res.template get<bool>();
     }
@@ -323,7 +365,7 @@ class TA_MetaObject {
             std::forward<ExpType>(m_emitSignalImpl<Sender, Signal, Args...>),
             pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
         activity->setStolenEnabled(false);
-        auto fetcher = invokeActivity(activity, pSender->affinityThread());
+        auto fetcher = invokeActivity(activity, pSender);
         auto res = fetcher();
         return res.template get<bool>();
     }
@@ -360,14 +402,13 @@ class TA_MetaObject {
         auto activity = TA_ActivityCreator::create(m_isConnectionExistedImpl<Sender, Receiver>,
                                                    pSender, signalMark, pReceiver, slotMark);
         activity->setStolenEnabled(false);
-        auto fetcher = invokeActivity(activity, pSender->affinityThread());
+        auto fetcher = invokeActivity(activity, pSender);
         return fetcher().template get<bool>();
     }
 
   private:
     class TA_ConnectionObject : public std::enable_shared_from_this<TA_ConnectionObject> {
         using SlotExpType = std::function<void()>;
-
       public:
         TA_ConnectionObject() = default;
         template <EnableConnectObjectType Sender, typename Signal>
@@ -524,6 +565,10 @@ class TA_MetaObject {
         m_inputConnections.clear();
     }
 
+    void updateAffinityThread() {
+        m_affinityThreadIdx.store(TA_ThreadHolder::get().topPriorityThread(), std::memory_order_release); 
+    }
+
   private:
     const std::thread::id m_sourceThread;
     std::atomic_size_t m_affinityThreadIdx;
@@ -612,7 +657,7 @@ class TA_MetaObject {
         } else {
             auto senderActivity = TA_ActivityCreator::create(std::move(senderUnregisterExp));
             senderActivity->setStolenEnabled(false);
-            auto opFetcher = invokeActivity(senderActivity, pSender->affinityThread());
+            auto opFetcher = invokeActivity(senderActivity, pSender);
             res = opFetcher().template get<bool>();
         }
         if(!res) {
@@ -639,7 +684,7 @@ class TA_MetaObject {
         }
         auto receiverActivity = TA_ActivityCreator::create(std::move(receiverUnregisterExp));
         receiverActivity->setStolenEnabled(false);
-        auto opFetcher = invokeActivity(receiverActivity, pReceiver->affinityThread());
+        auto opFetcher = invokeActivity(receiverActivity, pReceiver);
         return opFetcher().template get<bool>();
     };
 
@@ -697,7 +742,7 @@ class TA_MetaObject {
             } else {
                 auto syncActivity = TA_ActivityCreator::create(std::move(syncRegisterExp));
                 syncActivity->setStolenEnabled(false);
-                auto syncFetcher = invokeActivity(syncActivity, pSender->affinityThread());
+                auto syncFetcher = invokeActivity(syncActivity, pSender);
                 auto res = syncFetcher();
                 return res.template get<bool>();
             }
@@ -725,7 +770,7 @@ class TA_MetaObject {
             } else {
                 auto senderRegisterActivity = TA_ActivityCreator::create(std::move(senderRegisterExp));
                 senderRegisterActivity->setStolenEnabled(false);
-                auto addIntoSenderFetcher = invokeActivity(senderRegisterActivity, pSender->affinityThread());
+                auto addIntoSenderFetcher = invokeActivity(senderRegisterActivity, pSender);
                 connectionObj = addIntoSenderFetcher().template get<SharedConnection>();
 
             }
@@ -740,7 +785,7 @@ class TA_MetaObject {
             } else {
                 auto addIntoReceiverActivity = TA_ActivityCreator::create(std::move(receiverRegisterExp));
                 addIntoReceiverActivity->setStolenEnabled(false);
-                auto addIntoReceiverFetcher = invokeActivity(addIntoReceiverActivity, pReceiver->affinityThread());
+                auto addIntoReceiverFetcher = invokeActivity(addIntoReceiverActivity, pReceiver);
                 addIntoReceiverFetcher();
             }
             return true;
@@ -791,15 +836,11 @@ class TA_MetaObject {
     };
 };
 
-struct TA_TrackedActivityResultFetcher : public TA_ActivityResultFetcher {
-    std::shared_ptr<TA_MetaObject> pMetaObject{nullptr};
-    TA_DefaultVariant operator()() {
-        if (pMetaObject) {
-            pMetaObject->pendingCounter().decrement();
-        }
-        return pProxy->result();
+inline TA_TrackedActivityResultFetcher::~TA_TrackedActivityResultFetcher() {
+    if (m_pMetaObject) {
+        m_pMetaObject->pendingCountDecrement();
     }
-};
+}
 
 } // namespace CoreAsync
 
