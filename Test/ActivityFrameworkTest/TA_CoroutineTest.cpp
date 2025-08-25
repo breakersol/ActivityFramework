@@ -15,6 +15,7 @@
  */
 
 #include "TA_CoroutineTest.h"
+#include "Components/TA_Connection.h"
 
 TA_CoroutineTest::TA_CoroutineTest() {}
 

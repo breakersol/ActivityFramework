@@ -24,6 +24,7 @@
 #include "TA_MetaReflex.h"
 #include "TA_MetaObject.h"
 #include "TA_Coroutine.h"
+#include "TA_Connection.h"
 
 namespace CoreAsync {
 

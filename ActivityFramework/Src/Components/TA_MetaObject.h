@@ -25,6 +25,7 @@
 #include "TA_ThreadPool.h"
 #include "TA_MetaReflex.h"
 #include "TA_Activity.h"
+#include "TA_Coroutine.h"
 
 namespace CoreAsync {
 
@@ -841,6 +842,115 @@ inline TA_TrackedActivityResultFetcher::~TA_TrackedActivityResultFetcher() {
         m_pMetaObject->pendingCountDecrement();
     }
 }
+
+template <EnableConnectObjectType Sender, typename... Args> class TA_SignalAwaitable {
+  public:
+    TA_SignalAwaitable(Sender *pObject, void (std::decay_t<Sender>::*signal)(Args...))
+        : m_pObject(pObject), m_signal(signal) {}
+
+    ~TA_SignalAwaitable() {}
+
+    constexpr bool await_ready() const noexcept { return false; }
+
+    constexpr void await_suspend(std::coroutine_handle<> handle) noexcept {
+        TA_MetaObject::registerConnection(
+            m_pObject, std::move(m_signal),
+            [this, handle](Args... args) {
+                if constexpr (sizeof...(Args) != 0)
+                    m_args = std::make_tuple(args...);
+                handle.resume();
+            }, TA_ConnectionType::Auto, true);
+    }
+
+    constexpr auto await_resume() const noexcept {
+        if constexpr (sizeof...(Args) != 0) {
+            if constexpr (sizeof...(Args) == 1) {
+                return std::get<0>(m_args);
+            } else {
+                return m_args;
+            }
+        }
+    }
+
+    TA_SignalAwaitable operator=(const TA_SignalAwaitable &) = delete;
+
+  protected:
+    Sender *m_pObject{nullptr};
+    void (std::decay_t<Sender>::*m_signal)(Args...);
+    std::tuple<Args...> m_args{};
+};
+
+class TA_ActivityResultAwaitable {
+  public:
+    TA_ActivityResultAwaitable() = delete;
+
+    explicit TA_ActivityResultAwaitable(const TA_ActivityResultFetcher &fetcher) : m_fetcher(fetcher) {
+        if (!m_fetcher.isValid()) {
+            throw std::runtime_error("TA_ActivityResultAwaitable: Fetcher is not valid!");
+        }
+    }
+
+    ~TA_ActivityResultAwaitable() = default;
+
+    bool await_ready() const noexcept { return m_fetcher.isExecuted() || !m_fetcher.isValid(); }
+
+    void await_suspend(std::coroutine_handle<> handle) noexcept {
+        auto activity = TA_ActivityCreator::create([this, handle]() {
+            if (m_fetcher.isExecuted()) {
+                handle.resume();
+            } else {
+                m_res = m_fetcher();
+                handle.resume();
+            }
+        });
+        auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+    }
+
+    auto await_resume() noexcept { return m_res; }
+
+  private:
+    TA_ActivityResultFetcher m_fetcher{};
+    TA_DefaultVariant m_res{};
+};
+
+class TA_ActivityExecutingAwaitable {
+  public:
+    enum class ExecuteType { Async, Sync };
+
+    TA_ActivityExecutingAwaitable(TA_ActivityProxy *pActivity, ExecuteType type)
+        : m_pProxy(pActivity), m_executeType(type) {
+        if (!m_pProxy) {
+            throw std::runtime_error("TA_ActivityResultAwaitable: pActivity is null!");
+        }
+    }
+
+    ~TA_ActivityExecutingAwaitable() {
+        if (m_pProxy && !m_pProxy->isExecuted()) {
+            delete m_pProxy;
+            m_pProxy = nullptr;
+        }
+    }
+
+    bool await_ready() const noexcept { return m_pProxy->isExecuted() || !m_pProxy->isValid(); }
+
+    void await_suspend(std::coroutine_handle<> handle) noexcept {
+        if (m_executeType == ExecuteType::Async) {
+            m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
+        } else {
+            std::shared_ptr<TA_ActivityProxy> sharedProxy(std::make_shared<TA_ActivityProxy>(m_pProxy));
+            sharedProxy->operator()();
+            m_fetcher = {sharedProxy};
+        }
+        handle.resume();
+    }
+
+    auto await_resume() const noexcept { return m_fetcher; }
+
+  private:
+    TA_ActivityProxy *m_pProxy{nullptr};
+    ExecuteType m_executeType{ExecuteType::Async};
+    TA_ActivityResultFetcher m_fetcher{};
+};
 
 } // namespace CoreAsync
 
