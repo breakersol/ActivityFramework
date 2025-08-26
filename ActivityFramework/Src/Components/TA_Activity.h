@@ -19,6 +19,7 @@
 
 #include "TA_MetaReflex.h"
 #include "TA_ActivityComponents.h"
+#include "TA_Coroutine.h"
 
 namespace CoreAsync {
 template <typename T>
@@ -272,6 +273,93 @@ class TA_ActivityCreator {
         return new TA_MethodActivity<Method, Args...>(std::forward<Method>(method), std::forward<Args>(args)...);
     }
 };
+
+template <ActivityType Activity>
+class TA_ActivityResultAwaitable {
+  public:
+    TA_ActivityResultAwaitable() = delete;
+
+    TA_ActivityResultAwaitable(Activity *pActivity, bool autoDelete) :
+        m_pActivity(pActivity), m_autoDelete(autoDelete) {
+        if (!m_pActivity) {
+            throw std::runtime_error("TA_ActivityResultAwaitable: pActivity is null!");
+        }
+    }
+
+    virtual ~TA_ActivityResultAwaitable() = default;
+
+    TA_ActivityResultAwaitable operator=(const TA_ActivityResultAwaitable &) = delete;
+
+    bool await_ready() const noexcept { return m_pActivity == nullptr; }
+
+    virtual void await_suspend(std::coroutine_handle<> handle) noexcept {
+        auto activity = TA_ActivityCreator::create([this, handle]() {
+            if (!m_pActivity) {
+                handle.resume();
+            } else {
+                if constexpr(std::is_same_v<void, decltype(m_pActivity->operator()())>)
+                    m_pActivity->operator()();
+                else
+                    m_res = m_pActivity->operator()();
+                if (m_autoDelete) {
+                    delete m_pActivity;
+                    m_pActivity = nullptr;
+                }
+                handle.resume();
+            }
+        });
+        activity->setStolenEnabled(m_pActivity->stolenEnabled());
+        activity->moveToThread(m_pActivity->affinityThread());
+        auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+    }
+
+    auto await_resume() noexcept { return m_res; }
+
+  protected:
+    Activity *m_pActivity;
+    bool m_autoDelete {true};
+    TA_DefaultVariant m_res{};
+};
+
+class TA_ActivityExecutingAwaitable {
+  public:
+    enum class ExecuteType { Async, Sync };
+
+    TA_ActivityExecutingAwaitable(TA_ActivityProxy *pActivity, ExecuteType type)
+        : m_pProxy(pActivity), m_executeType(type) {
+        if (!m_pProxy) {
+            throw std::runtime_error("TA_ActivityExecutingAwaitable: pActivity is null!");
+        }
+    }
+
+    ~TA_ActivityExecutingAwaitable() {
+        if (m_pProxy && !m_pProxy->isExecuted()) {
+            delete m_pProxy;
+            m_pProxy = nullptr;
+        }
+    }
+
+    bool await_ready() const noexcept { return m_pProxy->isExecuted() || !m_pProxy->isValid(); }
+
+    void await_suspend(std::coroutine_handle<> handle) noexcept {
+        if (m_executeType == ExecuteType::Async) {
+            m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
+        } else {
+            std::shared_ptr<TA_ActivityProxy> sharedProxy(std::make_shared<TA_ActivityProxy>(m_pProxy));
+            sharedProxy->operator()();
+            m_fetcher = {sharedProxy};
+        }
+        handle.resume();
+    }
+
+    auto await_resume() const noexcept { return m_fetcher; }
+
+  private:
+    TA_ActivityProxy *m_pProxy{nullptr};
+    ExecuteType m_executeType{ExecuteType::Async};
+    TA_ActivityResultFetcher m_fetcher{};
+};
+
 } // namespace CoreAsync
 
 #endif // TA_ACTIVITY_H
