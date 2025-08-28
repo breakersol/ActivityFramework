@@ -39,14 +39,18 @@ concept EnableConnectObjectType = requires(T *t) {
 
 enum class TA_ConnectionType { Auto, Direct, Queued };
 
-template <ActivityType Activity>
-class TA_TrackedActivityResultAwaitable : public TA_ActivityResultAwaitable<Activity> {
+class TA_TrackedActivityResultAwaitable : public TA_ActivityResultAwaitable {
   public:
+    TA_TrackedActivityResultAwaitable() : TA_ActivityResultAwaitable() {}
+
+    template <ActivityType Activity>
     TA_TrackedActivityResultAwaitable(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete = true);
 
     ~TA_TrackedActivityResultAwaitable() = default;
 
     TA_TrackedActivityResultAwaitable operator=(const TA_TrackedActivityResultAwaitable &) = delete;
+
+    template <ActivityType Activity> bool bind(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete);
 
     void await_suspend(std::coroutine_handle<> handle) noexcept override;
 
@@ -169,7 +173,9 @@ class TA_MetaObject {
             idx = pHost->affinityThread();
         }
         pActivity->moveToThread(idx);
-        auto res = co_await TA_TrackedActivityResultAwaitable<Activity>(pActivity, pHost, autoDelete);
+        static TA_TrackedActivityResultAwaitable trackedResultAwaitable{};
+        trackedResultAwaitable.bind(pActivity, pHost, autoDelete);
+        auto res = co_await trackedResultAwaitable;
         co_return res;
     }
     
@@ -862,40 +868,48 @@ template <EnableConnectObjectType Sender, typename... Args> class TA_SignalAwait
     std::tuple<Args...> m_args{};
 };
 
-template<ActivityType Activity>
-inline TA_TrackedActivityResultAwaitable<Activity>::TA_TrackedActivityResultAwaitable(
+template <ActivityType Activity>
+inline TA_TrackedActivityResultAwaitable::TA_TrackedActivityResultAwaitable(
     Activity *pActivity, TA_MetaObject *pHost, bool autoDelete)
-    : TA_ActivityResultAwaitable<Activity>(pActivity, autoDelete), m_pMetaObject(pHost) {
+    : TA_ActivityResultAwaitable(pActivity, autoDelete), m_pMetaObject(pHost) {
     if (!m_pMetaObject) {
         throw std::invalid_argument("Host object is null.");
     }
-    m_pMetaObject->pendingCountIncrement();
 }
 
-template<ActivityType Activity>
-inline void TA_TrackedActivityResultAwaitable<Activity>::await_suspend(std::coroutine_handle<> handle) noexcept {
+inline void TA_TrackedActivityResultAwaitable::await_suspend(std::coroutine_handle<> handle) noexcept {
+    m_pMetaObject->pendingCountIncrement();
     auto activity = TA_ActivityCreator::create([this, handle]() {
-        if (!this->m_pActivity) {
+        if (!m_pActivityProxy || !m_pActivityProxy->isValid() || m_pActivityProxy->isExecuted()) {
             handle.resume();
         } else {
-            if constexpr(std::is_same_v<void, decltype(this->m_pActivity->operator()())>)
-                this->m_pActivity->operator()();
-            else
-                this->m_res = this->m_pActivity->operator()();
-            if (this->m_autoDelete) {
-                delete this->m_pActivity;
-                this->m_pActivity = nullptr;
+            if constexpr (std::is_same_v<void, decltype(this->m_pActivityProxy->operator()())>)
+                this->m_pActivityProxy->operator()();
+            else {
+                this->m_pActivityProxy->operator()();
+                this->m_res = this->m_pActivityProxy->result();
             }
-            if (m_pMetaObject) {
-                m_pMetaObject->pendingCountDecrement();
-            }
+            m_pMetaObject->pendingCountDecrement();
             std::cout << "Activity finished in thread: " << std::this_thread::get_id() << std::endl;
             handle.resume();
         }
     });
-    activity->setStolenEnabled(this->m_pActivity->stolenEnabled());
-    activity->moveToThread(this->m_pActivity->affinityThread());
+    activity->setStolenEnabled(this->m_pActivityProxy->stolenEnabled());
+    activity->moveToThread(this->m_pActivityProxy->affinityThread());
     auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+}
+
+template <ActivityType Activity> 
+inline bool TA_TrackedActivityResultAwaitable::bind(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete) {
+    {
+        if (!pHost) {
+            throw std::invalid_argument("Host object is null");
+        }
+        if (m_pMetaObject != pHost) {
+            m_pMetaObject = pHost;
+        }
+        return TA_ActivityResultAwaitable::bind(pActivity, autoDelete);
+    }
 }
 
 } // namespace CoreAsync

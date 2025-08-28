@@ -104,7 +104,7 @@ class TA_ActivityProxy {
         return *this;
     }
 
-    bool isValid() const { return m_future.valid(); }
+    bool isValid() const { return m_pActivity && m_future.valid(); }
 
     TA_DefaultVariant result() const { return m_future.get(); }
 

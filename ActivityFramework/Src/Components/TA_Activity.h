@@ -274,50 +274,61 @@ class TA_ActivityCreator {
     }
 };
 
-template <ActivityType Activity>
 class TA_ActivityResultAwaitable {
   public:
-    TA_ActivityResultAwaitable() = delete;
+    TA_ActivityResultAwaitable() = default;
 
-    TA_ActivityResultAwaitable(Activity *pActivity, bool autoDelete) :
-        m_pActivity(pActivity), m_autoDelete(autoDelete) {
-        if (!m_pActivity) {
+    template <ActivityType Activity>
+    TA_ActivityResultAwaitable(Activity *pActivity, bool autoDelete) : m_pActivityProxy(new TA_ActivityProxy(pActivity, autoDelete)) {
+        if (!m_pActivityProxy) {
             throw std::runtime_error("TA_ActivityResultAwaitable: pActivity is null!");
         }
     }
 
-    virtual ~TA_ActivityResultAwaitable() = default;
+    virtual ~TA_ActivityResultAwaitable() {
+        if(m_pActivityProxy) {
+            delete m_pActivityProxy;
+            m_pActivityProxy = nullptr;
+        }
+    }
+
+    template <ActivityType Activity>
+    bool bind(Activity *pActivity, bool autoDelete) {
+        if (m_pActivityProxy) {
+            delete m_pActivityProxy;
+            m_pActivityProxy = nullptr;
+        }
+        m_pActivityProxy = new TA_ActivityProxy(pActivity, autoDelete);
+        return m_pActivityProxy != nullptr;
+    }
 
     TA_ActivityResultAwaitable operator=(const TA_ActivityResultAwaitable &) = delete;
 
-    bool await_ready() const noexcept { return m_pActivity == nullptr; }
+    bool await_ready() const noexcept { return m_pActivityProxy && m_pActivityProxy->isValid() && !m_pActivityProxy->isExecuted(); }
 
     virtual void await_suspend(std::coroutine_handle<> handle) noexcept {
         auto activity = TA_ActivityCreator::create([this, handle]() {
-            if (!m_pActivity) {
+            if (!m_pActivityProxy || !m_pActivityProxy->isValid() || m_pActivityProxy->isExecuted()) {
                 handle.resume();
             } else {
-                if constexpr(std::is_same_v<void, decltype(m_pActivity->operator()())>)
-                    m_pActivity->operator()();
-                else
-                    m_res = m_pActivity->operator()();
-                if (m_autoDelete) {
-                    delete m_pActivity;
-                    m_pActivity = nullptr;
+                if constexpr (std::is_same_v<void, decltype(m_pActivityProxy->operator()())>)
+                    m_pActivityProxy->operator()();
+                else {
+                    m_pActivityProxy->operator()();
+                    m_res = m_pActivityProxy->result();
                 }
                 handle.resume();
             }
         });
-        activity->setStolenEnabled(m_pActivity->stolenEnabled());
-        activity->moveToThread(m_pActivity->affinityThread());
+        activity->setStolenEnabled(m_pActivityProxy->stolenEnabled());
+        activity->moveToThread(m_pActivityProxy->affinityThread());
         auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
     }
 
     auto await_resume() noexcept { return m_res; }
 
   protected:
-    Activity *m_pActivity;
-    bool m_autoDelete {true};
+    TA_ActivityProxy *m_pActivityProxy{nullptr};
     TA_DefaultVariant m_res{};
 };
 
