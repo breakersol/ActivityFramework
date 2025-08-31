@@ -39,18 +39,18 @@ concept EnableConnectObjectType = requires(T *t) {
 
 enum class TA_ConnectionType { Auto, Direct, Queued };
 
-class TA_TrackedActivityResultAwaitable : public TA_ActivityResultAwaitable {
+template <ActivityType Activity> 
+class TA_TrackedActivityResultAwaitable : public TA_ActivityResultAwaitable<Activity> {
   public:
     TA_TrackedActivityResultAwaitable() : TA_ActivityResultAwaitable() {}
 
-    template <ActivityType Activity>
     TA_TrackedActivityResultAwaitable(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete = true);
 
     ~TA_TrackedActivityResultAwaitable() = default;
 
     TA_TrackedActivityResultAwaitable operator=(const TA_TrackedActivityResultAwaitable &) = delete;
 
-    template <ActivityType Activity> bool bind(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete);
+    bool bind(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete);
 
     void await_suspend(std::coroutine_handle<> handle) noexcept override;
 
@@ -173,9 +173,7 @@ class TA_MetaObject {
             idx = pHost->affinityThread();
         }
         pActivity->moveToThread(idx);
-        static TA_TrackedActivityResultAwaitable trackedResultAwaitable{};
-        trackedResultAwaitable.bind(pActivity, pHost, autoDelete);
-        auto res = co_await trackedResultAwaitable;
+        auto res = co_await TA_TrackedActivityResultAwaitable(pActivity, pHost, autoDelete);
         co_return res;
     }
     
@@ -237,18 +235,18 @@ class TA_MetaObject {
 
     std::size_t affinityThread() const { return m_affinityThreadIdx.load(std::memory_order_acquire); }
 
-    void moveToThread(std::size_t idx) {
-        if(m_affinityThreadIdx.load(std::memory_order_acquire) == idx) {
-            return;
+    bool moveToThread(std::size_t idx) {
+        if (m_affinityThreadIdx.load(std::memory_order_acquire) == idx) {
+            return false;
         }
-        if(isOnCurrentThread(this)) {
-            m_moveToThreadImpl(idx, m_affinityThreadIdx);
+        if (isOnCurrentThread(this)) {
+            return m_moveToThreadImpl(idx, m_affinityThreadIdx);
         }
         auto activity = TA_ActivityCreator::create(
-            std::forward<bool(*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl),
-            idx, m_affinityThreadIdx);
+            std::forward<bool (*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl), idx, m_affinityThreadIdx);
         activity->setStolenEnabled(false);
-        invokeActivity(activity, this);
+        auto res = invokeActivity(activity, this);
+        return res.get().template get<bool>();
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -716,7 +714,7 @@ class TA_MetaObject {
         TA_ConnectionObject::FuncMark slotMark {
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
         if(pSender->affinityThread() == pReceiver->affinityThread()) {
-            auto syncRegisterExp = [pSender, &signal, pReceiver, &slot, type, &slotMark]() -> bool {
+            auto syncRegisterExp = [pSender, &signal, pReceiver, &slot, type, slotMark]() -> bool {
                 TA_ConnectionObject::FuncMark signalMark{
                     Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
                 auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
@@ -869,41 +867,38 @@ template <EnableConnectObjectType Sender, typename... Args> class TA_SignalAwait
 };
 
 template <ActivityType Activity>
-inline TA_TrackedActivityResultAwaitable::TA_TrackedActivityResultAwaitable(
+inline TA_TrackedActivityResultAwaitable<Activity>::TA_TrackedActivityResultAwaitable(
     Activity *pActivity, TA_MetaObject *pHost, bool autoDelete)
-    : TA_ActivityResultAwaitable(pActivity, autoDelete), m_pMetaObject(pHost) {
+    : TA_ActivityResultAwaitable<Activity>(pActivity, autoDelete), m_pMetaObject(pHost) {
     if (!m_pMetaObject) {
         throw std::invalid_argument("Host object is null.");
     }
 }
 
-inline void TA_TrackedActivityResultAwaitable::await_suspend(std::coroutine_handle<> handle) noexcept {
+template <ActivityType Activity>
+inline void TA_TrackedActivityResultAwaitable<Activity>::await_suspend(std::coroutine_handle<> handle) noexcept {
     m_pMetaObject->pendingCountIncrement();
-    auto activity = TA_ActivityCreator::create([this, handle]() {
-        if (!m_pActivityProxy || !m_pActivityProxy->isValid() || m_pActivityProxy->isExecuted()) {
-            handle.resume();
-        } else {
-            if constexpr (std::is_same_v<void, decltype(this->m_pActivityProxy->operator()())>)
-                this->m_pActivityProxy->operator()();
-            else {
-                this->m_pActivityProxy->operator()();
-                this->m_res = this->m_pActivityProxy->result();
-            }
-            m_pMetaObject->pendingCountDecrement();
-            std::cout << "Activity finished in thread: " << std::this_thread::get_id() << std::endl;
-            handle.resume();
+    auto activity = TA_ActivityCreator::create([this]() {
+        if constexpr (std::is_same_v<void, decltype(this->m_pActivity->operator()())>)
+            this->m_pActivity->operator()();
+        else {
+            this->m_res = this->m_pActivity->operator()();
         }
+        m_pMetaObject->pendingCountDecrement();
+        std::cout << "Activity finished in thread: " << std::this_thread::get_id() << std::endl;       
     });
-    activity->setStolenEnabled(this->m_pActivityProxy->stolenEnabled());
-    activity->moveToThread(this->m_pActivityProxy->affinityThread());
+    activity->setStolenEnabled(this->m_pActivity->stolenEnabled());
+    activity->moveToThread(this->m_pActivity->affinityThread());
     auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+    fetcher();
+    handle.resume();
 }
 
 template <ActivityType Activity> 
-inline bool TA_TrackedActivityResultAwaitable::bind(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete) {
+inline bool TA_TrackedActivityResultAwaitable<Activity>::bind(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete) {
     {
         if (!pHost) {
-            throw std::invalid_argument("Host object is null");
+            return false;
         }
         if (m_pMetaObject != pHost) {
             m_pMetaObject = pHost;
