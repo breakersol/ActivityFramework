@@ -42,7 +42,7 @@ enum class TA_ConnectionType { Auto, Direct, Queued };
 template <ActivityType Activity> 
 class TA_TrackedActivityResultAwaitable : public TA_ActivityResultAwaitable<Activity> {
   public:
-    TA_TrackedActivityResultAwaitable() : TA_ActivityResultAwaitable() {}
+    TA_TrackedActivityResultAwaitable() : TA_ActivityResultAwaitable<Activity>() {}
 
     TA_TrackedActivityResultAwaitable(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete = true);
 
@@ -173,7 +173,9 @@ class TA_MetaObject {
             idx = pHost->affinityThread();
         }
         pActivity->moveToThread(idx);
-        auto res = co_await TA_TrackedActivityResultAwaitable(pActivity, pHost, autoDelete);
+        TA_TrackedActivityResultAwaitable<Activity> awaiter;
+        awaiter.bind(pActivity, pHost, autoDelete);
+        auto res = co_await awaiter;
         co_return res;
     }
     
@@ -885,7 +887,7 @@ inline void TA_TrackedActivityResultAwaitable<Activity>::await_suspend(std::coro
             this->m_res = this->m_pActivity->operator()();
         }
         m_pMetaObject->pendingCountDecrement();
-        std::cout << "Activity finished in thread: " << std::this_thread::get_id() << std::endl;       
+        //std::cout << "Activity finished in thread: " << std::this_thread::get_id() << std::endl;    
     });
     activity->setStolenEnabled(this->m_pActivity->stolenEnabled());
     activity->moveToThread(this->m_pActivity->affinityThread());
@@ -903,7 +905,7 @@ inline bool TA_TrackedActivityResultAwaitable<Activity>::bind(Activity *pActivit
         if (m_pMetaObject != pHost) {
             m_pMetaObject = pHost;
         }
-        return TA_ActivityResultAwaitable::bind(pActivity, autoDelete);
+        return TA_ActivityResultAwaitable<Activity>::bind(pActivity, autoDelete);
     }
 }
 

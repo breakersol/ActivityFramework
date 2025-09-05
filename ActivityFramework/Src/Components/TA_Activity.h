@@ -332,7 +332,9 @@ class TA_ActivityResultAwaitable {
 
     auto await_resume() noexcept {
         m_isRunning.store(false, std::memory_order_release);
-        return m_res; 
+        // Move out the result to avoid an extra copy and preserve
+        // identity for non-SSO types stored in TA_DefaultVariant.
+        return std::move(m_res);
     }
 
   protected:
