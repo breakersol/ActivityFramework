@@ -19,6 +19,7 @@
 
 #include "TA_MetaReflex.h"
 #include "TA_ActivityComponents.h"
+#include "TA_Coroutine.h"
 
 namespace CoreAsync {
 template <typename T>
@@ -272,6 +273,134 @@ class TA_ActivityCreator {
         return new TA_MethodActivity<Method, Args...>(std::forward<Method>(method), std::forward<Args>(args)...);
     }
 };
+
+struct TA_CoroutineBlockHelper {
+    TA_ActivityProxy *m_pContinuationProxy{nullptr};
+    std::coroutine_handle<> m_handle;
+    bool m_isBlockingPromise{false};
+};
+
+template <bool EnableNotify>
+class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_ActivityFetcherAwaitable<EnableNotify>> {
+  public:
+    TA_ActivityFetcherAwaitable() = default;
+
+    explicit TA_ActivityFetcherAwaitable(TA_ActivityProxy *pActivity) : m_pProxy(pActivity) {
+        if (!m_pProxy || !m_pProxy->isValid()) {
+            throw std::runtime_error("TA_ActivityFetcherAwaitable: Activity Proxy is not valid!");
+        }
+    }
+
+    ~TA_ActivityFetcherAwaitable() = default;
+
+    bool await_ready() noexcept {
+        m_isRunning.store(true, std::memory_order_release);
+        return !m_pProxy || !m_pProxy->isValid() || m_pProxy->isExecuted();
+    }
+
+    template <typename PromiseType>
+    void await_suspend(std::coroutine_handle<PromiseType> handle) noexcept {  
+        auto self = this->shared_from_this();
+        self->m_blockHelper.m_handle = handle;
+        self->m_blockHelper.m_isBlockingPromise = PromiseType::isBlockingType;
+
+        TA_ActivityResultFetcher fetcher = TA_ThreadHolder::get().postActivity(self->m_pProxy);
+        auto activity = TA_ActivityCreator::create([self, handle, fetcher]() {
+            self->m_res = fetcher();
+            auto continuationActivity = TA_ActivityCreator::create([self, handle]() {
+                if constexpr (PromiseType::isBlockingType && EnableNotify) {
+                    auto &pr = handle.promise();
+                    pr.m_completed.store(true, std::memory_order_release);
+                    pr.m_completed.notify_all();
+                }
+            });
+            self->m_blockHelper.m_pContinuationProxy = new TA_ActivityProxy(continuationActivity, true);
+            handle.resume();
+        });
+        auto resultFetcher = TA_ThreadHolder::get().postActivity(activity, true);
+    }
+
+    auto await_resume() noexcept {
+        m_isRunning.store(false, std::memory_order_release);
+
+        if (m_blockHelper.m_pContinuationProxy) {
+            auto continuationFetcher = TA_ThreadHolder::get().postActivity(m_blockHelper.m_pContinuationProxy);
+            m_blockHelper.m_pContinuationProxy = nullptr;
+        }
+        return std::move(m_res); 
+    }
+
+    //bool bind(const TA_ActivityResultFetcher &fetcher) {
+    //    if (m_isRunning.load(std::memory_order_acquire)) {
+    //        return false;
+    //    }
+    //    if (!fetcher.isValid()) {
+    //        return false;
+    //    }
+    //    m_fetcher = fetcher;
+    //    m_res = TA_DefaultVariant{};
+    //    return true;
+    //}
+
+  private:
+    std::atomic_bool m_isRunning{false};
+    TA_ActivityProxy *m_pProxy{nullptr};
+    TA_DefaultVariant m_res{};
+    TA_CoroutineBlockHelper m_blockHelper{};
+};
+
+using TA_ActivityFetcherAwaitableNoNotify = TA_ActivityFetcherAwaitable<false>;
+using TA_ActivityFetcherAwaitableNotify = TA_ActivityFetcherAwaitable<true>;
+
+template <bool EnableNotify>
+class TA_ActivityExecutingAwaitable : public std::enable_shared_from_this<TA_ActivityExecutingAwaitable<EnableNotify>> {
+  public:
+    enum class ExecuteType { Async, Sync };
+
+    TA_ActivityExecutingAwaitable(TA_ActivityProxy *pActivity, ExecuteType type)
+        : m_pProxy(pActivity), m_executeType(type) {
+        if (!m_pProxy) {
+            throw std::runtime_error("TA_ActivityExecutingAwaitable: pActivity is null!");
+        }
+    }
+
+    ~TA_ActivityExecutingAwaitable() {
+        if (m_pProxy && !m_pProxy->isExecuted()) {
+            delete m_pProxy;
+            m_pProxy = nullptr;
+        }
+    }
+
+    bool await_ready() const noexcept { return m_pProxy->isExecuted() || !m_pProxy->isValid(); }
+
+    template <typename PromiseType> 
+    void await_suspend(std::coroutine_handle<PromiseType> handle) noexcept {
+        if (m_executeType == ExecuteType::Async) {
+            m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
+        } else {
+            std::shared_ptr<TA_ActivityProxy> sharedProxy(std::make_shared<TA_ActivityProxy>(m_pProxy));
+            sharedProxy->operator()();
+            m_fetcher = {sharedProxy};
+        }
+        handle.resume();
+        if constexpr (PromiseType::isBlockingType && EnableNotify) {
+            auto &pr = handle.promise();
+            pr.m_completed.store(true, std::memory_order_release);
+            pr.m_completed.notify_all();
+        }
+    }
+
+    auto await_resume() const noexcept { return m_fetcher; }
+
+  private:
+    TA_ActivityProxy *m_pProxy{nullptr};
+    ExecuteType m_executeType{ExecuteType::Async};
+    TA_ActivityResultFetcher m_fetcher{};
+};
+
+using TA_ActivityExecutingAwaitableNoNotify = TA_ActivityExecutingAwaitable<false>;
+using TA_ActivityExecutingAwaitableNotify = TA_ActivityExecutingAwaitable<true>;
+
 } // namespace CoreAsync
 
 #endif // TA_ACTIVITY_H

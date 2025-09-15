@@ -104,7 +104,7 @@ class TA_ActivityProxy {
         return *this;
     }
 
-    bool isValid() const { return m_future.valid(); }
+    bool isValid() const { return m_pActivity && m_future.valid(); }
 
     TA_DefaultVariant result() const { return m_future.get(); }
 
@@ -147,7 +147,7 @@ class TA_ActivityResultFetcher {
     TA_ActivityResultFetcher() = default;
     TA_ActivityResultFetcher(std::shared_ptr<TA_ActivityProxy> proxy) : pProxy(proxy) {}
 
-    virtual TA_DefaultVariant operator()() { return pProxy->result(); }
+    virtual TA_DefaultVariant operator()() const { return pProxy->result(); }
     bool isValid() const { return pProxy && pProxy->isValid(); }
     bool isExecuted() const { return pProxy && pProxy->isExecuted(); }
 

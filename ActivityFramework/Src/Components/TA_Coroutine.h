@@ -28,13 +28,15 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineTask {
     struct promise_type {
         std::optional<T> m_result{};
         std::exception_ptr m_exception{};
+        std::atomic_bool m_completed{false};
+        static constexpr bool isBlockingType{true};
 
         TA_CoroutineTask get_return_object() {
             return TA_CoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         std::suspend_always initial_suspend() noexcept { return {}; }
-        ::std::suspend_always final_suspend() noexcept { return {}; }
+        std::suspend_always final_suspend() noexcept { return {}; }
 
         void return_value(const T &value) { m_result = value; }
 
@@ -76,17 +78,15 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineTask {
     }
 
     T get() {
-        if (m_coroutineHandle.done()) {
-            if (m_coroutineHandle.promise().m_exception) {
-                std::rethrow_exception(m_coroutineHandle.promise().m_exception);
-            }
-            return std::move(*m_coroutineHandle.promise().m_result);
+        if (!m_coroutineHandle) {
+            throw std::runtime_error("Coroutine handle is null.");
         }
-        m_coroutineHandle.resume();
-        if (m_coroutineHandle.promise().m_exception) {
-            std::rethrow_exception(m_coroutineHandle.promise().m_exception);
+        auto &pr = m_coroutineHandle.promise();
+        pr.m_completed.wait(false, std::memory_order_acquire);
+        if (pr.m_exception) {
+            std::rethrow_exception(pr.m_exception);
         }
-        return std::move(*m_coroutineHandle.promise().m_result);
+        return std::move(*pr.m_result);
     }
 
     HandleType m_coroutineHandle;
@@ -96,6 +96,8 @@ template <typename T> struct TA_CoroutineTask<T, Eager> {
     struct promise_type {
         std::optional<T> m_result{};
         std::exception_ptr m_exception{};
+        std::atomic_bool m_completed{false};
+        static constexpr bool isBlockingType{true};
 
         TA_CoroutineTask get_return_object() {
             return TA_CoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -139,17 +141,15 @@ template <typename T> struct TA_CoroutineTask<T, Eager> {
     }
 
     T get() {
-        if (m_coroutineHandle.done()) {
-            if (m_coroutineHandle.promise().m_exception) {
-                std::rethrow_exception(m_coroutineHandle.promise().m_exception);
-            }
-            return std::move(*m_coroutineHandle.promise().m_result);
+        if (!m_coroutineHandle) {
+            throw std::runtime_error("Coroutine handle is null.");
         }
-        m_coroutineHandle.resume();
-        if (m_coroutineHandle.promise().m_exception) {
-            std::rethrow_exception(m_coroutineHandle.promise().m_exception);
+        auto &pr = m_coroutineHandle.promise();
+        pr.m_completed.wait(false, std::memory_order_acquire);
+        if (pr.m_exception) {
+            std::rethrow_exception(pr.m_exception);
         }
-        return std::move(*m_coroutineHandle.promise().m_result);
+        return std::move(*pr.m_result);
     }
 };
 
@@ -157,6 +157,7 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineGenerator {
     struct promise_type {
         T m_currentValue{};
         std::exception_ptr m_exception{};
+        static constexpr bool isBlockingType{false};
 
         TA_CoroutineGenerator get_return_object() {
             return TA_CoroutineGenerator{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -230,6 +231,7 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
     struct promise_type {
         T m_currentValue{};
         std::exception_ptr m_exception{};
+        static constexpr bool isBlockingType{false};
 
         TA_CoroutineGenerator get_return_object() {
             return TA_CoroutineGenerator{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -292,6 +294,7 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
 
     HandleType m_coroutineHandle;
 };
+
 } // namespace CoreAsync
 
 #endif // TA_COROUTINE_H
