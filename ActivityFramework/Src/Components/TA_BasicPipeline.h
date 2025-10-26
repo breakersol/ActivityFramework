@@ -24,6 +24,7 @@
 #include "TA_MetaReflex.h"
 #include "TA_MetaObject.h"
 #include "TA_Coroutine.h"
+#include "TA_Connection.h"
 
 namespace CoreAsync {
 
@@ -143,8 +144,10 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
         }
         setState(State::Busy);
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        auto fetcher = co_await TA_ActivityExecutingAwaitable(new TA_ActivityProxy(m_pRunningActivity, false),
-                                                              (TA_ActivityExecutingAwaitable::ExecuteType)(type));
+        std::shared_ptr<TA_ActivityExecutingAwaitable> executingAwaitable =
+        std::make_shared<TA_ActivityExecutingAwaitable>(new TA_ActivityProxy(m_pRunningActivity, false),
+                                                        (TA_ActivityExecutingAwaitable::ExecuteType)(type));
+        auto fetcher = co_await *executingAwaitable;
         co_return fetcher;
     }
 

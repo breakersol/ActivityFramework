@@ -45,8 +45,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     ~TA_Variant() { destroy(); }
 
-    TA_Variant(const TA_Variant &var) : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject) {
-        destroy();
+    TA_Variant(const TA_Variant &var) : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject), m_destroySSOExp(var.m_destroySSOExp) {
         if (m_isSmallObject) {
             std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
         } else {
@@ -56,7 +55,6 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
     }
 
     TA_Variant(TA_Variant &&var) : m_typeId(std::move(var.m_typeId)), m_isSmallObject(std::move(var.m_isSmallObject)) {
-        destroy();
         if (m_isSmallObject) {
             std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
         } else {
@@ -67,9 +65,9 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     TA_Variant &operator=(const TA_Variant &var) {
         if (this != &var) {
+            destroy();
             m_typeId = var.m_typeId;
             m_isSmallObject = var.m_isSmallObject;
-            destroy();
             if (m_isSmallObject) {
                 std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
             } else {
@@ -82,9 +80,9 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     TA_Variant &operator=(TA_Variant &&var) noexcept {
         if (this != &var) {
+            destroy();
             m_typeId = std::exchange(var.m_typeId, 0);
             m_isSmallObject = std::exchange(var.m_isSmallObject, false);
-            destroy();
             if (m_isSmallObject) {
                 std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
             } else {

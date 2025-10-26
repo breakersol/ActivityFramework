@@ -21,137 +21,38 @@
 #include <optional>
 #include <exception>
 
-#include "TA_MetaObject.h"
-#include "TA_Connection.h"
-
 namespace CoreAsync {
 enum CorotuineBehavior { Lazy, Eager };
 
-template <EnableConnectObjectType Sender, typename... Args> class TA_SignalAwaitable {
-  public:
-    TA_SignalAwaitable(Sender *pObject, void (std::decay_t<Sender>::*signal)(Args...))
-        : m_pObject(pObject), m_signal(signal) {}
-
-    ~TA_SignalAwaitable() {}
-
-    constexpr bool await_ready() const noexcept { return false; }
-
-    constexpr void await_suspend(std::coroutine_handle<> handle) noexcept {
-        TA_Connection::connect(
-            m_pObject, std::move(m_signal),
-            [this, handle](Args... args) {
-                if constexpr (sizeof...(Args) != 0)
-                    m_args = std::make_tuple(args...);
-                handle.resume();
-            },
-            true);
-    }
-
-    constexpr auto await_resume() const noexcept {
-        if constexpr (sizeof...(Args) != 0) {
-            if constexpr (sizeof...(Args) == 1) {
-                return std::get<0>(m_args);
-            } else {
-                return m_args;
-            }
-        }
-    }
-
-    TA_SignalAwaitable operator=(const TA_SignalAwaitable &) = delete;
-
-  protected:
-    Sender *m_pObject{nullptr};
-    void (std::decay_t<Sender>::*m_signal)(Args...);
-    std::tuple<Args...> m_args{};
-};
-
-class TA_ActivityResultAwaitable {
-  public:
-    TA_ActivityResultAwaitable() = delete;
-
-    explicit TA_ActivityResultAwaitable(const TA_ActivityResultFetcher &fetcher) : m_fetcher(fetcher) {
-        if (!m_fetcher.pProxy->isValid()) {
-            throw std::runtime_error("TA_ActivityResultAwaitable: Fetcher is not valid!");
-        }
-    }
-
-    ~TA_ActivityResultAwaitable() = default;
-
-    bool await_ready() const noexcept { return m_fetcher.pProxy->isExecuted() || !m_fetcher.pProxy->isValid(); }
-
-    void await_suspend(std::coroutine_handle<> handle) noexcept {
-        auto activity = TA_ActivityCreator::create([this, handle]() {
-            if (m_fetcher.pProxy->isExecuted()) {
-                handle.resume();
-            } else {
-                m_res = m_fetcher();
-                handle.resume();
-            }
-        });
-        auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
-    }
-
-    auto await_resume() noexcept { return m_res; }
-
-  private:
-    TA_ActivityResultFetcher m_fetcher{};
-    TA_DefaultVariant m_res{};
-};
-
-class TA_ActivityExecutingAwaitable {
-  public:
-    enum class ExecuteType { Async, Sync };
-
-    TA_ActivityExecutingAwaitable(TA_ActivityProxy *pActivity, ExecuteType type)
-        : m_pProxy(pActivity), m_executeType(type) {
-        if (!m_pProxy) {
-            throw std::runtime_error("TA_ActivityResultAwaitable: pActivity is null!");
-        }
-    }
-
-    ~TA_ActivityExecutingAwaitable() {
-        if (m_pProxy && !m_pProxy->isExecuted()) {
-            delete m_pProxy;
-            m_pProxy = nullptr;
-        }
-    }
-
-    bool await_ready() const noexcept { return m_pProxy->isExecuted() || !m_pProxy->isValid(); }
-
-    void await_suspend(std::coroutine_handle<> handle) noexcept {
-        if (m_executeType == ExecuteType::Async) {
-            m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
-        } else {
-            std::shared_ptr<TA_ActivityProxy> sharedProxy(std::make_shared<TA_ActivityProxy>(m_pProxy));
-            sharedProxy->operator()();
-            m_fetcher = {sharedProxy};
-        }
-        handle.resume();
-    }
-
-    auto await_resume() const noexcept { return m_fetcher; }
-
-  private:
-    TA_ActivityProxy *m_pProxy{nullptr};
-    ExecuteType m_executeType{ExecuteType::Async};
-    TA_ActivityResultFetcher m_fetcher{};
-};
-
-template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineTask {
+template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_CoroutineTask {
     struct promise_type {
         std::optional<T> m_result{};
         std::exception_ptr m_exception{};
+        std::atomic_bool m_completed{false};
+        static constexpr bool isBlockingType{true};
 
         TA_CoroutineTask get_return_object() {
             return TA_CoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         std::suspend_always initial_suspend() noexcept { return {}; }
-        ::std::suspend_always final_suspend() noexcept { return {}; }
+        std::suspend_always final_suspend() noexcept { return {}; }
 
-        void return_value(const T &value) { m_result = value; }
+        void return_value(const T &value) {
+            m_result = value;
+            if constexpr(promise_type::isBlockingType) {
+                m_completed.store(true, std::memory_order_release);
+                m_completed.notify_all();
+            }
+        }
 
-        void unhandled_exception() { m_exception = std::current_exception(); }
+        void unhandled_exception() {
+            m_exception = std::current_exception();
+            if constexpr(promise_type::isBlockingType) {
+                m_completed.store(true, std::memory_order_release);
+                m_completed.notify_all();
+            }
+        }
     };
 
     using HandleType = std::coroutine_handle<promise_type>;
@@ -189,26 +90,26 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineTask {
     }
 
     T get() {
-        if (m_coroutineHandle.done()) {
-            if (m_coroutineHandle.promise().m_exception) {
-                std::rethrow_exception(m_coroutineHandle.promise().m_exception);
-            }
-            return std::move(*m_coroutineHandle.promise().m_result);
+        if (!m_coroutineHandle) {
+            throw std::runtime_error("Coroutine handle is null.");
         }
-        m_coroutineHandle.resume();
-        if (m_coroutineHandle.promise().m_exception) {
-            std::rethrow_exception(m_coroutineHandle.promise().m_exception);
+        auto &pr = m_coroutineHandle.promise();
+        pr.m_completed.wait(false, std::memory_order_acquire);
+        if (pr.m_exception) {
+            std::rethrow_exception(pr.m_exception);
         }
-        return std::move(*m_coroutineHandle.promise().m_result);
+        return std::move(*pr.m_result);
     }
 
     HandleType m_coroutineHandle;
 };
 
-template <typename T> struct TA_CoroutineTask<T, Eager> {
+template <typename T> struct [[nodiscard]] TA_CoroutineTask<T, Eager> {
     struct promise_type {
         std::optional<T> m_result{};
         std::exception_ptr m_exception{};
+        std::atomic_bool m_completed{false};
+        static constexpr bool isBlockingType{true};
 
         TA_CoroutineTask get_return_object() {
             return TA_CoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -217,9 +118,21 @@ template <typename T> struct TA_CoroutineTask<T, Eager> {
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
 
-        void return_value(const T &value) { m_result = value; }
+        void return_value(const T &value) {
+            m_result = value;
+            if constexpr(promise_type::isBlockingType) {
+                m_completed.store(true, std::memory_order_release);
+                m_completed.notify_all();
+            }
+        }
 
-        void unhandled_exception() { m_exception = std::current_exception(); }
+        void unhandled_exception() {
+            m_exception = std::current_exception();
+            if constexpr(promise_type::isBlockingType) {
+                m_completed.store(true, std::memory_order_release);
+                m_completed.notify_all();
+            }
+        }
     };
 
     using HandleType = std::coroutine_handle<promise_type>;
@@ -252,17 +165,15 @@ template <typename T> struct TA_CoroutineTask<T, Eager> {
     }
 
     T get() {
-        if (m_coroutineHandle.done()) {
-            if (m_coroutineHandle.promise().m_exception) {
-                std::rethrow_exception(m_coroutineHandle.promise().m_exception);
-            }
-            return std::move(*m_coroutineHandle.promise().m_result);
+        if (!m_coroutineHandle) {
+            throw std::runtime_error("Coroutine handle is null.");
         }
-        m_coroutineHandle.resume();
-        if (m_coroutineHandle.promise().m_exception) {
-            std::rethrow_exception(m_coroutineHandle.promise().m_exception);
+        auto &pr = m_coroutineHandle.promise();
+        pr.m_completed.wait(false, std::memory_order_acquire);
+        if (pr.m_exception) {
+            std::rethrow_exception(pr.m_exception);
         }
-        return std::move(*m_coroutineHandle.promise().m_result);
+        return std::move(*pr.m_result);
     }
 };
 
@@ -270,6 +181,7 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineGenerator {
     struct promise_type {
         T m_currentValue{};
         std::exception_ptr m_exception{};
+        static constexpr bool isBlockingType{false};
 
         TA_CoroutineGenerator get_return_object() {
             return TA_CoroutineGenerator{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -343,6 +255,7 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
     struct promise_type {
         T m_currentValue{};
         std::exception_ptr m_exception{};
+        static constexpr bool isBlockingType{false};
 
         TA_CoroutineGenerator get_return_object() {
             return TA_CoroutineGenerator{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -405,6 +318,7 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
 
     HandleType m_coroutineHandle;
 };
+
 } // namespace CoreAsync
 
 #endif // TA_COROUTINE_H

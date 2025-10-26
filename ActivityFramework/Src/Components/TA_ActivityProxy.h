@@ -104,14 +104,18 @@ class TA_ActivityProxy {
         return *this;
     }
 
-    bool isValid() const { return m_future.valid(); }
+    bool isValid() const { return m_pActivity && m_future.valid(); }
 
     TA_DefaultVariant result() const { return m_future.get(); }
 
     void operator()() {
-        if (!m_isExecuted.load(std::memory_order_acquire)) {
+        if (!m_pExecuteExp || !m_pActivity) {
+            throw std::runtime_error("Execute function or activity is null");
+        }
+        bool expected{false};
+        if (m_isExecuted.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
             m_pExecuteExp(m_pActivity, std::forward<std::promise<TA_DefaultVariant>>(m_promise));
-            m_isExecuted.store(true, std::memory_order_release);
+            m_pExecuteExp = nullptr;
         }
     }
 
@@ -142,10 +146,18 @@ class TA_ActivityProxy {
     std::atomic_bool m_isExecuted{false};
 };
 
-struct TA_ActivityResultFetcher {
+class TA_ActivityResultFetcher {
+  public:
+    TA_ActivityResultFetcher() = default;
+    TA_ActivityResultFetcher(std::shared_ptr<TA_ActivityProxy> proxy) : pProxy(proxy) {}
+
+    virtual TA_DefaultVariant operator()() const { return pProxy->result(); }
+    bool isValid() const { return pProxy && pProxy->isValid(); }
+    bool isExecuted() const { return pProxy && pProxy->isExecuted(); }
+
+  private:
     std::shared_ptr<TA_ActivityProxy> pProxy{nullptr};
 
-    TA_DefaultVariant operator()() { return pProxy->result(); }
 };
 } // namespace CoreAsync
 
