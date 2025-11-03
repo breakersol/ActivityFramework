@@ -766,8 +766,8 @@ class TA_MetaObject {
             } else {
                 auto senderRegisterActivity = TA_ActivityCreator::create(std::move(senderRegisterExp));
                 senderRegisterActivity->setStolenEnabled(false);
-                AsyncTaskRes res = invokeActivity(senderRegisterActivity, pSender);
-                auto taskResult = res.get();
+                auto fetcher = TA_ThreadHolder::get().postActivity(senderRegisterActivity, true);
+                auto taskResult = fetcher();
                 connectionObj = taskResult.template get<SharedConnection>();
 
             }
