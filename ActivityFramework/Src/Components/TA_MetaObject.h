@@ -161,7 +161,7 @@ class TA_MetaObject {
             std::make_shared<TA_ActivityFetcherAwaitable>(proxy);
         auto res = co_await *fetcherAwaitable;
         pHost->pendingCountDecrement();
-        co_return std::move(res);
+        co_return res;
     }
     
     inline static bool isOnCurrentThread(TA_MetaObject *pObject) {
