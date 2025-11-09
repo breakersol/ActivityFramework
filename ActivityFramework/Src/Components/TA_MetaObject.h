@@ -161,7 +161,7 @@ class TA_MetaObject {
             std::make_shared<TA_ActivityFetcherAwaitable>(proxy);
         auto res = co_await *fetcherAwaitable;
         pHost->pendingCountDecrement();
-        co_return std::move(res);
+        co_return res;
     }
     
     inline static bool isOnCurrentThread(TA_MetaObject *pObject) {
@@ -766,8 +766,8 @@ class TA_MetaObject {
             } else {
                 auto senderRegisterActivity = TA_ActivityCreator::create(std::move(senderRegisterExp));
                 senderRegisterActivity->setStolenEnabled(false);
-                AsyncTaskRes res = invokeActivity(senderRegisterActivity, pSender);
-                auto taskResult = res.get();
+                auto fetcher = TA_ThreadHolder::get().postActivity(senderRegisterActivity, true);
+                auto taskResult = fetcher();
                 connectionObj = taskResult.template get<SharedConnection>();
 
             }
