@@ -307,6 +307,7 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
             }
         });
         m_resultFetcher = TA_ThreadHolder::get().postActivity(activity, true);
+        m_resultFetcher();
     }
 
     auto await_resume() noexcept {
