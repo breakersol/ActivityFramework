@@ -137,8 +137,8 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         if (m_typeId != 0 && m_destroySSOExp) {
             if (m_isSmallObject)
                 m_destroySSOExp(m_storage.m_data);
-            else if (m_storage.m_ptr.use_count() == 1)
-                m_destroySSOExp(m_storage.m_ptr.get());
+            //else if (m_storage.m_ptr.use_count() == 1)
+            //    m_destroySSOExp(m_storage.m_ptr.get());
         }
         m_destroySSOExp = nullptr;
     }
