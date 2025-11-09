@@ -287,8 +287,8 @@ class TA_MetaObject {
             pSender, signal, exp, type, autoDestroy);
         registerActivity->moveToThread(pSender->affinityThread());
         registerActivity->setStolenEnabled(false);
-        auto fetcher = TA_ThreadHolder::get().postActivity(registerActivity, true);
-        auto taskResult = fetcher();
+        AsyncTaskRes res = invokeActivity(registerActivity, pSender);
+        auto taskResult = res.get();
         return taskResult.template get<TA_ConnectionObjectHolder>();
     }
 
@@ -766,8 +766,8 @@ class TA_MetaObject {
             } else {
                 auto senderRegisterActivity = TA_ActivityCreator::create(std::move(senderRegisterExp));
                 senderRegisterActivity->setStolenEnabled(false);
-                auto fetcher = TA_ThreadHolder::get().postActivity(senderRegisterActivity, true);
-                auto taskResult = fetcher();
+                AsyncTaskRes res = invokeActivity(senderRegisterActivity, pSender);
+                auto taskResult = res.get();
                 connectionObj = taskResult.template get<SharedConnection>();
 
             }
