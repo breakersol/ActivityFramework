@@ -306,13 +306,13 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
                 handle.resume();
             }
         });
-        m_resultFetcher = TA_ThreadHolder::get().postActivity(activity, true);
-        m_resultFetcher();
+        auto resultFetcher = TA_ThreadHolder::get().postActivity(activity, true);
+        resultFetcher();
     }
 
     auto await_resume() noexcept {
         m_isRunning.store(false, std::memory_order_release);
-        return std::move(m_res); 
+        return std::move(m_res);
     }
 
     //bool bind(const TA_ActivityResultFetcher &fetcher) {
@@ -331,7 +331,6 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
     std::atomic_bool m_isRunning{false};
     TA_ActivityProxy *m_pProxy{nullptr};
     TA_DefaultVariant m_res{};
-    TA_ActivityResultFetcher m_resultFetcher{};
 };
 
 class TA_ActivityExecutingAwaitable : public std::enable_shared_from_this<TA_ActivityExecutingAwaitable> {
