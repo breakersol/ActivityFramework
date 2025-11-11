@@ -191,7 +191,7 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
     }
 
   private:
-    const std::tuple<StorageType<Paras>...> m_paras;
+    std::tuple<StorageType<Paras>...> m_paras;
     TA_ActivityAffinityThread m_affinityThread{};
     TA_ActivityId m_id{};
     const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
@@ -241,9 +241,9 @@ template <typename Method, typename... Args> class TA_MethodActivity {
 
     template <typename... NewArgs> void setPara(NewArgs &&...args) {
         if constexpr (IsInstanceMethod<Method>::value) {
-            m_args = std::tuple_cat(std::get<0>(m_args), std::make_tuple(std::forward<std::decay_t<NewArgs>>(args)...));
+            m_args = std::tuple_cat(std::get<0>(m_args), std::make_tuple(std::forward<NewArgs>(args)...));
         } else {
-            m_args = std::make_tuple(std::forward<std::decay_t<NewArgs>>(args)...);
+            m_args = std::make_tuple(std::forward<NewArgs>(args)...);
         }
     }
 
@@ -256,7 +256,7 @@ template <typename Method, typename... Args> class TA_MethodActivity {
 
   private:
     Method m_method;
-    const std::tuple<StorageType<Args>...> m_args;
+    std::tuple<StorageType<Args>...> m_args;
     TA_ActivityAffinityThread m_affinityThread{};
     const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
     TA_ActivityId m_id{};
