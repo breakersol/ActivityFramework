@@ -23,11 +23,15 @@ runningGenerator(TA_ManualKeyActivityChainPipeline *pPipeline) {
     bool isAtKey{false};
     for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size();) {
         decltype(auto) pActivity{TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
-        (*pActivity)();
-        auto var{pActivity->result()};
-        TA_CommonTools::replace(pPipeline->m_resultList, i, var);
-        TA_Connection::active(pPipeline, &TA_ManualKeyActivityChainPipeline::activityCompleted, i, var);
-        co_yield var;
+        if (!pActivity->isExecuted()) {
+            (*pActivity)();
+            auto var{pActivity->result()};
+            TA_CommonTools::replace(pPipeline->m_resultList, i, var);
+            TA_Connection::active(pPipeline, &TA_ManualKeyActivityChainPipeline::activityCompleted, i, var);
+            co_yield var;
+        } else {
+            co_yield pPipeline->m_resultList[i];
+        }
         isAtKey = (i == pPipeline->keyIndex());
         if (!isAtKey) {
             i++;
