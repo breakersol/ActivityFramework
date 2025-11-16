@@ -11,7 +11,7 @@
 | Lock-free Circular Queue         | Implements an efficient circular data structure for improved data handling. |
 | Thread Pool                      | Optimizes concurrent task executions through effective thread management.   |
 | Qt-like Signal and Slot Mechanism| Provides a dynamic event-handling mechanism inspired by the Qt framework.   |
-| Coroutine                        | Provides a set of coroutine utilities for C++20, designed to simplify asynchronous programming and event-driven development   |
+| Coroutine                        | Provides a set of coroutine utilities for modern C++ (C++20 and later), designed to simplify asynchronous programming and event-driven development.   |
 
 ### Platform Support
 
@@ -421,7 +421,7 @@ DEFINE_TYPE_INFO(MetaTest)
 <br/>Next, you can use the interface **ITA_Connection::connect** as follow:
 ```cpp
     CoreAsync::ITA_Connection::connect(pTest, &MetaTest::startTest, pTest, &MetaTest::printNums);
-    CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queue>(pTest, &MetaTest::printTest, pTest, &MetaTest::printSlot);
+    CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(pTest, &MetaTest::printTest, pTest, &MetaTest::printSlot);
 ```
 <br/>**ITA_Connection::connect** requires the same number of arguments for both of sender function and receiver function.
 
@@ -489,13 +489,13 @@ A lightweight thread pool has been implemented within the framework, which is as
 - **shutDown**: Request to shut down and clear all of threads.
 ---
 ### Coroutine
-**TA_Coroutine** is a modern C++ coroutine utility designed to simplify asynchronous programming and generator patterns using the C++20 coroutine features.
+**TA_Coroutine** is a modern C++ coroutine utility designed to simplify asynchronous programming and generator patterns using standard C++ coroutine features (C++20 and later).
 #### Features
 
 - **Coroutine Task**: Supports both lazy and eager execution models for asynchronous tasks (`TA_CoroutineTask`).
 - **Coroutine Generator**: Yields multiple values over time, supporting both lazy and eager evaluation (`TA_CoroutineGenerator`).
 - **Signal Awaitable**: Enables awaiting Qt-like signal emissions within coroutines (`TA_SignalAwaitable`).
-- **Activity Result Awaitable**: Waits for an activity to finish and returns its result (`TA_ActivityResultAwaitable`).
+- **Activity Fetcher Awaitable**: Waits for an activity to finish and returns its result (`TA_ActivityFetcherAwaitable`).
 - **Activity Executing Awaitable**: Runs an activity asynchronously or synchronously and yields a result fetcher (`TA_ActivityExecutingAwaitable`).
 - **Exception Handling**: Robust management of exceptions within coroutine flows.
 - **RAII and Resource Safety**: Ensures proper cleanup of coroutine handles and resources.
