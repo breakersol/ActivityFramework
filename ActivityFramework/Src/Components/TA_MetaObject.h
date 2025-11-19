@@ -42,7 +42,7 @@ enum class TA_ConnectionType { Auto, Direct, Queued };
 
 class TA_MetaObject {
     class TA_ConnectionObject;
-    using AsyncTaskRes = TA_CoroutineTask<TA_DefaultVariant, CorotuineBehavior::Eager>;
+    using AsyncTaskRes = TA_CoroutineTask<std::shared_ptr<TA_DefaultVariant>, CorotuineBehavior::Eager>;
   public:
     class TA_ConnectionObjectHolder {
         friend class TA_MetaObject;
@@ -234,7 +234,7 @@ class TA_MetaObject {
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, this);
         auto taskResult = res.get();
-        return taskResult.template get<bool>();
+        return taskResult->template get<bool>();
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -289,7 +289,7 @@ class TA_MetaObject {
         registerActivity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(registerActivity, pSender);
         auto taskResult = res.get();
-        return taskResult.template get<TA_ConnectionObjectHolder>();
+        return taskResult->template get<TA_ConnectionObjectHolder>();
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -334,7 +334,7 @@ class TA_MetaObject {
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, pSender);
         auto taskResult = res.get();
-        return taskResult.template get<bool>();
+        return taskResult->template get<bool>();
     }
 
     template <EnableConnectObjectType Sender, typename Signal, typename... Args>
@@ -360,7 +360,7 @@ class TA_MetaObject {
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, pSender);
         auto taskResult = res.get();
-        return taskResult.template get<bool>();
+        return taskResult->template get<bool>();
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -397,7 +397,7 @@ class TA_MetaObject {
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, pSender);
         auto taskResult = res.get();
-        return taskResult.template get<bool>();
+        return taskResult->template get<bool>();
     }
 
   private:
@@ -681,7 +681,7 @@ class TA_MetaObject {
         receiverActivity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(receiverActivity, pReceiver);
         auto taskResult = res.get();
-        return taskResult.template get<bool>();
+        return taskResult->template get<bool>();
     };
 
     template <typename Sender, typename Signal, LambdaExpType Exp>
@@ -740,7 +740,7 @@ class TA_MetaObject {
                 syncActivity->setStolenEnabled(false);
                 AsyncTaskRes res = invokeActivity(syncActivity, pSender);
                 auto taskResult = res.get();
-                return taskResult.template get<bool>();
+                return taskResult->template get<bool>();
             }
         } else {
             auto senderRegisterExp = [pSender, &signal, pReceiver, &slot, type, &slotMark]() -> SharedConnection {
@@ -768,7 +768,7 @@ class TA_MetaObject {
                 senderRegisterActivity->setStolenEnabled(false);
                 AsyncTaskRes res = invokeActivity(senderRegisterActivity, pSender);
                 auto taskResult = res.get();
-                connectionObj = taskResult.template get<SharedConnection>();
+                connectionObj = taskResult->template get<SharedConnection>();
 
             }
             if(!connectionObj) {
