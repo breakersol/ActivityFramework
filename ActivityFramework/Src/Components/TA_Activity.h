@@ -312,7 +312,9 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
 
     auto await_resume() noexcept {
         m_isRunning.store(false, std::memory_order_release);
-        return m_res;
+        // Cannot return reference to raw variant, because the variant may be destroyed after coroutine ends.
+        // Return raw variant lead to contruct TA_Variant with itself, causing potential issues.
+        return m_res;       
     }
 
     //bool bind(const TA_ActivityResultFetcher &fetcher) {
