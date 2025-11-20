@@ -17,6 +17,7 @@
 
 - **Windows**: Fully optimized and supported.
 - **Linux**: Ensures full compatibility and performance.
+- **Android**: Buildable through the provided CMake presets (arm64-v8a via NDK r26d or newer).
 
 ### Dependencies
 
@@ -38,11 +39,27 @@ These instructions will guide you through setting up the project on your local m
 
 To build the project, use the `CMakeLists.txt` at **ActivityFramework/CMakeLists.txt** and set the build directory to **/ActivityFramework/build**.
 
+### Configuration Options
+
+- `ACTIVITYFRAMEWORK_BUILD_TESTS`: Enables the unit test target. Defaults to `ON` for desktop platforms and `OFF` for Android presets where GoogleTest binaries are not supplied.
+
 ### Running the Tests
 
 1. Build the Google Test framework under **ActivityFramework/Test/ThirdParty/googletest/**.
 2. Utilize **ActivityFramework/Test/CMakeLists.txt** to prepare the unit test project.
 3. Execute `ActivityFrameworkTest` to run the tests.
+
+### Android Builds
+
+1. Install the [Android NDK](https://developer.android.com/ndk/downloads) r26d (26.2.11394342) or newer and expose it through the `ANDROID_NDK_HOME` environment variable.
+2. Ensure CMake 3.20+ and Ninja are available on your host system (the GitHub workflow shows the required packages on Ubuntu 24.04).
+3. From the repository root run the supplied preset defined in `CMakePresets.json`:
+   ```bash
+   cmake --preset android-arm64-release
+   cmake --build --preset android-arm64-release
+   ```
+   The resulting `libActivityFramework.so` is placed under `build/android-arm64-v8a/release/ActivityFramework/output/`.
+4. Use the `android-arm64-debug` preset if you need symbols, or duplicate the presets in `CMakePresets.json` for other ABIs (`CMAKE_ANDROID_ARCH_ABI`) or API levels (`ANDROID_PLATFORM`).
 
 ### Versioning
 

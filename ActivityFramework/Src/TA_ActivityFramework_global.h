@@ -17,7 +17,9 @@
 #ifndef TA_ACTIVITYFRAMEWORK_GLOBAL_H
 #define TA_ACTIVITYFRAMEWORK_GLOBAL_H
 
+#if defined(_MSC_VER)
 #pragma warning(disable : 4251)
+#endif
 
 #if defined(_WIN32)
 #if defined(ACTIVITY_FRAMEWORK_LIBRARY)
