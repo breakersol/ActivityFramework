@@ -264,8 +264,13 @@ class TA_MetaObject {
     }
 
     template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
+#if defined(__ANDROID__)
+    static TA_ConnectionObjectHolder registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp,
+                                                        TA_ConnectionType type, bool autoDestroy = false) {
+#else
     static constexpr TA_ConnectionObjectHolder registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp,
                                                                   TA_ConnectionType type, bool autoDestroy = false) {
+#endif
         if constexpr (!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag ||
                       !IsReturnTypeEqual<void, Signal, std::is_same>::value ||
                       !std::is_same_v<typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType, void>) {
