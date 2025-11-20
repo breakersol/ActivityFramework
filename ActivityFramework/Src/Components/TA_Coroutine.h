@@ -80,6 +80,7 @@ template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_Coroutin
     ~TA_CoroutineTask() {
         if (m_coroutineHandle) {
             m_coroutineHandle.destroy();
+            m_coroutineHandle = nullptr;
         }
     }
 

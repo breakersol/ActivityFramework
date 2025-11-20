@@ -302,17 +302,19 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
         TA_ActivityResultFetcher fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
         auto activity = TA_ActivityCreator::create([weakSelf, handle, fetcher]() {
             if (auto self = weakSelf.lock()) {
-                self->m_res = fetcher();
+                self->m_res = std::make_shared<TA_DefaultVariant>(fetcher());
                 handle.resume();
             }
         });
         auto resultFetcher = TA_ThreadHolder::get().postActivity(activity, true);
-        resultFetcher();
+        //resultFetcher();
     }
 
     auto await_resume() noexcept {
         m_isRunning.store(false, std::memory_order_release);
-        return std::move(m_res);
+        // Cannot return reference to raw variant, because the variant may be destroyed after coroutine ends.
+        // Return raw variant lead to contruct TA_Variant with itself, causing potential issues.
+        return m_res;       
     }
 
     //bool bind(const TA_ActivityResultFetcher &fetcher) {
@@ -330,7 +332,7 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
   private:
     std::atomic_bool m_isRunning{false};
     TA_ActivityProxy *m_pProxy{nullptr};
-    TA_DefaultVariant m_res{};
+    std::shared_ptr<TA_DefaultVariant> m_res{};
 };
 
 class TA_ActivityExecutingAwaitable : public std::enable_shared_from_this<TA_ActivityExecutingAwaitable> {
