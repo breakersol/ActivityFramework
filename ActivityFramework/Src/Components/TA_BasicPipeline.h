@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <mutex>
 
 #include "TA_ActivityProxy.h"
 #include "TA_MetaReflex.h"
