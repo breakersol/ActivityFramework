@@ -8,3 +8,4 @@
 /Test/*.user
 /*.user
 /Benchmark/build
+/.qtcreator
