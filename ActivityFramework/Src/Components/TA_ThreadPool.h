@@ -36,9 +36,10 @@ class TA_ThreadPool {
         std::shared_ptr<TA_ActivityProxy> proxy{nullptr};
         bool stolenEnabled() const { return proxy && proxy->stolenEnabled(); }
     };
-
+    using TA_Thread = std::thread;
     using ActivityQueue = TA_ActivityQueue<ActivityHandle *, 10240>;
 #else
+    using TA_Thread = std::jthread;
     using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
 #endif
 
@@ -47,6 +48,10 @@ class TA_ThreadPool {
 
         std::counting_semaphore<ActivityQueue::capacity()> resource{0};
         std::atomic_bool isBusy{false};
+
+#if defined (__ANDROID__)
+        std::atomic_bool stopRequested{false};
+#endif
     };
 
   public:
@@ -65,10 +70,21 @@ class TA_ThreadPool {
 
     void shutDown() {
         for (std::size_t idx = 0; idx < m_threads.size(); ++idx) {
+#if defined (__ANDROID__)
+            m_states[idx].stopRequested.store(true, std::memory_order_release);
+#else
             m_threads[idx].request_stop();
+#endif
             m_states[idx].resource.release();
             m_states[idx].isBusy.store(false, std::memory_order_release);
         }
+#if defined (__ANDROID__)
+        for (auto &thread : m_threads) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+#endif
         m_threads.clear();
     }
 
@@ -185,12 +201,18 @@ class TA_ThreadPool {
     void init() {
         for (std::size_t idx = 0; idx < m_states.size(); ++idx) {
             m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
+#if defined(__ANDROID__)
+            m_threads.emplace_back([&, idx]() {
+#else
             m_threads.emplace_back([&, idx](const std::stop_token &st) {
+#endif
                 std::shared_ptr<TA_ActivityProxy> pActivity{nullptr};
 #if defined(__ANDROID__)
                 ActivityHandle *handle{nullptr};
-#endif
+                while(!m_states[idx].stopRequested.load(std::memory_order_acquire)) {
+#else
                 while (!st.stop_requested()) {
+#endif 
                     m_states[idx].resource.acquire();
                     m_states[idx].isBusy.store(true, std::memory_order_release);
                     while (!m_activityQueues[idx].isEmpty()) {
@@ -214,6 +236,9 @@ class TA_ThreadPool {
                 }
                 TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
             });
+#if defined(__ANDROID__)
+            m_threads.back().join();
+#endif
         }
     }
 
@@ -269,7 +294,7 @@ class TA_ThreadPool {
 
   private:
     std::vector<ThreadState> m_states;
-    std::vector<std::jthread> m_threads;
+    std::vector<TA_Thread> m_threads;
     std::vector<ActivityQueue> m_activityQueues;
     std::vector<std::size_t> m_stealIdxs;
 };
