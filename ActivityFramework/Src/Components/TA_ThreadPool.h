@@ -21,6 +21,7 @@
 #include "TA_ActivityProxy.h"
 #include "TA_CommonTools.h"
 #include "TA_MetaStringView.h"
+#include "TA_ActivityFramework_global.h"
 
 #include <thread>
 #include <vector>
@@ -28,32 +29,61 @@
 #include <memory>
 
 namespace CoreAsync {
-class TA_ThreadPool {
+
+class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
+    struct AndroidPlatformTag {};
+    struct DefaultPlatformTag {};
+
 #if defined(__ANDROID__)
-    struct ActivityHandle {
-        ActivityHandle() = default;
-        explicit ActivityHandle(const std::shared_ptr<TA_ActivityProxy> &proxyIn) : proxy(proxyIn) {}
-        std::shared_ptr<TA_ActivityProxy> proxy{nullptr};
-        bool stolenEnabled() const { return proxy && proxy->stolenEnabled(); }
+    struct PlatformSelector {
+        using Tag = AndroidPlatformTag;
+        using ThreadModel = std::thread;
+        static constexpr bool activityHandleRequired = true;
+
+        struct ActivityHandle {
+            ActivityHandle() = default;
+            explicit ActivityHandle(const std::shared_ptr<TA_ActivityProxy> &proxyIn) : proxy(proxyIn) {}
+            std::shared_ptr<TA_ActivityProxy> proxy{nullptr};
+            bool stolenEnabled() const { return proxy && proxy->stolenEnabled(); }
+
+            static std::shared_ptr<TA_ActivityProxy> extractActivity(ActivityHandle *handle) {
+                if (!handle) {
+                    return nullptr;
+                }
+                std::shared_ptr<TA_ActivityProxy> proxy{std::move(handle->proxy)};
+                delete handle;
+                return proxy;
+            }
+        };
+
+        using ActivityQueue = TA_ActivityQueue<ActivityHandle *, 10240>;
+
+        struct ThreadState {
+            ThreadState() = default;
+
+            std::counting_semaphore<ActivityQueue::capacity()> resource{0};
+            std::atomic_bool isBusy{false};
+            std::atomic_bool stopRequested{false};
+        };
     };
-    using TA_Thread = std::thread;
-    using ActivityQueue = TA_ActivityQueue<ActivityHandle *, 10240>;
+    using HandleType = typename PlatformSelector::ActivityHandle;
 #else
-    using TA_Thread = std::jthread;
-    using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
-#endif
+    struct PlatformSelector {
+        using Tag = DefaultPlatformTag;
+        using ThreadModel = std::jthread;
+        static constexpr bool activityHandleRequired = false;
+        using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
 
-    struct ThreadState {     
-        ThreadState() = default;
+        struct ThreadState {
+            ThreadState() = default;
 
-        std::counting_semaphore<ActivityQueue::capacity()> resource{0};
-        std::atomic_bool isBusy{false};
-
-#if defined (__ANDROID__)
-        std::atomic_bool stopRequested{false};
-#endif
+            std::counting_semaphore<ActivityQueue::capacity()> resource{0};
+            std::atomic_bool isBusy{false};
+        };
     };
-
+#endif
+    using QueueType = typename PlatformSelector::ActivityQueue;
+    using LocalThread = typename PlatformSelector::ThreadModel;
   public:
     explicit TA_ThreadPool(std::size_t size = std::thread::hardware_concurrency())
         : m_states(size), m_activityQueues(size), m_stealIdxs(size) {
@@ -68,25 +98,7 @@ class TA_ThreadPool {
     TA_ThreadPool &operator=(const TA_ThreadPool &pool) = delete;
     TA_ThreadPool &operator=(TA_ThreadPool &&pool) = delete;
 
-    void shutDown() {
-        for (std::size_t idx = 0; idx < m_threads.size(); ++idx) {
-#if defined (__ANDROID__)
-            m_states[idx].stopRequested.store(true, std::memory_order_release);
-#else
-            m_threads[idx].request_stop();
-#endif
-            m_states[idx].resource.release();
-            m_states[idx].isBusy.store(false, std::memory_order_release);
-        }
-#if defined (__ANDROID__)
-        for (auto &thread : m_threads) {
-            if (thread.joinable()) {
-                thread.join();
-            }
-        }
-#endif
-        m_threads.clear();
-    }
+    void shutDown();
 
     std::size_t topPriorityThread(std::thread::id depencyThread) const {
         std::size_t lowIdx{std::numeric_limits<std::size_t>::max()}, lowSize{std::numeric_limits<std::size_t>::max()};
@@ -147,13 +159,13 @@ class TA_ThreadPool {
             affinityId < m_threads.size() ? affinityId : topPriorityThread(pActivity->dependencyThreadId());
         //std::cout << "Post activity to thread: " << idx << "\n";
 #if defined(__ANDROID__)
-        auto handle = std::unique_ptr<ActivityHandle>(new ActivityHandle{pProxy});
-        if (!m_activityQueues[idx].push(handle.get()))
-            throw std::runtime_error("Failed to push activity to queue");
-        handle.release();
+            auto handle = std::unique_ptr<HandleType>(new HandleType{pProxy});
+            if (!m_activityQueues[idx].push(handle.get()))
+                throw std::runtime_error("Failed to push activity to queue");
+            handle.release();
 #else
-        if (!m_activityQueues[idx].push(pProxy))
-            throw std::runtime_error("Failed to push activity to queue");
+            if (!m_activityQueues[idx].push(pProxy))
+                throw std::runtime_error("Failed to push activity to queue");
 #endif
         m_states[idx].resource.release();
         return {pProxy};
@@ -169,13 +181,13 @@ class TA_ThreadPool {
         std::size_t idx = affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
         //std::cout << "Post activity to thread: " << idx << "\n";
 #if defined(__ANDROID__)
-        auto handle = std::unique_ptr<ActivityHandle>(new ActivityHandle{pProxy});
-        if (!m_activityQueues[idx].push(handle.get()))
-            throw std::runtime_error("Failed to push activity to queue");
-        handle.release();
+            auto handle = std::unique_ptr<HandleType>(new HandleType{pProxy});
+            if (!m_activityQueues[idx].push(handle.get()))
+                throw std::runtime_error("Failed to push activity to queue");
+            handle.release();
 #else
-        if (!m_activityQueues[idx].push(pProxy))
-            throw std::runtime_error("Failed to push activity to queue");
+            if (!m_activityQueues[idx].push(pProxy))
+                throw std::runtime_error("Failed to push activity to queue");
 #endif
         m_states[idx].resource.release();
         return {pProxy};
@@ -198,104 +210,13 @@ class TA_ThreadPool {
     }
 
   private:
-    void init() {
-        for (std::size_t idx = 0; idx < m_states.size(); ++idx) {
-            m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
-#if defined(__ANDROID__)
-            m_threads.emplace_back([&, idx]() {
-#else
-            m_threads.emplace_back([&, idx](const std::stop_token &st) {
-#endif
-                std::shared_ptr<TA_ActivityProxy> pActivity{nullptr};
-#if defined(__ANDROID__)
-                ActivityHandle *handle{nullptr};
-                while(!m_states[idx].stopRequested.load(std::memory_order_acquire)) {
-#else
-                while (!st.stop_requested()) {
-#endif 
-                    m_states[idx].resource.acquire();
-                    m_states[idx].isBusy.store(true, std::memory_order_release);
-                    while (!m_activityQueues[idx].isEmpty()) {
-#if defined(__ANDROID__)
-                        if (m_activityQueues[idx].pop(handle)) {
-                            pActivity = extractActivity(handle);
-                            if (pActivity) {
-                                (*pActivity)();
-                            }
-                        }
-#else
-                        if (m_activityQueues[idx].pop(pActivity) && pActivity) {
-                            (*pActivity)();
-                        }
-#endif
-                    }
-                    if (trySteal(pActivity, idx) && pActivity) {
-                        (*pActivity)();
-                    }
-                    m_states[idx].isBusy.store(false, std::memory_order_release);
-                }
-                TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
-            });
-#if defined(__ANDROID__)
-            m_threads.back().join();
-#endif
-        }
-    }
-
-#if defined(__ANDROID__)
-    bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx) {
-        std::size_t startIdx{m_stealIdxs[excludedIdx]};
-        std::size_t idx{(startIdx + 1) % m_threads.size()};
-        while (idx != startIdx) {
-            if (idx != excludedIdx) {
-                ActivityHandle *previewHandle{nullptr};
-                if (m_activityQueues[idx].top(previewHandle) && previewHandle && previewHandle->stolenEnabled()) {
-                    ActivityHandle *handle{nullptr};
-                    if (m_activityQueues[idx].pop(handle)) {
-                        stolenActivity = extractActivity(handle);
-                        if (stolenActivity) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            idx = (idx + 1) % m_threads.size();
-        }
-        stolenActivity.reset();
-        return false;
-    }
-
-    static std::shared_ptr<TA_ActivityProxy> extractActivity(ActivityHandle *handle) {
-        if (!handle) {
-            return nullptr;
-        }
-        std::shared_ptr<TA_ActivityProxy> proxy{std::move(handle->proxy)};
-        delete handle;
-        return proxy;
-    }
-#else
-    bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx) {
-        std::size_t startIdx{m_stealIdxs[excludedIdx]};
-        std::size_t idx{(startIdx + 1) % m_threads.size()};
-        while (idx != startIdx) {
-            if (idx != excludedIdx) {
-                std::shared_ptr<TA_ActivityProxy> activity{};
-                if (m_activityQueues[idx].top(activity) && activity && activity->stolenEnabled() &&
-                    m_activityQueues[idx].pop(stolenActivity)) {
-                    return true;
-                }
-            }
-            idx = (idx + 1) % m_threads.size();
-        }
-        stolenActivity = nullptr;
-        return false;
-    }
-#endif
+    void init();
+    bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx);
 
   private:
-    std::vector<ThreadState> m_states;
-    std::vector<TA_Thread> m_threads;
-    std::vector<ActivityQueue> m_activityQueues;
+    std::vector<PlatformSelector::ThreadState> m_states;
+    std::vector<LocalThread> m_threads;
+    std::vector<QueueType> m_activityQueues;
     std::vector<std::size_t> m_stealIdxs;
 };
 

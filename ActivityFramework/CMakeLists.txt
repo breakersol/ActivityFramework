@@ -70,6 +70,7 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_ActivityComponents.h
     Src/Components/TA_ActivityProxy.h
     Src/Components/TA_Coroutine.h
+    Src/Components/TA_ThreadPool.cpp
 
 )
 
