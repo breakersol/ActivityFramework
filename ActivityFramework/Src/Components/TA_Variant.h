@@ -35,6 +35,12 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
             new (m_storage.m_data) RawType(std::forward<RawType>(value), std::forward<Args>(args)...);
             m_destroySSOExp = [](void *data) { std::destroy_at(reinterpret_cast<RawType *>(data)); };
+            m_copySSOExp = [](const void *src, void *dst) {
+                new (dst) RawType(*reinterpret_cast<const RawType *>(src));
+            };
+            m_moveSSOExp = [](void *src, void *dst) {
+                new (dst) RawType(std::move(*reinterpret_cast<RawType *>(src)));
+            };
             m_isSmallObject = true;
         } else {
             m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(value), std::forward<Args>(args)...);
@@ -49,22 +55,27 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     ~TA_Variant() { destroy(); }
 
-    TA_Variant(const TA_Variant &var) : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject), m_destroySSOExp(var.m_destroySSOExp) {
+    TA_Variant(const TA_Variant &var) : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject), m_destroySSOExp(var.m_destroySSOExp), m_copySSOExp(var.m_copySSOExp), m_moveSSOExp(var.m_moveSSOExp) {
         if (m_isSmallObject) {
-            std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
+            if (var.m_copySSOExp) {
+                var.m_copySSOExp(var.m_storage.m_data, m_storage.m_data);
+            }
         } else {
             m_storage.m_ptr = var.m_storage.m_ptr;
         }
-        m_destroySSOExp = var.m_destroySSOExp;
     }
 
     TA_Variant(TA_Variant &&var) : m_typeId(std::move(var.m_typeId)), m_isSmallObject(std::move(var.m_isSmallObject)) {
         if (m_isSmallObject) {
-            std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
+            if (var.m_moveSSOExp) {
+                var.m_moveSSOExp(var.m_storage.m_data, m_storage.m_data);
+            }
         } else {
             m_storage.m_ptr = std::exchange(var.m_storage.m_ptr, nullptr);
         }
         m_destroySSOExp = std::exchange(var.m_destroySSOExp, nullptr);
+        m_copySSOExp = std::exchange(var.m_copySSOExp, nullptr);
+        m_moveSSOExp = std::exchange(var.m_moveSSOExp, nullptr);
     }
 
     TA_Variant &operator=(const TA_Variant &var) {
@@ -73,11 +84,15 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
             m_typeId = var.m_typeId;
             m_isSmallObject = var.m_isSmallObject;
             if (m_isSmallObject) {
-                std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
+                if (var.m_copySSOExp) {
+                    var.m_copySSOExp(var.m_storage.m_data, m_storage.m_data);
+                }
             } else {
                 m_storage.m_ptr = var.m_storage.m_ptr;
             }
             m_destroySSOExp = var.m_destroySSOExp;
+            m_copySSOExp = var.m_copySSOExp;
+            m_moveSSOExp = var.m_moveSSOExp;
         }
         return *this;
     }
@@ -88,11 +103,15 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
             m_typeId = std::exchange(var.m_typeId, 0);
             m_isSmallObject = std::exchange(var.m_isSmallObject, false);
             if (m_isSmallObject) {
-                std::memcpy(m_storage.m_data, var.m_storage.m_data, ms_smallObjSize);
+                if (var.m_moveSSOExp) {
+                    var.m_moveSSOExp(var.m_storage.m_data, m_storage.m_data);
+                }
             } else {
                 m_storage.m_ptr = std::exchange(var.m_storage.m_ptr, nullptr);
             }
             m_destroySSOExp = std::exchange(var.m_destroySSOExp, nullptr);
+            m_copySSOExp = std::exchange(var.m_copySSOExp, nullptr);
+            m_moveSSOExp = std::exchange(var.m_moveSSOExp, nullptr);
         }
         return *this;
     }
@@ -107,6 +126,12 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
             if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
                 new (m_storage.m_data) RawType(std::forward<RawType>(obj));
                 m_destroySSOExp = [](void *data) { std::destroy_at(reinterpret_cast<RawType *>(data)); };
+                m_copySSOExp = [](const void *src, void *dst) {
+                    new (dst) RawType(*reinterpret_cast<const RawType *>(src));
+                };
+                m_moveSSOExp = [](void *src, void *dst) {
+                    new (dst) RawType(std::move(*reinterpret_cast<RawType *>(src)));
+                };
                 m_isSmallObject = true;
             } else {
                 m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(obj));
@@ -160,6 +185,8 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     bool m_isSmallObject{false};
     void (*m_destroySSOExp)(void *){nullptr};
+    void (*m_copySSOExp)(const void *, void *){nullptr};
+    void (*m_moveSSOExp)(void *, void *){nullptr};
 };
 
 using TA_DefaultVariant = TA_Variant<>;
