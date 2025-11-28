@@ -25,21 +25,15 @@
 
 namespace CoreAsync {
 
-template <typename Ins> struct IsSmartPointer {
-    static constexpr bool value = false;
-};
+#include <type_traits>
 
-template <typename Ins> struct IsSmartPointer<std::shared_ptr<Ins>> {
-    static constexpr bool value = true;
-};
+template <typename, typename = void> struct IsSmartPtr : std::false_type {};
 
-template <typename Ins> struct IsSmartPointer<std::unique_ptr<Ins>> {
-    static constexpr bool value = true;
-};
+template <typename T>
+struct IsSmartPtr<T, std::void_t<decltype(*std::declval<T &>()), decltype(std::declval<T &>().get())>> : std::true_type {};
 
-template <typename Ins> struct IsSmartPointer<std::weak_ptr<Ins>> {
-    static constexpr bool value = true;
-};
+template <typename T> constexpr bool IsSmartPtr_v = IsSmartPtr<T>::value;
+
 
 template <typename T> struct IsStdFunction : std::false_type {};
 
@@ -81,7 +75,7 @@ struct IsStaticVariable
 template <typename T>
 struct IsStaticMethod
     : std::integral_constant<bool, !std::is_member_function_pointer_v<T> && !std::is_member_object_pointer_v<T> &&
-                                       std::is_function_v<std::remove_pointer_t<T>>> {};
+                                    std::is_function_v<std::remove_pointer_t<T>>> {};
 
 template <typename T>
 concept MethodType = IsInstanceMethod<T>::value || IsStaticMethod<T>::value;
