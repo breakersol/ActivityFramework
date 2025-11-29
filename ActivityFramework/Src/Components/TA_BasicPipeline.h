@@ -38,7 +38,7 @@ class TA_ConcurrentPipeline;
 class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
   protected:
     using Milliseconds = std::chrono::duration<int, std::milli>;
-    using AsyncTask = TA_CoroutineTask<TA_ActivityResultFetcher, CorotuineBehavior::Eager>;
+    using AsyncTask = TA_ManualCoroutineTask<TA_ActivityResultFetcher, CorotuineBehavior::Eager>;
 
     friend TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager>
     runningGenerator(TA_AutoChainPipeline *pPipeline);

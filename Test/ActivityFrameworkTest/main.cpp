@@ -22,7 +22,7 @@
 #include "Components/TA_MetaReflex.h"
 #include "Components/TA_Coroutine.h"
 
-CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender) {
+CoreAsync::TA_ManualCoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender) {
     auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
     co_return val * 3;
 }

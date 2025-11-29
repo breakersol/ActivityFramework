@@ -29,7 +29,7 @@ class TA_CoroutineTest : public ::testing::Test {
     void SetUp() override;
     void TearDown() override;
 
-    CoreAsync::TA_CoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender) {
+    CoreAsync::TA_ManualCoroutineTask<int, CoreAsync::Eager> testCoroutineTask(CoroutineTestSender *pSender) {
         auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
         co_return val * 3;
     }

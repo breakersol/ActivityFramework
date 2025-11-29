@@ -42,7 +42,7 @@ enum class TA_ConnectionType { Auto, Direct, Queued };
 
 class TA_MetaObject {
     class TA_ConnectionObject;
-    using AsyncTaskRes = TA_CoroutineTask<std::shared_ptr<TA_DefaultVariant>, CorotuineBehavior::Eager>;
+    using AsyncTaskRes = TA_ManualCoroutineTask<std::shared_ptr<TA_DefaultVariant>, CorotuineBehavior::Eager>;
   public:
     class TA_ConnectionObjectHolder {
         friend class TA_MetaObject;

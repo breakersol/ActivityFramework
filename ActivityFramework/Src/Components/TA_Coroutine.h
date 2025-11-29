@@ -24,15 +24,15 @@
 namespace CoreAsync {
 enum CorotuineBehavior { Lazy, Eager };
 
-template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_CoroutineTask {
+template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_ManualCoroutineTask {
     struct promise_type {
         std::optional<T> m_result{};
         std::exception_ptr m_exception{};
         std::atomic_bool m_completed{false};
         static constexpr bool isBlockingType{true};
 
-        TA_CoroutineTask get_return_object() {
-            return TA_CoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
+        TA_ManualCoroutineTask get_return_object() {
+            return TA_ManualCoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         std::suspend_always initial_suspend() noexcept { return {}; }
@@ -57,17 +57,17 @@ template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_Coroutin
 
     using HandleType = std::coroutine_handle<promise_type>;
 
-    explicit TA_CoroutineTask(HandleType handle) : m_coroutineHandle(handle) {}
+    explicit TA_ManualCoroutineTask(HandleType handle) : m_coroutineHandle(handle) {}
 
-    TA_CoroutineTask(const TA_CoroutineTask &) = delete;
+    TA_ManualCoroutineTask(const TA_ManualCoroutineTask &) = delete;
 
-    TA_CoroutineTask &operator=(const TA_CoroutineTask &) = delete;
+    TA_ManualCoroutineTask &operator=(const TA_ManualCoroutineTask &) = delete;
 
-    TA_CoroutineTask(TA_CoroutineTask &&task) noexcept : m_coroutineHandle(std::move(task.m_coroutineHandle)) {
+    TA_ManualCoroutineTask(TA_ManualCoroutineTask &&task) noexcept : m_coroutineHandle(std::move(task.m_coroutineHandle)) {
         task.m_coroutineHandle = nullptr;
     }
 
-    TA_CoroutineTask &operator=(TA_CoroutineTask &&task) noexcept {
+    TA_ManualCoroutineTask &operator=(TA_ManualCoroutineTask &&task) noexcept {
         if (this != &task) {
             if (m_coroutineHandle)
                 m_coroutineHandle.destroy();
@@ -77,7 +77,7 @@ template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_Coroutin
         return *this;
     }
 
-    ~TA_CoroutineTask() {
+    ~TA_ManualCoroutineTask() {
         if (m_coroutineHandle) {
             m_coroutineHandle.destroy();
             m_coroutineHandle = nullptr;
@@ -105,15 +105,15 @@ template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_Coroutin
     HandleType m_coroutineHandle;
 };
 
-template <typename T> struct [[nodiscard]] TA_CoroutineTask<T, Eager> {
+template <typename T> struct [[nodiscard]] TA_ManualCoroutineTask<T, Eager> {
     struct promise_type {
         std::optional<T> m_result{};
         std::exception_ptr m_exception{};
         std::atomic_bool m_completed{false};
         static constexpr bool isBlockingType{true};
 
-        TA_CoroutineTask get_return_object() {
-            return TA_CoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
+        TA_ManualCoroutineTask get_return_object() {
+            return TA_ManualCoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         std::suspend_never initial_suspend() noexcept { return {}; }
@@ -139,17 +139,17 @@ template <typename T> struct [[nodiscard]] TA_CoroutineTask<T, Eager> {
     using HandleType = std::coroutine_handle<promise_type>;
     HandleType m_coroutineHandle;
 
-    explicit TA_CoroutineTask(HandleType handle) : m_coroutineHandle(handle) {}
+    explicit TA_ManualCoroutineTask(HandleType handle) : m_coroutineHandle(handle) {}
 
-    TA_CoroutineTask(const TA_CoroutineTask &) = delete;
+    TA_ManualCoroutineTask(const TA_ManualCoroutineTask &) = delete;
 
-    TA_CoroutineTask &operator=(const TA_CoroutineTask &) = delete;
+    TA_ManualCoroutineTask &operator=(const TA_ManualCoroutineTask &) = delete;
 
-    TA_CoroutineTask(TA_CoroutineTask &&task) noexcept : m_coroutineHandle(std::move(task.m_coroutineHandle)) {
+    TA_ManualCoroutineTask(TA_ManualCoroutineTask &&task) noexcept : m_coroutineHandle(std::move(task.m_coroutineHandle)) {
         task.m_coroutineHandle = nullptr;
     }
 
-    TA_CoroutineTask &operator=(TA_CoroutineTask &&task) noexcept {
+    TA_ManualCoroutineTask &operator=(TA_ManualCoroutineTask &&task) noexcept {
         if (this != &task) {
             if (m_coroutineHandle)
                 m_coroutineHandle.destroy();
@@ -159,7 +159,7 @@ template <typename T> struct [[nodiscard]] TA_CoroutineTask<T, Eager> {
         return *this;
     }
 
-    ~TA_CoroutineTask() {
+    ~TA_ManualCoroutineTask() {
         if (m_coroutineHandle && !m_coroutineHandle.done()) {
             m_coroutineHandle.destroy();
         }
