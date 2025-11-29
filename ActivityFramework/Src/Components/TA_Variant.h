@@ -181,7 +181,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
     static constexpr std::size_t ms_alignment{std::alignment_of_v<std::max_align_t>};
 
     union Storage {
-        std::byte m_data[ms_smallObjSize];
+        alignas(ms_alignment) std::byte m_data[ms_smallObjSize];
         std::shared_ptr<void> m_ptr{nullptr};
 
         ~Storage() {}
