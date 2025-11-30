@@ -46,7 +46,7 @@ TEST_F(TA_ConnectionTest, connectAsyncTest) {
 TEST_F(TA_ConnectionTest, disconnectTest) {
     EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
     EXPECT_TRUE(CoreAsync::ITA_Connection::disconnect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    EXPECT_FALSE(CoreAsync::ITA_Connection::active(m_pTest, &MetaTest::startTest, 2, 3));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest, &MetaTest::startTest, 2, 3));
 }
 
 TEST_F(TA_ConnectionTest, activeTest) {

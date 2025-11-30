@@ -178,6 +178,25 @@ template <typename T> struct [[nodiscard]] TA_ManualCoroutineTask<T, Eager> {
     }
 };
 
+struct TA_AutoCoroutineTask {
+    struct promise_type {
+        TA_AutoCoroutineTask get_return_object() { return {}; }
+
+        std::suspend_never initial_suspend() noexcept { return {}; }
+        std::suspend_never final_suspend() noexcept { return {}; }
+
+        void return_void() {}
+
+        void unhandled_exception() { std::terminate(); }
+    };
+
+    TA_AutoCoroutineTask() = default;
+    ~TA_AutoCoroutineTask() = default;
+
+    TA_AutoCoroutineTask(const TA_AutoCoroutineTask &) = delete;
+    TA_AutoCoroutineTask &operator=(const TA_AutoCoroutineTask &) = delete;
+};
+
 template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineGenerator {
     struct promise_type {
         T m_currentValue{};

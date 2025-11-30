@@ -163,6 +163,33 @@ class TA_MetaObject {
         pHost->pendingCountDecrement();
         co_return res;
     }
+
+    template <ActivityType Activity>
+    inline static TA_AutoCoroutineTask invokeActivityNoAwait(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete = true) {
+        if (!pActivity) {
+            throw std::invalid_argument("Activity is null");
+        }
+        if (!pHost) {
+            throw std::invalid_argument("Host object is null");
+        }
+        pHost->pendingCountIncrement();
+        std::size_t idx = pHost->affinityThread();
+        if (idx >= TA_ThreadHolder::get().size()) {
+            throw std::out_of_range("Thread index out of range.");
+        }
+        if (pHost->isIdle()) {
+            pHost->updateAffinityThread();
+            idx = pHost->affinityThread();
+        }
+        pActivity->moveToThread(idx);
+        auto fetcher = TA_ThreadHolder::get().postActivity(pActivity, autoDelete);
+        // Have to call the fetcher to ensure the activity is executed temporarily.
+        // In the future, we may provide a better way to handle fire-and-forget activities.
+        // Need to protect sender's lifetime in the future.
+        fetcher();
+        pHost->pendingCountDecrement();
+        co_return;
+    }
     
     inline static bool isOnCurrentThread(TA_MetaObject *pObject) {
         if (!pObject) {
@@ -355,17 +382,16 @@ class TA_MetaObject {
             return false;
         }
         if(isOnCurrentThread(pSender)) {
-            return m_emitSignalImpl<Sender, Signal, Args...>(pSender, std::forward<Signal>(signal),
-                                                            std::forward<Args>(args)...);
+            m_emitSignalImpl<Sender, Signal, Args...>(pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
+        } else {
+            using ExpType = decltype(m_emitSignalImpl<Sender, Signal, Args...>);
+            auto activity =
+                TA_ActivityCreator::create(std::forward<ExpType>(m_emitSignalImpl<Sender, Signal, Args...>), pSender,
+                                           std::forward<Signal>(signal), std::forward<Args>(args)...);
+            activity->setStolenEnabled(false);
+            invokeActivityNoAwait(activity, pSender);
         }
-        using ExpType = decltype(m_emitSignalImpl<Sender, Signal, Args...>);
-        auto activity = TA_ActivityCreator::create(
-            std::forward<ExpType>(m_emitSignalImpl<Sender, Signal, Args...>),
-            pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
-        activity->setStolenEnabled(false);
-        AsyncTaskRes res = invokeActivity(activity, pSender);
-        auto taskResult = res.get();
-        return taskResult->template get<bool>();
+        return true;
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -593,17 +619,14 @@ class TA_MetaObject {
     };
 
     template <typename Sender, typename Signal, typename... Args>
-    inline static auto m_emitSignalImpl = [](Sender *pSender, Signal signal, Args... args) {
+    inline static auto m_emitSignalImpl = [](Sender *pSender, Signal signal, Args... args) -> void {
         auto [startIter, endIter] = pSender->m_outputConnections.equal_range(
             Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal)));
-        if (startIter == endIter)
-            return false;
         while (startIter != endIter) {
             auto obj = startIter++->second;
             obj->setPara(std::forward<Args>(args)...);
             obj->callSlot();
         }
-        return true;
     };
 
     template <typename Sender>
