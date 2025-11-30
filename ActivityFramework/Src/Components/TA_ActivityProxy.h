@@ -135,12 +135,12 @@ class TA_ActivityProxy {
 
   private:
     std::unique_ptr<void, void (*)(void *)> m_pActivity;
-    Executor<void, std::unique_ptr<void, void (*)(void *)> &, std::promise<TA_DefaultVariant> &&> m_pExecuteExp;
-    Executor<std::size_t, std::unique_ptr<void, void (*)(void *)> const &> m_pAffinityThreadExp;
-    Executor<std::thread::id, std::unique_ptr<void, void (*)(void *)> const &> m_pDependThreadIdExp;
-    Executor<std::int64_t, std::unique_ptr<void, void (*)(void *)> const &> m_pIdExp;
-    Executor<bool, std::unique_ptr<void, void (*)(void *)> &, std::size_t> m_pMoveThreadExp;
-    Executor<bool, std::unique_ptr<void, void (*)(void *)> const &> m_pStolenEnabledExp;
+    Executor<void, std::unique_ptr<void, void (*)(void *)> &, std::promise<TA_DefaultVariant> &&> m_pExecuteExp{nullptr};
+    Executor<std::size_t, std::unique_ptr<void, void (*)(void *)> const &> m_pAffinityThreadExp{nullptr};
+    Executor<std::thread::id, std::unique_ptr<void, void (*)(void *)> const &> m_pDependThreadIdExp{nullptr};
+    Executor<std::int64_t, std::unique_ptr<void, void (*)(void *)> const &> m_pIdExp{nullptr};
+    Executor<bool, std::unique_ptr<void, void (*)(void *)> &, std::size_t> m_pMoveThreadExp{nullptr};
+    Executor<bool, std::unique_ptr<void, void (*)(void *)> const &> m_pStolenEnabledExp{nullptr};
     std::promise<TA_DefaultVariant> m_promise{};
     std::shared_future<TA_DefaultVariant> m_future{m_promise.get_future().share()};
     std::atomic_bool m_isExecuted{false};
