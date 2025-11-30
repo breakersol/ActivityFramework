@@ -29,7 +29,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
   public:
     TA_Variant() {}
 
-    template <typename T, typename... Args> TA_Variant(T &&value, Args &&...args) {
+    template <typename T, typename... Args> TA_Variant(T &&value, Args &&...args) noexcept {
         using RawType = std::remove_cvref_t<T>;
         m_typeId = typeid(RawType).hash_code();
         if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
@@ -55,7 +55,9 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     ~TA_Variant() { destroy(); }
 
-    TA_Variant(const TA_Variant &var) : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject), m_destroySSOExp(var.m_destroySSOExp), m_copySSOExp(var.m_copySSOExp), m_moveSSOExp(var.m_moveSSOExp) {
+    TA_Variant(const TA_Variant &var) noexcept
+        : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject), m_destroySSOExp(var.m_destroySSOExp),
+          m_copySSOExp(var.m_copySSOExp), m_moveSSOExp(var.m_moveSSOExp) {
         if (m_isSmallObject) {
             if (var.m_copySSOExp) {
                 var.m_copySSOExp(var.m_storage.m_data, m_storage.m_data);
@@ -65,7 +67,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         }
     }
 
-    TA_Variant(TA_Variant &&var) : m_typeId(std::move(var.m_typeId)), m_isSmallObject(std::move(var.m_isSmallObject)) {
+    TA_Variant(TA_Variant &&var) noexcept : m_typeId(std::move(var.m_typeId)), m_isSmallObject(std::move(var.m_isSmallObject)) {
         if (m_isSmallObject) {
             if (var.m_moveSSOExp) {
                 var.m_moveSSOExp(var.m_storage.m_data, m_storage.m_data);
