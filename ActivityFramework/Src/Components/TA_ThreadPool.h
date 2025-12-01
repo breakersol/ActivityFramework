@@ -220,11 +220,12 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     std::vector<std::size_t> m_stealIdxs;
 };
 
-struct TA_ThreadHolder {
-    static TA_ThreadPool &get() {
-        static TA_ThreadPool pool;
-        return pool;
-    }
+struct ACTIVITY_FRAMEWORK_EXPORT TA_ThreadHolder {
+    static void create(std::size_t size = std::thread::hardware_concurrency());
+    static TA_ThreadPool &get();
+
+  private:
+    static TA_ThreadPool *m_pThreadPool;
 };
 } // namespace CoreAsync
 

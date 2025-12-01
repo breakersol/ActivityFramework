@@ -132,4 +132,19 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
 }
 #endif
 
+TA_ThreadPool* TA_ThreadHolder::m_pThreadPool = nullptr;
+
+void TA_ThreadHolder::create(std::size_t size) {
+    static std::once_flag flag;
+    std::call_once(flag, [size]() {
+        m_pThreadPool = new TA_ThreadPool(size);
+    });
+}
+
+TA_ThreadPool &TA_ThreadHolder::get() {
+    if(!m_pThreadPool)
+        create(std::thread::hardware_concurrency());
+    return *m_pThreadPool;
+}
+
 }
