@@ -179,7 +179,12 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
     void setParas(Paras &&...paras) { m_paras = std::make_tuple(std::forward<Paras>(paras)...); }
 
   private:
-    template <typename T> using StorageType = std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>;
+    template <typename T>
+    using StorageType = std::conditional_t <
+        std::is_pointer_v<std::decay_t<T>>, 
+        std::decay_t<T>, 
+        std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>
+    >;
 
     template <std::size_t Idx, std::size_t... Idxs>
     static constexpr auto getStaticMethodParas(const std::tuple<StorageType<Paras>...> &paras,
@@ -250,7 +255,12 @@ template <typename Method, typename... Args> class TA_MethodActivity {
   private:
     decltype(auto) run() { return std::apply(m_method, m_args); }
 
-    template <typename T> using StorageType = std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>;
+    template <typename T>
+    using StorageType = std::conditional_t<
+        std::is_pointer_v<std::decay_t<T>>, 
+        std::decay_t<T>, 
+        std::conditional_t<std::is_lvalue_reference_v<T>, T, std::decay_t<T>>
+    >;
 
     using Ins = typename InsTypeHelper<Args...>::type;
 
