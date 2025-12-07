@@ -22,52 +22,50 @@ TA_ConnectionTest::TA_ConnectionTest() {}
 
 TA_ConnectionTest::~TA_ConnectionTest() {}
 
-void TA_ConnectionTest::SetUp() { m_pTest = new MetaTest(); }
+void TA_ConnectionTest::SetUp() { m_pTest = std::make_shared<MetaTest>(); }
 
-void TA_ConnectionTest::TearDown() {
-    if (m_pTest)
-        delete m_pTest;
-    m_pTest = nullptr;
-}
+void TA_ConnectionTest::TearDown() {}
 
 TEST_F(TA_ConnectionTest, connectSyncTest) {
-    EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    EXPECT_FALSE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    CoreAsync::ITA_Connection::disconnect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM);
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest.get(), &MetaTest::startTest, m_pTest.get(), &MetaTest::productMM));
+    EXPECT_FALSE(CoreAsync::ITA_Connection::connect(m_pTest.get(), &MetaTest::startTest, m_pTest.get(), &MetaTest::productMM));
+    CoreAsync::ITA_Connection::disconnect(m_pTest.get(), &MetaTest::startTest, m_pTest.get(), &MetaTest::productMM);
 }
 
 TEST_F(TA_ConnectionTest, connectAsyncTest) {
-    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(m_pTest, &MetaTest::printTest,
-                                                                                         m_pTest, &MetaTest::print));
-    EXPECT_FALSE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print));
-    CoreAsync::ITA_Connection::disconnect(m_pTest, &MetaTest::printTest, m_pTest, &MetaTest::print);
+    EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(
+        m_pTest.get(), &MetaTest::printTest, m_pTest.get(), &MetaTest::print));
+    EXPECT_FALSE(
+        CoreAsync::ITA_Connection::connect(m_pTest.get(), &MetaTest::printTest, m_pTest.get(), &MetaTest::print));
+    CoreAsync::ITA_Connection::disconnect(m_pTest.get(), &MetaTest::printTest, m_pTest.get(), &MetaTest::print);
 }
 
 TEST_F(TA_ConnectionTest, disconnectTest) {
-    EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    EXPECT_TRUE(CoreAsync::ITA_Connection::disconnect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest, &MetaTest::startTest, 2, 3));
+    EXPECT_TRUE(
+        CoreAsync::ITA_Connection::connect(m_pTest.get(), &MetaTest::startTest, m_pTest.get(), &MetaTest::productMM));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::disconnect(m_pTest.get(), &MetaTest::startTest, m_pTest.get(),
+                                                      &MetaTest::productMM));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest.get(), &MetaTest::startTest, 2, 3));
 }
 
 TEST_F(TA_ConnectionTest, activeTest) {
-    EXPECT_TRUE(CoreAsync::ITA_Connection::connect(m_pTest, &MetaTest::startTest, m_pTest, &MetaTest::productMM));
-    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest, &MetaTest::startTest, 5, 5));
+    EXPECT_TRUE(
+        CoreAsync::ITA_Connection::connect(m_pTest.get(), &MetaTest::startTest, m_pTest.get(), &MetaTest::productMM));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest.get(), &MetaTest::startTest, 5, 5));
 }
 
 TEST_F(TA_ConnectionTest, asyncActiveTest) {
-    MetaTest *pTempTest = new MetaTest();
     EXPECT_TRUE(CoreAsync::ITA_Connection::connect<CoreAsync::TA_ConnectionType::Queued>(
-        pTempTest, &MetaTest::startTest, pTempTest, &MetaTest::productMM));
+        m_pTest.get(), &MetaTest::startTest, m_pTest.get(), &MetaTest::productMM));
     // CoreAsync::TA_ThreadHolder::get().setThreadDetached(CoreAsync::TA_ThreadHolder::get().topPriorityThread());
-    EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest, &MetaTest::startTest, 6, 6));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest.get(), &MetaTest::startTest, 6, 6));
 }
 
 TEST_F(TA_ConnectionTest, lambdaExpTest) {
-    MetaTest *pTempTest = new MetaTest();
     int c = 9;
     auto conn = CoreAsync::ITA_Connection::connect(
-        pTempTest, &MetaTest::startTest, [c](int a, int b) { std::printf("The numbers are: %d, %d, %d\n.", a, b, c); });
+        m_pTest.get(), &MetaTest::startTest, [c](int a, int b) { std::printf("The numbers are: %d, %d, %d\n.", a, b, c); });
     EXPECT_TRUE(conn.valid());
-    EXPECT_TRUE(CoreAsync::ITA_Connection::active(pTempTest, &MetaTest::startTest, 8, 8));
+    EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest.get(), &MetaTest::startTest, 8, 8));
     EXPECT_TRUE(CoreAsync::ITA_Connection::disconnect(conn));
 }

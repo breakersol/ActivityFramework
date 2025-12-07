@@ -36,12 +36,12 @@ class TA_PipelineTest : public ::testing ::Test {
     void SetUp() override;
     void TearDown() override;
 
-    MetaTest *m_pTest;
-    CoreAsync::TA_AutoChainPipeline *m_pAutoChainPipeline{nullptr};
-    CoreAsync::TA_ManualChainPipeline *m_pManualChainPipeline{nullptr};
-    CoreAsync::TA_ManualKeyActivityChainPipeline *m_pManualKeyActivityChainPipeline{nullptr};
-    CoreAsync::TA_ManualStepsChainPipeline *m_pManualStepsChainPipeline{nullptr};
-    CoreAsync::TA_ConcurrentPipeline *m_pConcurrentPipeline{nullptr};
+    std::shared_ptr<MetaTest> m_pTest{nullptr};
+    std::shared_ptr<CoreAsync::TA_AutoChainPipeline> m_pAutoChainPipeline{nullptr};
+    std::shared_ptr<CoreAsync::TA_ManualChainPipeline> m_pManualChainPipeline{nullptr};
+    std::shared_ptr<CoreAsync::TA_ManualKeyActivityChainPipeline> m_pManualKeyActivityChainPipeline{nullptr};
+    std::shared_ptr<CoreAsync::TA_ManualStepsChainPipeline> m_pManualStepsChainPipeline{nullptr};
+    std::shared_ptr<CoreAsync::TA_ConcurrentPipeline> m_pConcurrentPipeline{nullptr};
 };
 
 #endif // TA_PIPELINETEST_H

@@ -40,7 +40,7 @@ concept EnableConnectObjectType = requires(T *t) {
 
 enum class TA_ConnectionType { Auto, Direct, Queued };
 
-class TA_MetaObject {
+class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     class TA_ConnectionObject;
     using AsyncTaskRes = TA_ManualCoroutineTask<std::shared_ptr<TA_DefaultVariant>, CorotuineBehavior::Eager>;
   public:
@@ -138,6 +138,10 @@ class TA_MetaObject {
         }
     };
 
+    std::weak_ptr<TA_MetaObject> weakPtr() {
+        return this->weak_from_this();
+    }
+
     template <ActivityType Activity>
     [[nodiscard]] inline static AsyncTaskRes invokeActivity(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete = true) {
         if (!pActivity) {
@@ -186,7 +190,7 @@ class TA_MetaObject {
         // Have to call the fetcher to ensure the activity is executed temporarily.
         // In the future, we may provide a better way to handle fire-and-forget activities.
         // Need to protect sender's lifetime in the future.
-        fetcher();
+        // fetcher();
         pHost->pendingCountDecrement();
         co_return;
     }
@@ -382,14 +386,25 @@ class TA_MetaObject {
             return false;
         }
         if(isOnCurrentThread(pSender)) {
-            m_emitSignalImpl<Sender, Signal, Args...>(pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
-        } else {
-            using ExpType = decltype(m_emitSignalImpl<Sender, Signal, Args...>);
-            auto activity =
-                TA_ActivityCreator::create(std::forward<ExpType>(m_emitSignalImpl<Sender, Signal, Args...>), pSender,
-                                           std::forward<Signal>(signal), std::forward<Args>(args)...);
-            activity->setStolenEnabled(false);
-            invokeActivityNoAwait(activity, pSender);
+            m_emitSignalImpl<Sender *, Signal, Args...>(pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
+        } else { 
+            auto sharedSender = pSender->weakPtr().lock();
+            if (sharedSender) {
+                using SharedExpType = decltype(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>);
+                auto activity = TA_ActivityCreator::create(
+                    std::forward<SharedExpType>(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>), 
+                    dynamic_pointer_cast<Sender>(sharedSender), std::forward<Signal>(signal), std::forward<Args>(args)...);
+                activity->setStolenEnabled(false);
+                invokeActivityNoAwait(activity, pSender);
+            } else {
+                using ExpType = decltype(m_emitSignalImpl<Sender *, Signal, Args...>);
+                auto activity = TA_ActivityCreator::create(
+                    std::forward<ExpType>(m_emitSignalImpl<Sender *, Signal, Args...>), 
+                    pSender, std::forward<Signal>(signal), 
+                    std::forward<Args>(args)...);
+                activity->setStolenEnabled(false);
+                invokeActivityNoAwait(activity, pSender);
+            }
         }
         return true;
     }
@@ -595,6 +610,19 @@ class TA_MetaObject {
     }
 
   private:
+    template <typename T>
+    struct ExtractRawType {
+        using type = std::conditional_t<
+            std::is_pointer_v<T>,
+            std::decay_t<std::remove_pointer_t<T>>, 
+            std::decay_t<T>>;
+    };
+
+    template <typename T> requires IsSmartPtr_v<T>
+    struct ExtractRawType<T> {
+        using type = std::decay_t<typename T::element_type>;
+    };
+
     const std::thread::id m_sourceThread;
     std::atomic_size_t m_affinityThreadIdx;
     PendingCounter m_pendingCounter {};
@@ -619,9 +647,13 @@ class TA_MetaObject {
     };
 
     template <typename Sender, typename Signal, typename... Args>
-    inline static auto m_emitSignalImpl = [](Sender *pSender, Signal signal, Args... args) -> void {
+    inline static auto m_emitSignalImpl = [](Sender pSender, Signal signal, Args... args) -> void {
+        if (!pSender) {
+            return;
+        }
+        using RawType = typename ExtractRawType<Sender>::type;
         auto [startIter, endIter] = pSender->m_outputConnections.equal_range(
-            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal)));
+            Reflex::TA_TypeInfo<RawType>::findName(std::forward<Signal>(signal)));
         while (startIter != endIter) {
             auto obj = startIter++->second;
             obj->setPara(std::forward<Args>(args)...);

@@ -46,6 +46,7 @@ class TA_CoroutineTest : public ::testing::Test {
     }
 
     std::size_t m_count{0};
+    std::shared_ptr<CoroutineTestSender> m_sender{nullptr};
 };
 
 #endif // TA_COROUTINETEST_H

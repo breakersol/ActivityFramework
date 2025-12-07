@@ -29,7 +29,7 @@ class TA_ConnectionTest : public ::testing ::Test {
     void SetUp() override;
     void TearDown() override;
 
-    MetaTest *m_pTest;
+    std::shared_ptr<MetaTest> m_pTest{nullptr};
 };
 
 #endif // TA_CONNECTIONTEST_H

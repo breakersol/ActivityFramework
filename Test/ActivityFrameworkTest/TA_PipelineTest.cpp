@@ -23,34 +23,15 @@ TA_PipelineTest::TA_PipelineTest() {}
 TA_PipelineTest::~TA_PipelineTest() {}
 
 void TA_PipelineTest::SetUp() {
-    m_pTest = new MetaTest();
-    m_pAutoChainPipeline = new CoreAsync::TA_AutoChainPipeline();
-    m_pManualChainPipeline = new CoreAsync::TA_ManualChainPipeline();
-    m_pManualKeyActivityChainPipeline = new CoreAsync::TA_ManualKeyActivityChainPipeline();
-    m_pManualStepsChainPipeline = new CoreAsync::TA_ManualStepsChainPipeline();
-    m_pConcurrentPipeline = new CoreAsync::TA_ConcurrentPipeline();
+    m_pTest = std::make_shared<MetaTest>();
+    m_pAutoChainPipeline = std::make_shared<CoreAsync::TA_AutoChainPipeline>();
+    m_pManualChainPipeline = std::make_shared<CoreAsync::TA_ManualChainPipeline>();
+    m_pManualKeyActivityChainPipeline = std::make_shared<CoreAsync::TA_ManualKeyActivityChainPipeline>();
+    m_pManualStepsChainPipeline = std::make_shared<CoreAsync::TA_ManualStepsChainPipeline>();
+    m_pConcurrentPipeline = std::make_shared<CoreAsync::TA_ConcurrentPipeline>();
 }
 
-void TA_PipelineTest::TearDown() {
-    if (m_pTest)
-        delete m_pTest;
-    m_pTest = nullptr;
-    if (m_pAutoChainPipeline)
-        delete m_pAutoChainPipeline;
-    m_pAutoChainPipeline = nullptr;
-    if (m_pManualChainPipeline)
-        delete m_pManualChainPipeline;
-    m_pManualChainPipeline = nullptr;
-    if (m_pManualKeyActivityChainPipeline)
-        delete m_pManualKeyActivityChainPipeline;
-    m_pManualKeyActivityChainPipeline = nullptr;
-    if (m_pManualStepsChainPipeline)
-        delete m_pManualStepsChainPipeline;
-    m_pManualStepsChainPipeline = nullptr;
-    if (m_pConcurrentPipeline)
-        delete m_pConcurrentPipeline;
-    m_pConcurrentPipeline = nullptr;
-}
+void TA_PipelineTest::TearDown() {}
 
 TEST_F(TA_PipelineTest, activitySizeTest) {
     auto activity_1 = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 1, 2);
