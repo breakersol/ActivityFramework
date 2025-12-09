@@ -23,7 +23,7 @@ TA_CoroutineTest::~TA_CoroutineTest() {}
 
 void TA_CoroutineTest::SetUp() { m_sender = std::make_shared<CoroutineTestSender>(); }
 
-void TA_CoroutineTest::TearDown() {}
+void TA_CoroutineTest::TearDown() {m_sender.reset();}
 
 TEST_F(TA_CoroutineTest, testCoroutineTask) {
     auto task_1 = testCoroutineTask(m_sender.get());
@@ -42,14 +42,16 @@ TEST_F(TA_CoroutineTest, testCoroutineGenerator) {
 
     int r1, r2, r3;
     CoreAsync::TA_Connection::active(m_sender.get(), &CoroutineTestSender::sendSignal, 3);
-    if (gen.next())
-        r1 = gen.value();
+    r1 = gen.value();
+    gen.next();
+
     CoreAsync::TA_Connection::active(m_sender.get(), &CoroutineTestSender::sendSignal, 4);
-    if (gen.next())
-        r2 = gen.value();
+    r2 = gen.value();
+    gen.next(); 
+
     CoreAsync::TA_Connection::active(m_sender.get(), &CoroutineTestSender::sendSignal, 5);
-    if (gen.next())
-        r3 = gen.value();
+    r3 = gen.value();
+    
     EXPECT_EQ(r1, 9);
     EXPECT_EQ(r2, 12);
     EXPECT_EQ(r3, 15);

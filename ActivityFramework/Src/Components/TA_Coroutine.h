@@ -17,6 +17,7 @@
 #ifndef TA_COROUTINE_H
 #define TA_COROUTINE_H
 
+#include <atomic>
 #include <coroutine>
 #include <optional>
 #include <exception>
@@ -201,6 +202,7 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineGenerator {
     struct promise_type {
         T m_currentValue{};
         std::exception_ptr m_exception{};
+        std::atomic_bool m_completed{false};
         static constexpr bool isBlockingType{false};
 
         TA_CoroutineGenerator get_return_object() {
@@ -212,6 +214,8 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineGenerator {
 
         std::suspend_always yield_value(const T &value) {
             m_currentValue = value;
+            m_completed.store(true, std::memory_order_release);
+            m_completed.notify_all();
             return {};
         }
 
@@ -266,7 +270,13 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineGenerator {
         return !m_coroutineHandle.done();
     }
 
-    T value() { return std::move(m_coroutineHandle.promise().m_currentValue); }
+    T value() {
+        auto &pr = m_coroutineHandle.promise();
+        pr.m_completed.wait(false, std::memory_order_acquire);
+        auto currentVal = std::move(pr.m_currentValue);
+        pr.m_completed.store(false, std::memory_order_release);
+        return std::move(currentVal);
+    }
 
     HandleType m_coroutineHandle;
 };
@@ -275,6 +285,7 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
     struct promise_type {
         T m_currentValue{};
         std::exception_ptr m_exception{};
+        std::atomic_bool m_completed{false};
         static constexpr bool isBlockingType{false};
 
         TA_CoroutineGenerator get_return_object() {
@@ -286,6 +297,8 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
 
         std::suspend_always yield_value(const T &value) {
             m_currentValue = value;
+            m_completed.store(true, std::memory_order_release);
+            m_completed.notify_all();
             return {};
         }
 
@@ -334,7 +347,13 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
         return !m_coroutineHandle.done();
     }
 
-    T value() { return std::move(m_coroutineHandle.promise().m_currentValue); }
+    T value() {
+        auto &pr = m_coroutineHandle.promise();
+        pr.m_completed.wait(false, std::memory_order_acquire);
+        auto currentVal = pr.m_currentValue;
+        pr.m_completed.store(false, std::memory_order_release);
+        return std::move(currentVal);
+    }
 
     HandleType m_coroutineHandle;
 };
