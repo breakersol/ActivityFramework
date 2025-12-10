@@ -56,7 +56,6 @@ void  TA_ThreadPool::init() {
             }
             TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
         });
-        m_threads.back().join();
     }
 }
 
