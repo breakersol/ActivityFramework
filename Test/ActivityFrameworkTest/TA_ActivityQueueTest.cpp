@@ -39,29 +39,51 @@ TEST_F(TA_ActivityQueueTest, capacityTest) {
 }
 
 TEST_F(TA_ActivityQueueTest, getFront) {
-    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
+    CoreAsync::TA_ThreadPool::QueueType queue;
     auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 6, 3);
+#if defined(__ANDROID__)
+    auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
+        std::make_shared<CoreAsync::TA_ActivityProxy>(activity)};
+    queue.push(handle);
+    (*CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(queue.front()))();
+    CoreAsync::TA_ActivityResultFetcher fetcher{
+        CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(queue.front())};
+#else
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
     (*queue.front())();
     CoreAsync::TA_ActivityResultFetcher fetcher{queue.front()};
+#endif
     int res = fetcher().get<int>();
     EXPECT_EQ(3, res);
 }
 
 TEST_F(TA_ActivityQueueTest, getRear) {
-    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
+    CoreAsync::TA_ThreadPool::QueueType queue;
     auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 6, 3);
+#if defined(__ANDROID__)
+    auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
+        std::make_shared<CoreAsync::TA_ActivityProxy>(activity)};
+    queue.push(handle);
+#else
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
+#endif
     auto pActivity = queue.rear();
     EXPECT_EQ(pActivity, nullptr);
 }
 
 TEST_F(TA_ActivityQueueTest, multiThreadTest) {
-    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 10240> queue;
+    CoreAsync::TA_ThreadPool::QueueType queue;
     std::function<bool()> func_1 = [&]() {
         for (int i = 0; i < 150; ++i) {
+#if defined(__ANDROID__)
+            auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
+                std::make_shared<CoreAsync::TA_ActivityProxy>(
+                    CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, i, 3))};
+            queue.push(handle);
+#else
             queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(
                 CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, i, 3)));
+#endif
         }
         return true;
     };
@@ -69,8 +91,15 @@ TEST_F(TA_ActivityQueueTest, multiThreadTest) {
     std::function<bool()> func_2 = [&]() {
         for (int i = 0; i < 150; ++i) {
             std::string str{"321"};
+#if defined(__ANDROID__)
+            auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
+                std::make_shared<CoreAsync::TA_ActivityProxy>(
+                    CoreAsync::TA_ActivityCreator::create(&MetaTest::getStr, str))};
+            queue.push(handle);
+#else
             queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(
                 CoreAsync::TA_ActivityCreator::create(&MetaTest::getStr, str)));
+#endif
         }
         return true;
     };

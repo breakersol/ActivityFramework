@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(_default_build_tests ON)
 if(ANDROID)
-    set(_default_build_tests OFF)
+    set(_default_build_tests ON)
 endif()
 option(ACTIVITYFRAMEWORK_BUILD_TESTS "Build Activity Framework unit tests" ${_default_build_tests})
 

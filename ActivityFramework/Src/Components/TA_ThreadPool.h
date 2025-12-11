@@ -31,6 +31,7 @@
 namespace CoreAsync {
 
 class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
+  public:
     struct AndroidPlatformTag {};
     struct DefaultPlatformTag {};
 
@@ -84,7 +85,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
 #endif
     using QueueType = typename PlatformSelector::ActivityQueue;
     using LocalThread = typename PlatformSelector::ThreadModel;
-  public:
+
     explicit TA_ThreadPool(std::size_t size = std::thread::hardware_concurrency())
         : m_states(size), m_activityQueues(size), m_stealIdxs(size) {
         init();
