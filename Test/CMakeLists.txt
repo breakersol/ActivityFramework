@@ -67,7 +67,7 @@ if(MSVC)
 elseif(UNIX)
     message(STATUS "Configuring for GCC")
     target_link_libraries(ActivityFrameworkTest PRIVATE ActivityFramework gtest)
-    target_link_directories(ActivityFrameworkTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output)
+    target_link_directories(ActivityFrameworkTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Linux)
 endif()
 
 install(TARGETS ActivityFrameworkTest
