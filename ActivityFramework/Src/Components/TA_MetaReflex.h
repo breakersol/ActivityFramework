@@ -25,13 +25,8 @@
 
 namespace CoreAsync::Reflex {
 
-template <typename T, typename = std::void_t<>> struct HasValidString {
-    static constexpr bool value = false;
-};
-
-template <typename T> struct HasValidString<T, std::void_t<typename std::basic_string_view<T>::value_type>> {
-    static constexpr bool value = true;
-};
+template <typename T, typename = std::void_t<>> struct HasValidString : std::false_type {};
+template <auto str> struct HasValidString<CoreAsync::TA_StringView<str>, std::void_t<CoreAsync::TA_StringView<str>>> : std::true_type {};
 
 template <typename TypeStr> struct TA_BaseTypeName {
     using TName = TypeStr;
