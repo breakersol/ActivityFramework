@@ -39,6 +39,40 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "android-x86_64-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+                "CMAKE_ANDROID_ARCH_ABI": "x86_64",
+                "ANDROID_PLATFORM": "android-24",
+                "CMAKE_ANDROID_STL_TYPE": "c++_static",
+                "ACTIVITYFRAMEWORK_BUILD_TESTS": "ON"
+            }
+        },
+        {
+            "name": "android-x86_64-debug",
+            "displayName": "Android x86_64 Debug",
+            "inherits": [
+                "android-x86_64-base"
+            ],
+            "binaryDir": "${sourceDir}/build/android-x86_64/debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "android-x86_64-release",
+            "displayName": "Android x86_64 Release",
+            "inherits": [
+                "android-x86_64-base"
+            ],
+            "binaryDir": "${sourceDir}/build/android-x86_64/release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         }
     ],
     "buildPresets": [
@@ -49,6 +83,14 @@
         {
             "name": "android-arm64-release",
             "configurePreset": "android-arm64-release"
+        },
+        {
+            "name": "android-x86_64-debug",
+            "configurePreset": "android-x86_64-debug"
+        },
+        {
+            "name": "android-x86_64-release",
+            "configurePreset": "android-x86_64-release"
         }
     ]
 }
