@@ -49,7 +49,7 @@ if(MSVC)
     )
 
     set(DLL_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
-    set(GTEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/win32)
+    set(GTEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Windows)
 
     add_custom_command(
         TARGET ActivityFrameworkTest POST_BUILD
