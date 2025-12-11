@@ -14,7 +14,7 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  build:
+  Linux_x64:
     runs-on: ubuntu-24.04
 
     steps:
@@ -35,22 +35,64 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ${{github.workspace}}/build/Test/ActivityFrameworkTest
 
-  android:
+  Android_arm64:
     runs-on: ubuntu-24.04
 
+    env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_NDK_VERSION: 27.0.12077973     # change if your project needs a specific NDK
+      ANDROID_API_LEVEL: 24                  # match your minSdkVersion / project requirement
+      ANDROID_ABI: arm64-v8a
+
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    - name: Install Ninja
-      run: sudo apt-get update && sudo apt-get install -y ninja-build
+    - name: Install required packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build unzip curl
 
-    - name: Set up Android NDK
-      uses: android-actions/setup-ndk@v3
+    - name: Download Android commandline-tools
+      run: |
+        mkdir -p "$ANDROID_SDK_ROOT"
+        cd "$ANDROID_SDK_ROOT"
+        curl -L -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip -q commandlinetools.zip
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* cmdline-tools/latest/ || true
+
+    - name: Install SDK tools, platforms, and NDK
+      env:
+        ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+      run: |
+        yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+          "platform-tools" \
+          "platforms;android-${ANDROID_API_LEVEL}" \
+          "build-tools;34.0.0" \
+          "ndk;${ANDROID_NDK_VERSION}"
+
+    - name: Set up NDK env
+      run: |
+        echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
+        echo "PATH=$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator:$PATH" >> $GITHUB_ENV
+
+    - name: Configure CMake (Android)
+      run: |
+        cmake -S . -B ${{ github.workspace }}/build-android \
+          -G Ninja \
+          -DCMAKE_SYSTEM_NAME=Android \
+          -DCMAKE_SYSTEM_VERSION=$ANDROID_API_LEVEL \
+          -DCMAKE_ANDROID_ARCH_ABI=$ANDROID_ABI \
+          -DCMAKE_ANDROID_NDK=$ANDROID_NDK_ROOT \
+          -DCMAKE_ANDROID_STL_TYPE=c++_static \
+          -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+
+    - name: Build (Android)
+      run: cmake --build ${{ github.workspace }}/build-android --config ${{ env.BUILD_TYPE }} -- -v
+
+    - name: Upload Android build artifacts
+      uses: actions/upload-artifact@v4
       with:
-        ndk-version: 26.2.11394342
-
-    - name: Configure Android (arm64-v8a Release)
-      run: cmake --preset android-arm64-release
-
-    - name: Build Android (arm64-v8a Release)
-      run: cmake --build --preset android-arm64-release
+        name: android-build
+        path: ${{ github.workspace }}/build-android
