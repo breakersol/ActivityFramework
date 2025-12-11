@@ -44,8 +44,8 @@ if(MSVC)
     target_link_libraries(ActivityFrameworkTest PRIVATE ActivityFramework gtest)
 
     target_link_directories(ActivityFrameworkTest PRIVATE
-        $<$<CONFIG:Debug>:${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/win32/Debug>
-        $<$<CONFIG:Release>:${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/win32/Release>
+        $<$<CONFIG:Debug>:${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Windows/Debug>
+        $<$<CONFIG:Release>:${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Windows/Release>
     )
 
     set(DLL_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
