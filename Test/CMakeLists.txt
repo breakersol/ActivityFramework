@@ -64,14 +64,18 @@ if(MSVC)
             "$<IF:$<CONFIG:Release>,${GTEST_DIR}/Release/gtest.dll,${GTEST_DIR}/Debug/gtest.dll>"
             "${DLL_TARGET_DIR}"
     )
+elseif(ANDROID)
+    message(STATUS "Configuring for Android")
+    target_link_libraries(ActivityFrameworkTest PRIVATE ActivityFramework gtest)
+    if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+        target_link_directories(ActivityFrameworkTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Android_arm64)
+    else()
+        target_link_directories(ActivityFrameworkTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Android_x86_64)
+    endif()
 elseif(UNIX)
     message(STATUS "Configuring for GCC")
     target_link_libraries(ActivityFrameworkTest PRIVATE ActivityFramework gtest)
     target_link_directories(ActivityFrameworkTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Linux)
-elseif(ANDROID)
-    message(STATUS "Configuring for Android")
-    target_link_libraries(ActivityFrameworkTest PRIVATE ActivityFramework gtest)
-    target_link_directories(ActivityFrameworkTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Android_x86_64)
 endif()
 
 install(TARGETS ActivityFrameworkTest
