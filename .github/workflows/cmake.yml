@@ -42,7 +42,7 @@ jobs:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_NDK_VERSION: 27.0.12077973     # change if your project needs a specific NDK
       ANDROID_API_LEVEL: 24                  # match your minSdkVersion / project requirement
-      ANDROID_ABI: arm64-v8a
+      ANDROID_ABI: x86_64               # change if you want to build for a different architecture
 
     steps:
     - name: Checkout
@@ -96,3 +96,19 @@ jobs:
       with:
         name: android-build
         path: ${{ github.workspace }}/build-android
+
+    - name: Start emulator
+      run: |
+        sdkmanager "system-images;android-24;default;x86_64"
+        echo "no" | avdmanager create avd -n test -k "system-images;android-24;default;x86_64"
+        emulator -avd test -no-window -no-audio -no-boot-anim &
+
+    - name: Wait for emulator
+      run: adb wait-for-device
+
+    - name: Push test binary
+      run: adb push build-android/my_test /data/local/tmp/my_test
+
+    - name: Run tests
+      run: adb shell /data/local/tmp/my_test
+
