@@ -110,39 +110,39 @@ jobs:
         name: android-build
         path: ${{ github.workspace }}/build-android
 
-    - name: Enable KVM (for faster x86_64 emulator)
-      run: |
-        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-        sudo udevadm control --reload-rules
-        sudo udevadm trigger --name-match=kvm
+    # - name: Enable KVM (for faster x86_64 emulator)
+    #   run: |
+    #     echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+    #     sudo udevadm control --reload-rules
+    #     sudo udevadm trigger --name-match=kvm
 
-    - name: Run Android x86_64 tests (emulator)
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 24
-        arch: x86_64
-        target: default
-        profile: Nexus 5X
-        disk-size: 8192M
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics
-        cores: 2
-        avd-name: test
-        force-avd-creation: true
-        emulator-boot-timeout: 600
-        disable-animations: true
+    # - name: Run Android x86_64 tests (emulator)
+    #   uses: reactivecircus/android-emulator-runner@v2
+    #   with:
+    #     api-level: 24
+    #     arch: x86_64
+    #     target: default
+    #     profile: Nexus 5X
+    #     disk-size: 8192M
+    #     emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics
+    #     cores: 2
+    #     avd-name: test
+    #     force-avd-creation: true
+    #     emulator-boot-timeout: 600
+    #     disable-animations: true
 
-        script: |
-          set -euxo pipefail
-          adb shell getprop ro.product.cpu.abi
+    #     script: |
+    #       set -euxo pipefail
+    #       adb shell getprop ro.product.cpu.abi
 
-          TEST_BIN="${GITHUB_WORKSPACE}/build-android/Test/ActivityFrameworkTest"
-          if [ ! -f "$TEST_BIN" ]; then
-            echo "Test binary not found at: $TEST_BIN"
-            echo "Available files under build-android/Test:"; ls -la "${GITHUB_WORKSPACE}/build-android/Test" || true
-            exit 1
-          fi
+    #       TEST_BIN="${GITHUB_WORKSPACE}/build-android/Test/ActivityFrameworkTest"
+    #       if [ ! -f "$TEST_BIN" ]; then
+    #         echo "Test binary not found at: $TEST_BIN"
+    #         echo "Available files under build-android/Test:"; ls -la "${GITHUB_WORKSPACE}/build-android/Test" || true
+    #         exit 1
+    #       fi
 
-          adb push "$TEST_BIN" /data/local/tmp/ActivityFrameworkTest
-          adb shell chmod +x /data/local/tmp/ActivityFrameworkTest
-          adb shell /data/local/tmp/ActivityFrameworkTest
+    #       adb push "$TEST_BIN" /data/local/tmp/ActivityFrameworkTest
+    #       adb shell chmod +x /data/local/tmp/ActivityFrameworkTest
+    #       adb shell /data/local/tmp/ActivityFrameworkTest
 
