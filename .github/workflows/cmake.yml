@@ -35,6 +35,25 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ${{github.workspace}}/build/Test/ActivityFrameworkTest
 
+  Windows_x64:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure CMake (MSVC)
+      run: >
+        cmake -S . -B ${{github.workspace}}/build-windows
+        -G "Visual Studio 17 2022"
+        -A x64
+
+    - name: Build (Windows)
+      run: cmake --build ${{github.workspace}}/build-windows --config ${{env.BUILD_TYPE}} -- /m
+
+    - name: Test (ctest)
+      working-directory: ${{github.workspace}}/build-windows
+      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+
   Android_x86_64:
     runs-on: ubuntu-24.04
 
