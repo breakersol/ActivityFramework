@@ -2,6 +2,12 @@
 
 #include "Components/TA_Serialization.h"
 
+#ifdef __ANDROID__
+const std::string TEST_FILE_PATH = "/data/local/tmp/test.afw";
+#else
+const std::string TEST_FILE_PATH = "./test.afw";
+#endif
+
 static void BM_Serialization(benchmark::State &state)
 {
     // Data preparation
@@ -15,7 +21,7 @@ static void BM_Serialization(benchmark::State &state)
 
     // Benchmark serialization
     {
-        CoreAsync::TA_Serializer output("./test.afw");
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
         for (auto _ : state) {
             output << vectorData << listData << mapData;
             output.flush();   
@@ -34,7 +40,7 @@ static void BM_Deserialization(benchmark::State& state)
 
     // Benchmark deserialization
     {
-        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw");
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
         for (auto _ : state) {
             input >> vec >> lt >> md;
 

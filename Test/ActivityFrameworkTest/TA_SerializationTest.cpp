@@ -17,6 +17,12 @@
 #include "TA_SerializationTest.h"
 #include "Components/TA_Serialization.h"
 
+#ifdef __ANDROID__
+const std::string TEST_FILE_PATH = "/data/local/tmp/test.afw";
+#else
+const std::string TEST_FILE_PATH = "./test.afw";
+#endif
+
 TA_SerializationTest::TA_SerializationTest() {}
 
 TA_SerializationTest::~TA_SerializationTest() {}
@@ -29,7 +35,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest) {
     float *ptr = new float(5.3);
     M3Test t, p1, p2;
     {
-        CoreAsync::TA_Serializer output("./test.afw", 1, 1024);
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH, 1, 1024);
         t.setVec({2, 3, 4, 5});
         t.setRawPtr(ptr);
         t.setArray({2, 3, 4, 5, 6});
@@ -44,7 +50,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest) {
         output << t << t;
     }
     {
-        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 1, 1024);
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 1, 1024);
         input >> p1 >> p2;
     }
     EXPECT_EQ(t.getVec(), p2.getVec());
@@ -70,7 +76,7 @@ TEST_F(TA_SerializationTest, VersionTest) {
     float *ptr = new float(5.3);
     M3Test t, p1, p2;
     {
-        CoreAsync::TA_Serializer output("./test.afw", 2);
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH, 2);
         t.setVec({2, 3, 4, 5});
         t.setRawPtr(ptr);
         t.setArray({2, 3, 4, 5, 6});
@@ -85,7 +91,7 @@ TEST_F(TA_SerializationTest, VersionTest) {
         output << t << t;
     }
     {
-        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2);
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 2);
         input >> p1 >> p2;
     }
     EXPECT_EQ(t.getVec(), p2.getVec());
