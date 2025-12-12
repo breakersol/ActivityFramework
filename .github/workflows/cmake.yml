@@ -35,18 +35,24 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ${{github.workspace}}/build/Test/ActivityFrameworkTest
 
-  Android_arm64:
+  Android_x86_64:
     runs-on: ubuntu-24.04
 
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_NDK_VERSION: 27.0.12077973     # change if your project needs a specific NDK
       ANDROID_API_LEVEL: 24                  # match your minSdkVersion / project requirement
-      ANDROID_ABI: x86_64               # change if you want to build for a different architecture
+      ANDROID_ABI: x86_64               # build & run tests on emulator (x86_64)
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Set up Java (required by Android SDK tools)
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
 
     - name: Install required packages
       run: |
@@ -62,14 +68,21 @@ jobs:
         mkdir -p cmdline-tools/latest
         mv cmdline-tools/* cmdline-tools/latest/ || true
 
+    - name: Put sdkmanager/avdmanager on PATH
+      run: |
+        echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+
     - name: Install SDK tools, platforms, and NDK
       env:
         ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
       run: |
-        yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+        yes | sdkmanager --licenses
+        yes | sdkmanager \
           "platform-tools" \
           "platforms;android-${ANDROID_API_LEVEL}" \
           "build-tools;34.0.0" \
+          "emulator" \
+          "system-images;android-${ANDROID_API_LEVEL};default;${ANDROID_ABI}" \
           "ndk;${ANDROID_NDK_VERSION}"
 
     - name: Set up NDK env
@@ -97,18 +110,30 @@ jobs:
         name: android-build
         path: ${{ github.workspace }}/build-android
 
-    - name: Start emulator
+    - name: Enable KVM (for faster x86_64 emulator)
       run: |
-        sdkmanager "system-images;android-24;default;x86_64"
-        echo "no" | avdmanager create avd -n test -k "system-images;android-24;default;x86_64"
-        emulator -avd test -no-window -no-audio -no-boot-anim &
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
 
-    - name: Wait for emulator
-      run: adb wait-for-device
-
-    - name: Push test binary
-      run: adb push build-android/my_test /data/local/tmp/my_test
-
-    - name: Run tests
-      run: adb shell /data/local/tmp/my_test
+    - name: Run tests on Android emulator (x86_64)
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: ${{ env.ANDROID_API_LEVEL }}
+        arch: x86_64
+        target: default
+        profile: pixel_7_pro
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        script: |
+          set -euxo pipefail
+          adb shell getprop ro.product.cpu.abi
+          TEST_BIN="${GITHUB_WORKSPACE}/build-android/Test/ActivityFrameworkTest"
+          if [ ! -f "$TEST_BIN" ]; then
+            echo "Test binary not found at: $TEST_BIN"
+            echo "Available files under build-android/Test:"; ls -la "${GITHUB_WORKSPACE}/build-android/Test" || true
+            exit 1
+          fi
+          adb push "$TEST_BIN" /data/local/tmp/ActivityFrameworkTest
+          adb shell chmod +x /data/local/tmp/ActivityFrameworkTest
+          adb shell /data/local/tmp/ActivityFrameworkTest
 
