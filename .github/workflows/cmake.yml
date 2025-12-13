@@ -29,6 +29,12 @@ jobs:
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
+    - name: Upload Linux build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: ${{ github.workspace }}/build
+
     - name: Test
       working-directory: ${{github.workspace}}/build
       # Execute tests defined by the CMake configuration.
@@ -49,6 +55,12 @@ jobs:
 
     - name: Build (Windows)
       run: cmake --build ${{github.workspace}}/build-windows --config ${{env.BUILD_TYPE}} -- /m
+
+    - name: Upload Windows build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: ${{ github.workspace }}/build-windows
 
     - name: Test (ctest)
       working-directory: ${{github.workspace}}/build-windows
@@ -164,4 +176,3 @@ jobs:
     #       adb push "$TEST_BIN" /data/local/tmp/ActivityFrameworkTest
     #       adb shell chmod +x /data/local/tmp/ActivityFrameworkTest
     #       adb shell /data/local/tmp/ActivityFrameworkTest
-
