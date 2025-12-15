@@ -60,7 +60,7 @@ cmake --build --preset android-arm64-release
 cmake --preset android-x86_64-debug   # runs with tests if GoogleTest is built for x86_64
 cmake --build --preset android-x86_64-debug
 ```
-Artifacts land in `build/android-*/<config>/ActivityFramework/output/`. See `run_on_android.txt` for a ready-made `adb` push/run sequence for the x86_64 test binary.
+Artifacts land in `build/android-*/<config>/ActivityFramework/output/`.
 
 ## Core Components & Usage
 ### Reflection (TA_MetaReflex)
@@ -130,17 +130,17 @@ Sender s; Receiver r;
 CoreAsync::ITA_Connection::connect(&s, &Sender::fired, &r, &Receiver::onFired); // auto/queued based on threads
 CoreAsync::TA_MetaObject::invokeMethod(META_STRING("fired"), &s, 5)();            // returns an activity fetcher
 ```
-Connections can be direct, queued, or auto; lambdas are supported; `TA_SignalAwaitable` lets coroutines `co_await` a signal emission.
+Connections can be direct, queued, or auto; lambdas are supported; `TA_SignalAwaitable` lets coroutines wait a signal emission.
 
 ### Activities, Thread Pool, and Variants
-Activities wrap callables or reflected method names. They carry thread affinity, an ID, and a `stolenEnabled` flag for work stealing. `TA_ThreadPool` (and the singleton `TA_ThreadHolder`) schedule them on a lock-free queue with platform-specific threads (`std::jthread` on desktop, `std::thread` on Android).
+Activities wrap callables or reflected method names. They carry thread affinity, an ID, and a `stolenEnabled` flag for work stealing. `TA_ThreadPool` (and the singleton `TA_ThreadHolder`) schedule them on a lock-free queue with platform-specific threads.
 ```cpp
 CoreAsync::TA_ThreadHolder::create(); // ensure global pool exists
 auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, &test, 7, 2);
 auto fetcher = CoreAsync::TA_ThreadHolder::get().postActivity(activity, true);
 int result = fetcher().get<int>();
 ```
-Results travel as `TA_DefaultVariant` (small-object optimized, shared_ptr-backed for larger types). `TA_ActivityFetcherAwaitable` and `TA_ActivityExecutingAwaitable` bridge activities to coroutines.
+Results travel as `TA_DefaultVariant` (small-object optimized, smart pointer backed for larger types). `TA_ActivityFetcherAwaitable` and `TA_ActivityExecutingAwaitable` bridge activities to coroutines.
 
 ### Pipelines
 Create pipelines through `ITA_PipelineCreator`:
@@ -156,9 +156,9 @@ APIs: `add/remove/clear`, `execute(Async|Sync)`, `result(index, out)`, `reset`, 
 `TA_ManualCoroutineTask` (lazy/eager) and `TA_CoroutineGenerator` wrap standard coroutines with blocking `get()`/`value()` helpers. Awaitables include waiting on signals, executing activities (sync/async), and fetching results, letting coroutine code integrate with the ActivityFramework scheduler.
 
 ## Releases
+- [v0.5.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.5.0)
 - [v0.4.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.4.1)
 - [v0.4.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.4.0)
-- [v0.3.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.3.1)
 
 ## Authors
 - Sol Zhu — breakersol@outlook.com
