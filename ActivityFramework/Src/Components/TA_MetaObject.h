@@ -142,6 +142,10 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         return this->weak_from_this();
     }
 
+    std::shared_ptr<TA_MetaObject> sharedPtr() {
+        return this->shared_from_this(); 
+    }
+
     template <ActivityType Activity>
     [[nodiscard]] inline static AsyncTaskRes invokeActivity(Activity *pActivity, TA_MetaObject *pHost, bool autoDelete = true) {
         if (!pActivity) {
