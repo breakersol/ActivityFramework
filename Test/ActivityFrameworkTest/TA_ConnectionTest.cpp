@@ -18,6 +18,8 @@
 #include "ITA_Connection.h"
 #include "MetaTest.h"
 
+ConnectionHolder conn {};
+
 TA_ConnectionTest::TA_ConnectionTest() {}
 
 TA_ConnectionTest::~TA_ConnectionTest() {}
@@ -63,7 +65,7 @@ TEST_F(TA_ConnectionTest, asyncActiveTest) {
 
 TEST_F(TA_ConnectionTest, lambdaExpTest) {
     int c = 9;
-    auto conn = CoreAsync::ITA_Connection::connect(
+    conn = CoreAsync::ITA_Connection::connect(
         m_pTest.get(), &MetaTest::startTest, [c](int a, int b) { std::printf("The numbers are: %d, %d, %d\n.", a, b, c); });
     EXPECT_TRUE(conn.valid());
     EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest.get(), &MetaTest::startTest, 8, 8));

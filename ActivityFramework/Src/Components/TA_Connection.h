@@ -44,7 +44,7 @@ class TA_Connection {
                                                    std::forward<ReceiverFunc>(rFunc));
     }
 
-    static bool disconnect(const TA_MetaObject::TA_ConnectionObjectHolder &pConnection) {
+    static bool disconnect(TA_MetaObject::TA_ConnectionObjectHolder &pConnection) {
         return TA_MetaObject::unregisterConnection(pConnection);
     };
 

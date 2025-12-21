@@ -59,6 +59,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         void reset() {
             if (m_pConnection)
                 m_pConnection.reset();
+            m_pConnection = nullptr;
         }
 
       private:
@@ -360,7 +361,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             pReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
     }
 
-    static bool unregisterConnection(const TA_ConnectionObjectHolder &holder) {
+    static bool unregisterConnection(TA_ConnectionObjectHolder &holder) {
         if (!holder.valid() || !holder.m_pConnection) {
             return false;
         }
@@ -666,7 +667,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     };
 
     template <typename Sender>
-    inline static auto m_unregisterConnectionHolderImpl = [](const TA_ConnectionObjectHolder &holder) -> bool {
+    inline static auto m_unregisterConnectionHolderImpl = [](TA_ConnectionObjectHolder &holder) -> bool {
         if (!holder.valid()) {
             return false;
         }
@@ -687,6 +688,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             }
             startSendIter++;
         }
+        holder.reset();
         return true;
     };
 
