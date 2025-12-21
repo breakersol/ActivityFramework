@@ -288,6 +288,10 @@ class TA_ActivityCreator {
 class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_ActivityFetcherAwaitable> {
   public:
     TA_ActivityFetcherAwaitable() = default;
+    TA_ActivityFetcherAwaitable(const TA_ActivityFetcherAwaitable &) = delete;
+    TA_ActivityFetcherAwaitable(TA_ActivityFetcherAwaitable &&) = delete;
+    TA_ActivityFetcherAwaitable &operator=(const TA_ActivityFetcherAwaitable &) = delete;
+    TA_ActivityFetcherAwaitable &operator=(TA_ActivityFetcherAwaitable &&) = delete;
 
     explicit TA_ActivityFetcherAwaitable(TA_ActivityProxy *pActivity) : m_pProxy(pActivity) {
         if (!m_pProxy || !m_pProxy->isValid()) {
@@ -301,6 +305,8 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
             m_pProxy = nullptr;
         }
     }
+
+    TA_ActivityFetcherAwaitable &operator co_await() & noexcept { return *this; }
 
     bool await_ready() noexcept {
         m_isRunning.store(true, std::memory_order_release);
@@ -356,12 +362,19 @@ class TA_ActivityExecutingAwaitable : public std::enable_shared_from_this<TA_Act
         }
     }
 
+    TA_ActivityExecutingAwaitable(const TA_ActivityExecutingAwaitable &) = delete;
+    TA_ActivityExecutingAwaitable(TA_ActivityExecutingAwaitable &&) = delete;
+    TA_ActivityExecutingAwaitable &operator=(const TA_ActivityExecutingAwaitable &) = delete;
+    TA_ActivityExecutingAwaitable &operator=(TA_ActivityExecutingAwaitable &&) = delete;
+
     ~TA_ActivityExecutingAwaitable() {
         if (m_pProxy && !m_pProxy->isExecuted()) {
             delete m_pProxy;
             m_pProxy = nullptr;
         }
     }
+
+    TA_ActivityExecutingAwaitable &operator co_await() & noexcept { return *this; }
 
     bool await_ready() const noexcept { return m_pProxy->isExecuted() || !m_pProxy->isValid(); }
 
