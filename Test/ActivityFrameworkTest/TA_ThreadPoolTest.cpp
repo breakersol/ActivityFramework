@@ -17,7 +17,10 @@
 #include "TA_ThreadPoolTest.h"
 #include "Components/TA_Activity.h"
 
-TA_ThreadPoolTest::TA_ThreadPoolTest() {}
+TA_ThreadPoolTest::TA_ThreadPoolTest() {
+    activities.fill(nullptr);
+}
+
 
 TA_ThreadPoolTest::~TA_ThreadPoolTest() {}
 

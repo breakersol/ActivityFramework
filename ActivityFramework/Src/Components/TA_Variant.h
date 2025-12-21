@@ -44,11 +44,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
             m_isSmallObject = true;
         } else {
             m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(value), std::forward<Args>(args)...);
-            m_destroySSOExp = [](void *ptr) {
-                if (ptr)
-                    std::destroy_at(reinterpret_cast<RawType *>(ptr)); 
-                ptr = nullptr;
-            };
+            m_destroySSOExp = nullptr;
             m_isSmallObject = false;
         }
     }
@@ -170,8 +166,10 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         if (m_typeId != 0 && m_destroySSOExp) {
             if (m_isSmallObject)
                 m_destroySSOExp(m_storage.m_data);
-            else
+            else {
                 m_storage.m_ptr.reset();
+                std::destroy_at(&m_storage.m_ptr);
+            }
         }
         m_destroySSOExp = nullptr;
     }
