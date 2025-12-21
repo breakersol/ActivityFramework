@@ -325,7 +325,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         using ExpType = decltype(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>);
         auto registerActivity = TA_ActivityCreator::create(
             std::forward<ExpType>(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>),
-            pSender, signal, exp, type, autoDestroy);
+            pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
         registerActivity->moveToThread(pSender->affinityThread());
         registerActivity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(registerActivity, pSender);
