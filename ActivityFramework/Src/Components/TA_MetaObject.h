@@ -98,6 +98,13 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         return *this;
     }
 
+    auto sharedRef() {
+        auto weakRef = this->weak_from_this();
+        if(weakRef.expired())
+            return std::shared_ptr<TA_MetaObject>(this);
+        return weakRef.lock();
+    }
+
     void pendingCountIncrement() {
         m_pendingCounter.increment(); 
     }
