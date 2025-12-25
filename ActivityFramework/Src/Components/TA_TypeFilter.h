@@ -34,6 +34,21 @@ struct IsSmartPtr<T, std::void_t<decltype(*std::declval<T &>()), decltype(std::d
 
 template <typename T> constexpr bool IsSmartPtr_v = IsSmartPtr<T>::value;
 
+template <typename T>
+concept SmartPtrType = IsSmartPtr_v<T>;
+
+template <typename T>
+struct ExtractRawType {
+    using type = std::conditional_t<
+        std::is_pointer_v<T>,
+        std::decay_t<std::remove_pointer_t<T>>,
+        std::decay_t<T>>;
+};
+
+template <typename T> requires IsSmartPtr_v<T>
+struct ExtractRawType<T> {
+    using type = std::decay_t<typename T::element_type>;
+};
 
 template <typename T> struct IsStdFunction : std::false_type {};
 
