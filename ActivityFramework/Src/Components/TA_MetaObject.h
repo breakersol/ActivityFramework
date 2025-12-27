@@ -667,7 +667,11 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             Reflex::TA_TypeInfo<RawType>::findName(std::forward<Signal>(signal)));
         while (startIter != endIter) {
             auto obj = startIter++->second;
-            obj->setPara(std::forward<Args>(args)...);
+            if(startIter != endIter) {
+                obj->setPara(args...);
+            } else {
+                obj->setPara(std::forward<Args>(args)...);
+            }
             obj->callSlot();
         }
     };
