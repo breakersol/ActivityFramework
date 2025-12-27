@@ -119,19 +119,19 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     }
 
     void pendingCountIncrement() {
-        m_pendingCounter.increment(); 
+        m_pendingCounter.increment();
     }
 
     void pendingCountDecrement() {
-        m_pendingCounter.decrement(); 
+        m_pendingCounter.decrement();
     }
 
     bool isIdle() const {
-        return m_pendingCounter.isIdle(); 
+        return m_pendingCounter.isIdle();
     }
 
     void resetPendingCount() {
-        m_pendingCounter.reset(); 
+        m_pendingCounter.reset();
     }
 
   protected:
@@ -147,7 +147,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             m_counter.fetch_sub(1, std::memory_order_acquire);
         }
         bool isIdle() const {
-            return m_counter.load(std::memory_order_acquire) == 0; 
+            return m_counter.load(std::memory_order_acquire) == 0;
         }
         auto operator ++ () -> PendingCounter & {
             increment();
@@ -164,7 +164,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     }
 
     std::shared_ptr<TA_MetaObject> sharedPtr() {
-        return this->shared_from_this(); 
+        return this->shared_from_this();
     }
 
     template <ActivityType Activity>
@@ -219,7 +219,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         pHost->pendingCountDecrement();
         co_return;
     }
-    
+
     inline static bool isOnCurrentThread(TA_MetaObject *pObject) {
         if (!pObject) {
             return false;
@@ -410,16 +410,25 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender) {
             return false;
         }
-        auto sharedSender = sharedRef(pSender);
         if(isOnCurrentThread(pSender)) {
-            m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>(sharedSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
+            m_emitSignalImpl<Sender *, Signal, Args...>(pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
         } else {
-            using SharedExpType = decltype(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>);
-            auto activity = TA_ActivityCreator::create(
-                std::forward<SharedExpType>(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>),
-                std::move(sharedSender), std::forward<Signal>(signal), std::forward<Args>(args)...);
-            activity->setStolenEnabled(false);
-            invokeActivityNoAwait(activity, pSender);
+            if(!pSender->hasSharedRef()) {
+                using RawPtrExpType = decltype(m_emitSignalImpl<Sender *, Signal, Args...>);
+                auto activity = TA_ActivityCreator::create(
+                    std::forward<RawPtrExpType>(m_emitSignalImpl<Sender *, Signal, Args...>),
+                    pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
+                activity->setStolenEnabled(false);
+                invokeActivityNoAwait(activity, pSender);
+            } else {
+                auto sharedSender = sharedRef(pSender);
+                using SharedExpType = decltype(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>);
+                auto activity = TA_ActivityCreator::create(
+                    std::forward<SharedExpType>(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>),
+                    std::move(sharedSender), std::forward<Signal>(signal), std::forward<Args>(args)...);
+                activity->setStolenEnabled(false);
+                invokeActivityNoAwait(activity, pSender);
+            }
         }
         return true;
     }
@@ -621,7 +630,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     }
 
     void updateAffinityThread() {
-        m_affinityThreadIdx.store(TA_ThreadHolder::get().topPriorityThread(), std::memory_order_release); 
+        m_affinityThreadIdx.store(TA_ThreadHolder::get().topPriorityThread(), std::memory_order_release);
     }
 
   private:
@@ -648,7 +657,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         return false;
     };
 
-    template <SmartPtrType Sender, typename Signal, typename... Args>
+    template <PointerType Sender, typename Signal, typename... Args>
     inline static auto m_emitSignalImpl = [](Sender pSender, Signal signal, Args... args) -> void {
         if (!pSender) {
             return;
@@ -896,7 +905,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     };
 };
 
-template <EnableConnectObjectType Sender, typename... Args> 
+template <EnableConnectObjectType Sender, typename... Args>
 class TA_SignalAwaitable : public std::enable_shared_from_this<TA_SignalAwaitable<Sender, Args...>> {
   public:
     TA_SignalAwaitable(Sender *pObject, void (std::decay_t<Sender>::*signal)(Args...))
@@ -906,7 +915,7 @@ class TA_SignalAwaitable : public std::enable_shared_from_this<TA_SignalAwaitabl
 
     constexpr bool await_ready() const noexcept { return false; }
 
-    template <typename PromiseType> 
+    template <typename PromiseType>
     constexpr void await_suspend(std::coroutine_handle<PromiseType> handle) noexcept {
         TA_MetaObject::registerConnection(
             m_pObject, std::move(m_signal),
