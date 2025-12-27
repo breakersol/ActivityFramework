@@ -249,6 +249,9 @@ concept RawPtr = requires(T t) {
 };
 
 template <typename T>
+concept PointerType = IsRawPtr<T> || SmartPtrType<T>;
+
+template <typename T>
 concept IsEnumType = std::is_enum_v<std::decay_t<T>>;
 
 template <typename T>
