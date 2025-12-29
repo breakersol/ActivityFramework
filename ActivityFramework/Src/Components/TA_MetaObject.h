@@ -341,14 +341,16 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if constexpr (MethodTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize) {
             return {nullptr};
         }
+
+        auto sharedSender = sharedRef(pSender);
         if(isOnCurrentThread(pSender)) {
-            return m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>(
-                pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
+            return m_registerLambdaConnectionImpl<std::shared_ptr<Sender>, Signal, LambdaExp>(
+                sharedSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
         }
-        using ExpType = decltype(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>);
+        using ExpType = decltype(m_registerLambdaConnectionImpl<std::shared_ptr<Sender>, Signal, LambdaExp>);
         auto registerActivity = TA_ActivityCreator::create(
-            std::forward<ExpType>(m_registerLambdaConnectionImpl<Sender, Signal, LambdaExp>),
-            pSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
+            std::forward<ExpType>(m_registerLambdaConnectionImpl<std::shared_ptr<Sender>, Signal, LambdaExp>),
+            sharedSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
         registerActivity->moveToThread(pSender->affinityThread());
         registerActivity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(registerActivity, pSender);
@@ -763,22 +765,23 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         return taskResult->template get<bool>();
     };
 
-    template <typename Sender, typename Signal, LambdaExpType Exp>
-    inline static auto m_registerLambdaConnectionImpl = [](Sender *pSender, Signal signal,
+    template <SmartPtrType Sender, typename Signal, LambdaExpType Exp>
+    inline static auto m_registerLambdaConnectionImpl = [](Sender pSender, Signal signal,
                                                            Exp exp, TA_ConnectionType type,
                                                            bool autoDestroy) -> TA_ConnectionObjectHolder {
+        using RawSenderType = typename ExtractRawType<Sender>::type;
         TA_ConnectionObject::FuncMark signalMark{
-            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
+            Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{typeid(Exp).name()};
         auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
         while (startSendIter != endSendIter) {
-            if (startSendIter->second->receiver() == pSender && startSendIter->second->slotMark() == slotMark) {
+            if (startSendIter->second->receiver() == pSender.get() && startSendIter->second->slotMark() == slotMark) {
                 return {nullptr};
             }
             startSendIter++;
         }
 
-        auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::move(signal), type, autoDestroy);
+        auto &&conn = std::make_shared<TA_ConnectionObject>(pSender.get(), std::move(signal), type, autoDestroy);
         conn->initSlotObject(std::move(exp));
         pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
         if (autoDestroy)
