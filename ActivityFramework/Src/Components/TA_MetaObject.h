@@ -220,7 +220,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         co_return;
     }
 
-    inline static bool isOnCurrentThread(TA_MetaObject *pObject) {
+    template <PointerType Ptr>
+    inline static bool isOnCurrentThread(Ptr pObject) {
         if (!pObject) {
             return false;
         }
