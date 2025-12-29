@@ -315,9 +315,11 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender || !pReceiver) {
             return false;
         }
-        return m_registerConnectionImpl<Sender, Signal, Receiver, Slot>(
-            pSender, std::forward<Signal>(signal),
-            pReceiver, std::forward<Slot>(slot), type);
+        auto sharedSender = sharedRef(pSender);
+        auto sharedReceiver = sharedRef(pReceiver);
+        return m_registerConnectionImpl<std::shared_ptr<Sender>, Signal, std::shared_ptr<Receiver>, Slot>(
+            sharedSender, std::forward<Signal>(signal),
+            sharedReceiver, std::forward<Slot>(slot), type);
     }
 
     template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
@@ -784,28 +786,30 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         return {conn};
     };
 
-    template <typename Sender, typename Signal, typename Receiver, typename Slot>
-    inline static auto m_registerConnectionImpl = [](Sender *pSender, Signal &&signal,
-                                                     Receiver *pReceiver, Slot &&slot,
+    template <SmartPtrType Sender, typename Signal, SmartPtrType Receiver, typename Slot>
+    inline static auto m_registerConnectionImpl = [](Sender pSender, Signal &&signal,
+                                                     Receiver pReceiver, Slot &&slot,
                                                      TA_ConnectionType type) -> bool {
         using SharedConnection = std::shared_ptr<TA_ConnectionObject>;
+        using RawSenderType = typename ExtractRawType<Sender>::type;
+        using RawReceiverType = typename ExtractRawType<Receiver>::type;
         TA_ConnectionObject::FuncMark slotMark {
-            Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
+            Reflex::TA_TypeInfo<std::decay_t<RawReceiverType>>::findName(std::forward<Slot>(slot))};
         if(pSender->affinityThread() == pReceiver->affinityThread()) {
             auto syncRegisterExp = [pSender, &signal, pReceiver, &slot, type, slotMark]() -> bool {
                 TA_ConnectionObject::FuncMark signalMark{
-                    Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
+                    Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
                 auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
                 while (startSendIter != endSendIter) {
-                    if (startSendIter->second->receiver() == pReceiver &&
+                    if (startSendIter->second->receiver() == pReceiver.get() &&
                         startSendIter->second->slotMark() == slotMark) {
                         return false;
                     }
                     startSendIter++;
                 }
 
-                auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::move(signal), type);
-                conn->initSlotObject(pReceiver, std::forward<Slot>(slot));
+                auto &&conn = std::make_shared<TA_ConnectionObject>(pSender.get(), std::move(signal), type);
+                conn->initSlotObject(pReceiver.get(), std::forward<Slot>(slot));
                 pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
                 pReceiver->m_inputConnections.emplace(slotMark, conn->getSharedPtr());
                 return true;
@@ -815,25 +819,25 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             } else {
                 auto syncActivity = TA_ActivityCreator::create(std::move(syncRegisterExp));
                 syncActivity->setStolenEnabled(false);
-                AsyncTaskRes res = invokeActivity(syncActivity, pSender);
+                AsyncTaskRes res = invokeActivity(syncActivity, pSender.get());
                 auto taskResult = res.get();
                 return taskResult->template get<bool>();
             }
         } else {
             auto senderRegisterExp = [pSender, &signal, pReceiver, &slot, type, &slotMark]() -> SharedConnection {
                 TA_ConnectionObject::FuncMark signalMark{
-                    Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
+                    Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
                 auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
                 while (startSendIter != endSendIter) {
-                    if (startSendIter->second->receiver() == pReceiver &&
+                    if (startSendIter->second->receiver() == pReceiver.get() &&
                         startSendIter->second->slotMark() == slotMark) {
                         return nullptr;
                     }
                     startSendIter++;
                 }
 
-                auto &&conn = std::make_shared<TA_ConnectionObject>(pSender, std::move(signal), type);
-                conn->initSlotObject(pReceiver, std::forward<Slot>(slot));
+                auto &&conn = std::make_shared<TA_ConnectionObject>(pSender.get(), std::move(signal), type);
+                conn->initSlotObject(pReceiver.get(), std::forward<Slot>(slot));
                 pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
                 return conn;
             };
@@ -843,7 +847,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             } else {
                 auto senderRegisterActivity = TA_ActivityCreator::create(std::move(senderRegisterExp));
                 senderRegisterActivity->setStolenEnabled(false);
-                AsyncTaskRes res = invokeActivity(senderRegisterActivity, pSender);
+                AsyncTaskRes res = invokeActivity(senderRegisterActivity, pSender.get());
                 auto taskResult = res.get();
                 connectionObj = taskResult->template get<SharedConnection>();
 
@@ -859,7 +863,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             } else {
                 auto addIntoReceiverActivity = TA_ActivityCreator::create(std::move(receiverRegisterExp));
                 addIntoReceiverActivity->setStolenEnabled(false);
-                AsyncTaskRes res = invokeActivity(addIntoReceiverActivity, pReceiver);
+                AsyncTaskRes res = invokeActivity(addIntoReceiverActivity, pReceiver.get());
                 auto taskResult = res.get();
             }
             return true;
