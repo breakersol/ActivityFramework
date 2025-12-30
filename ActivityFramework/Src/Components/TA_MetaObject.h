@@ -486,13 +486,22 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         TA_ConnectionObject(Sender *pSender, Signal &&signal, TA_ConnectionType type)
             : m_pSender(pSender),
               m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))),
-              m_type(type), m_autoDestroy(false) {}
+              m_type(type), m_autoDestroy(false) {
+            if (pSender->hasSharedRef()) {
+                m_wpSender = pSender->weak_from_this();
+            }
+        }
 
         template <EnableConnectObjectType Sender, typename Signal>
         TA_ConnectionObject(Sender *pSender, Signal &&signal, TA_ConnectionType type, bool autoDestroy)
             : m_pSender(pSender), m_pReceiver(pSender),
               m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))),
-              m_type(type), m_autoDestroy(autoDestroy) {}
+              m_type(type), m_autoDestroy(autoDestroy) {
+            if (pSender->hasSharedRef()) {
+                m_wpSender = pSender->weak_from_this();
+                m_wpReceiver = pSender->weak_from_this();
+            }
+        }
 
         TA_ConnectionObject(const TA_ConnectionObject &object) = delete;
         TA_ConnectionObject(TA_ConnectionObject &&object) = delete;
@@ -514,13 +523,20 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         template <EnableConnectObjectType Receiver, typename Slot>
         void initSlotObject(Receiver *pReceiver, Slot &&slot) {
             m_pReceiver = pReceiver;
+            if (pReceiver->hasSharedRef()) {
+                m_wpReceiver = pReceiver->weak_from_this();
+            }
             m_receiverFunc = Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot));
             using SlotParaTuple = typename MethodTypeInfo<Slot>::ArgGroup::Tuple;
             using Ret = typename MethodTypeInfo<Slot>::RetType;
             m_para = SlotParaTuple{};
             auto sharedRef = getSharedPtr();
             SlotExpType slotExp = [sharedRef, slot]() -> void {
-                decltype(auto) rObj{dynamic_cast<std::decay_t<Receiver> *>(sharedRef->m_pReceiver)};
+                auto *pRawReceiver = sharedRef->resolveReceiver();
+                if(!pRawReceiver) {
+                    return;
+                }
+                decltype(auto) rObj{dynamic_cast<std::decay_t<Receiver> *>(pRawReceiver)};
                 if constexpr (IsInstanceMethod<Slot>::value)
                     std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj),
                                                               std::any_cast<SlotParaTuple>(sharedRef->m_para))));
@@ -563,14 +579,16 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
 
         void callSlot() {
             if (m_pActivity) {
-                TA_MetaObject *pSender = reinterpret_cast<TA_MetaObject *>(m_pSender);
-                TA_MetaObject *pReceiver = reinterpret_cast<TA_MetaObject *>(m_pReceiver);
-                if (pReceiver->affinityThread() == pSender->affinityThread() &&
-                    (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto)) {
-                    m_pActivity->operator()();
-                } else {
-                    auto fetcher = TA_ThreadHolder::get().postActivity(m_pSlotProxy);
-                    m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
+                auto *pRealSender = resolveSender();
+                auto *pRealReceiver = resolveReceiver();
+                if(pRealSender && pRealReceiver) {
+                    if (pRealSender->affinityThread() == pRealReceiver->affinityThread() &&
+                        (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto)) {
+                        m_pActivity->operator()();
+                    } else {
+                        auto fetcher = TA_ThreadHolder::get().postActivity(m_pSlotProxy);
+                        m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
+                    }
                 }
             }
             if (m_autoDestroy) {
@@ -579,13 +597,18 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
 
         void removeConnectionReferences() {
+            auto *pRealSender = resolveSender();
+            auto *pRealReceiver = resolveReceiver();
+            if(!pRealSender || !pRealReceiver) {
+                return;
+            }
             m_removeConnectionReferenceImpl<TA_MetaObject, TA_MetaObject>(
-                m_pSender, m_pReceiver,
+                pRealSender, pRealReceiver,
                 std::forward<FuncMark>(m_senderFunc), std::forward<FuncMark>(m_receiverFunc));
         }
 
-        TA_MetaObject *sender() const { return m_pSender; }
-        TA_MetaObject *receiver() const { return m_pReceiver; }
+        TA_MetaObject *sender() const { return resolveSender(); }
+        TA_MetaObject *receiver() const { return resolveReceiver(); }
 
         using FuncMark = std::string_view;
 
@@ -593,14 +616,34 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         const FuncMark &slotMark() const { return m_receiverFunc; }
 
         bool isSync() const {
-            return m_pSender->affinityThread() == m_pReceiver->affinityThread() &&
+            auto *pRealSender = resolveSender();
+            auto *pRealReceiver = resolveReceiver();
+            if (!pRealSender || !pRealReceiver) return false;
+
+            return pRealSender->affinityThread() == pRealReceiver->affinityThread() &&
                    (m_type == TA_ConnectionType::Auto || m_type == TA_ConnectionType::Direct);
         }
 
         bool isAutoDestroy() const { return m_autoDestroy; }
 
       private:
+        TA_MetaObject *resolveSender() const {
+            bool isEmpty = !m_wpSender.owner_before(std::weak_ptr<TA_MetaObject>{}) && 
+                           !std::weak_ptr<TA_MetaObject>{}.owner_before(m_wpSender);
+            if (isEmpty) return m_pSender;
+            return m_wpSender.lock().get();
+        }
+
+        TA_MetaObject *resolveReceiver() const {
+            bool isEmpty = !m_wpReceiver.owner_before(std::weak_ptr<TA_MetaObject>{}) && 
+                           !std::weak_ptr<TA_MetaObject>{}.owner_before(m_wpReceiver);
+            if (isEmpty) return m_pReceiver;
+            return m_wpReceiver.lock().get();
+        }
+
+      private:
         TA_MetaObject *m_pSender{nullptr}, *m_pReceiver{nullptr};
+        std::weak_ptr<TA_MetaObject> m_wpSender{}, m_wpReceiver{};
         FuncMark m_senderFunc{}, m_receiverFunc{};
         TA_ConnectionType m_type;
         std::any m_para;
