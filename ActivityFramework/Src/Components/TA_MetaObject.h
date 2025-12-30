@@ -377,13 +377,15 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender || !pReceiver) {
             return false;
         }
+        auto sharedSender = sharedRef(pSender);
+        auto sharedReceiver = sharedRef(pReceiver);
         TA_ConnectionObject::FuncMark signalMark{
             Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
-        return m_unregisterConnectionImpl<Sender, Receiver>(
-            pSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
-            pReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
+        return m_unregisterConnectionImpl<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
+            sharedSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
+            sharedReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
     }
 
     static bool unregisterConnection(TA_ConnectionObjectHolder &holder) {
@@ -707,16 +709,16 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         return true;
     };
 
-    template <typename Sender, typename Receiver>
-    inline static auto m_unregisterConnectionImpl = [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal,
-                                                        Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
+    template <SmartPtrType Sender, SmartPtrType Receiver>
+    inline static auto m_unregisterConnectionImpl = [](Sender pSender, TA_ConnectionObject::FuncMark &&signal,
+                                                        Receiver pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
         std::shared_ptr<TA_ConnectionObject> pConnection{nullptr};
         auto senderUnregisterExp = [&pConnection, pSender, signal, pReceiver, slot]() ->bool {
             auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
             if (startSendIter == endSendIter)
                 return false;
             while (startSendIter != endSendIter) {
-                if (startSendIter->second->receiver() == pReceiver &&
+                if (startSendIter->second->receiver() == pReceiver.get() &&
                     startSendIter->second->slotMark() == slot) {
                     pConnection = startSendIter->second;
                     pSender->m_outputConnections.erase(startSendIter);
@@ -760,7 +762,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
         auto receiverActivity = TA_ActivityCreator::create(std::move(receiverUnregisterExp));
         receiverActivity->setStolenEnabled(false);
-        AsyncTaskRes res = invokeActivity(receiverActivity, pReceiver);
+        AsyncTaskRes res = invokeActivity(receiverActivity, pReceiver.get());
         auto taskResult = res.get();
         return taskResult->template get<bool>();
     };
