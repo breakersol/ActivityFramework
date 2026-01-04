@@ -464,13 +464,16 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
+        auto sharedSender = sharedRef(pSender);
+        auto sharedReceiver = sharedRef(pReceiver);
         if(isOnCurrentThread(pSender)) {
-            return m_isConnectionExistedImpl<Sender, Receiver>(
-                pSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
-                pReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
+            return m_isConnectionExistedImpl<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
+                sharedSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
+                sharedReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
         }
-        auto activity = TA_ActivityCreator::create(m_isConnectionExistedImpl<Sender, Receiver>,
-                                                   pSender, signalMark, pReceiver, slotMark);
+        auto activity = TA_ActivityCreator::create(
+            m_isConnectionExistedImpl<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>,
+            sharedSender, signalMark, sharedReceiver, slotMark);
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, pSender);
         auto taskResult = res.get();
@@ -692,13 +695,13 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject>> m_inputConnections{};
 
   private:
-    template <typename Sender, typename Receiver>
+    template <SmartPtrType Sender, SmartPtrType Receiver>
     inline static auto m_isConnectionExistedImpl =
-        [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal,
-           Receiver *pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
+        [](Sender pSender, TA_ConnectionObject::FuncMark &&signal,
+           Receiver pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
         auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
         while (startSendIter != endSendIter) {
-            if (startSendIter->second->receiver() == pReceiver &&
+            if (startSendIter->second->receiver() == pReceiver.get() &&
                 startSendIter->second->slotMark() == slot) {
                 return true;
             }
