@@ -127,11 +127,15 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     }
 
     bool isIdle() const {
-        return m_pendingCounter.isIdle();
+        return m_pendingCounter.isIdle() && !m_isBeingDestroyed.load(std::memory_order_acquire);;
     }
 
     void resetPendingCount() {
         m_pendingCounter.reset();
+    }
+
+    bool isBeingDestroyed() const {
+        return m_isBeingDestroyed.load(std::memory_order_acquire);
     }
 
   protected:
@@ -175,6 +179,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pHost) {
             throw std::invalid_argument("Host object is null");
         }
+        if (pHost->isBeingDestroyed()) {
+            throw std::runtime_error("Host object is being destroyed.");
+        }
         pHost->pendingCountIncrement();
         std::size_t idx = pHost->affinityThread();
         if (idx >= TA_ThreadHolder::get().size()) {
@@ -200,6 +207,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
         if (!pHost) {
             throw std::invalid_argument("Host object is null");
+        }
+        if (pHost->isBeingDestroyed()) {
+            throw std::runtime_error("Host object is being destroyed.");
         }
         pHost->pendingCountIncrement();
         std::size_t idx = pHost->affinityThread();
@@ -273,8 +283,16 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             TA_ActivityCreator::create(Method{}, std::forward<Args>(args)...), true);
     }
 
-    void deleteLater() {
-        invokeMethod([this]() { delete this; });
+    bool deleteLater() {
+        if(hasSharedRef())
+            return false;
+        m_isBeingDestroyed.store(true, std::memory_order_release);
+        auto activity = TA_ActivityCreator::create([this]() -> void {
+            delete this;
+        });
+        activity->setStolenEnabled(false);
+        invokeActivityNoAwait(activity, this);
+        return true;
     }
 
     std::size_t affinityThread() const { return m_affinityThreadIdx.load(std::memory_order_acquire); }
@@ -690,6 +708,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     const std::thread::id m_sourceThread;
     std::atomic_size_t m_affinityThreadIdx;
     PendingCounter m_pendingCounter {};
+    std::atomic_bool m_isBeingDestroyed{false};
 
     std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject>> m_outputConnections{};
     std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject>> m_inputConnections{};
