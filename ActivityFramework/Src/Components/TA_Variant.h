@@ -33,6 +33,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         using RawType = std::remove_cvref_t<T>;
         m_typeId = typeid(RawType).hash_code();
         if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
+            std::destroy_at(&m_storage.m_ptr);
             new (m_storage.m_data) RawType(std::forward<RawType>(value), std::forward<Args>(args)...);
             m_destroySSOExp = [](void *data) { std::destroy_at(reinterpret_cast<RawType *>(data)); };
             m_copySSOExp = [](const void *src, void *dst) {
@@ -86,7 +87,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
                     var.m_copySSOExp(var.m_storage.m_data, m_storage.m_data);
                 }
             } else {
-                m_storage.m_ptr = var.m_storage.m_ptr;
+                new (&m_storage.m_ptr) std::shared_ptr<void>(var.m_storage.m_ptr);
             }
             m_destroySSOExp = var.m_destroySSOExp;
             m_copySSOExp = var.m_copySSOExp;
@@ -98,14 +99,14 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
     TA_Variant &operator=(TA_Variant &&var) noexcept {
         if (this != &var) {
             destroy();
-            m_typeId = std::exchange(var.m_typeId, 0);
+            m_typeId = std::exchange(var.m_typeId, typeid(std::nullptr_t).hash_code());
             m_isSmallObject = std::exchange(var.m_isSmallObject, false);
             if (m_isSmallObject) {
                 if (var.m_moveSSOExp) {
                     var.m_moveSSOExp(var.m_storage.m_data, m_storage.m_data);
                 }
             } else {
-                m_storage.m_ptr = std::exchange(var.m_storage.m_ptr, nullptr);
+                new (&m_storage.m_ptr) std::shared_ptr<void>(std::exchange(var.m_storage.m_ptr, nullptr));
             }
             m_destroySSOExp = std::exchange(var.m_destroySSOExp, nullptr);
             m_copySSOExp = std::exchange(var.m_copySSOExp, nullptr);
@@ -132,7 +133,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
                 };
                 m_isSmallObject = true;
             } else {
-                m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(obj));
+                new (&m_storage.m_ptr) std::shared_ptr<void>(std::make_shared<RawType>(std::forward<RawType>(obj)));
                 m_destroySSOExp = nullptr;
                 m_copySSOExp = nullptr;
                 m_moveSSOExp = nullptr;
@@ -163,13 +164,11 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
   private:
     void destroy() {
-        if (m_typeId != 0 && m_destroySSOExp) {
-            if (m_isSmallObject)
+        if (m_isSmallObject) {
+            if (m_destroySSOExp)
                 m_destroySSOExp(m_storage.m_data);
-            else {
-                m_storage.m_ptr.reset();
-                std::destroy_at(&m_storage.m_ptr);
-            }
+        } else {
+            std::destroy_at(&m_storage.m_ptr);
         }
         m_destroySSOExp = nullptr;
     }
