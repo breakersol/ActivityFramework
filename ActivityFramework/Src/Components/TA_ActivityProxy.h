@@ -33,7 +33,7 @@ concept ActivityType = requires(T t, const T ct) {
     requires !IsTrivalCopyable<std::decay_t<T>>;
 };
 
-class TA_ActivityProxy {
+class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
     template <typename Ret, typename... Args> using Executor = Ret (*)(Args...);
 
   public:
@@ -105,6 +105,14 @@ class TA_ActivityProxy {
     }
 
     bool isValid() const { return m_pActivity && m_future.valid(); }
+
+    auto sharedRef() -> std::shared_ptr<TA_ActivityProxy> {
+        return this->shared_from_this();
+    }
+
+    auto weakRef() -> std::weak_ptr<TA_ActivityProxy> {
+        return this->weak_from_this();
+    }
 
     TA_DefaultVariant result() const { return m_future.get(); }
 
