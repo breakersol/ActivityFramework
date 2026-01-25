@@ -530,16 +530,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         TA_ConnectionObject &operator=(const TA_ConnectionObject &object) = delete;
         TA_ConnectionObject &operator=(TA_ConnectionObject &&object) = delete;
 
-        ~TA_ConnectionObject() {
-            if (m_pSlotProxy) {
-                delete m_pSlotProxy;
-                m_pSlotProxy = nullptr;
-            }
-            if (m_pActivity) {
-                delete m_pActivity;
-                m_pActivity = nullptr;
-            }
-        }
+        ~TA_ConnectionObject() = default;
 
         template <EnableConnectObjectType Receiver, typename Slot>
         void initSlotObject(Receiver *pReceiver, Slot &&slot) {
@@ -552,7 +543,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             using Ret = typename MethodTypeInfo<Slot>::RetType;
             m_para = SlotParaTuple{};
             auto sharedRef = getSharedPtr();
-            SlotExpType slotExp = [sharedRef, slot]() -> void {
+            m_slotExp = [sharedRef, slot]() -> void {
                 auto *pRawReceiver = sharedRef->resolveReceiver();
                 if(!pRawReceiver) {
                     return;
@@ -562,12 +553,6 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
                     std::apply(slot, std::move(std::tuple_cat(std::make_tuple(rObj),
                                                               std::any_cast<SlotParaTuple>(sharedRef->m_para))));
             };
-            {
-                m_pActivity = TA_ActivityCreator::create(std::move(slotExp));
-                m_pActivity->moveToThread(pReceiver->affinityThread());
-                m_pActivity->setStolenEnabled(false);
-                m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
-            }
         }
 
         template <LambdaExpType LambdaExp>
@@ -577,16 +562,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             using Ret = typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType;
             m_para = SlotParaTuple{};
             auto sharedRef = getSharedPtr();
-            SlotExpType slotExp = [sharedRef, exp]() -> void {
+            m_slotExp = [sharedRef, exp]() -> void {
                 std::apply(exp, std::any_cast<SlotParaTuple>(sharedRef->m_para));
             };
-            {
-                m_pActivity = TA_ActivityCreator::create(std::move(slotExp));
-                // Don't need to ensure the activity is moved to the sender's affinity thread
-                // m_pActivity->moveToThread(m_pSender->affinityThread());
-                m_pActivity->setStolenEnabled(false);
-                m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
-            }
         }
 
         std::shared_ptr<TA_ConnectionObject> getSharedPtr() { return this->shared_from_this(); }
@@ -599,17 +577,17 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
 
         void callSlot() {
-            if (m_pActivity) {
-                auto *pRealSender = resolveSender();
-                auto *pRealReceiver = resolveReceiver();
-                if(pRealSender && pRealReceiver) {
-                    if (pRealSender->affinityThread() == pRealReceiver->affinityThread() &&
-                        (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto)) {
-                        m_pActivity->operator()();
-                    } else {
-                        auto fetcher = TA_ThreadHolder::get().postActivity(m_pSlotProxy);
-                        m_pSlotProxy = new TA_ActivityProxy(m_pActivity, false);
-                    }
+            auto activity = TA_ActivityCreator::create(std::forward<SlotExpType>(m_slotExp));
+            activity->setStolenEnabled(false);
+            auto *pRealSender = resolveSender();
+            auto *pRealReceiver = resolveReceiver();
+            if(pRealSender && pRealReceiver) {
+                activity->moveToThread(pRealSender->affinityThread());
+                if (pRealSender->affinityThread() == pRealReceiver->affinityThread() &&
+                    (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto)) {
+                    activity->operator()();
+                } else {
+                    auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
                 }
             }
             if (m_autoDestroy) {
@@ -668,8 +646,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         FuncMark m_senderFunc{}, m_receiverFunc{};
         TA_ConnectionType m_type;
         std::any m_para;
-        TA_MethodActivity<SlotExpType> *m_pActivity{nullptr};
-        TA_ActivityProxy *m_pSlotProxy{nullptr};
+        SlotExpType m_slotExp {};
         const bool m_autoDestroy{false};
     };
 
