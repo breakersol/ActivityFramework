@@ -568,7 +568,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
 
         std::shared_ptr<TA_ConnectionObject> getSharedPtr() { return this->shared_from_this(); }
-        std::weak_ptr<TA_ConnectionObject> getWeakPtr() { return this->weak_from_this(); };
+        std::weak_ptr<TA_ConnectionObject> getWeakPtr() { return this->weak_from_this(); }
 
         template <typename... Args> void setPara(Args &&...args) {
             using ArgsTypes = std::tuple<std::decay_t<Args>...>;

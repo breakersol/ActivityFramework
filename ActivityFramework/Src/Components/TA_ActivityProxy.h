@@ -87,7 +87,9 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
           m_pIdExp(std::exchange(other.m_pIdExp, nullptr)),
           m_pMoveThreadExp(std::exchange(other.m_pMoveThreadExp, nullptr)),
           m_pStolenEnabledExp(std::exchange(other.m_pStolenEnabledExp, nullptr)),
-          m_future(std::move(other.m_future)) {}
+          m_promise(std::move(other.m_promise)),
+          m_future(std::move(other.m_future)),
+          m_isExecuted(other.m_isExecuted.load()) {}
 
     TA_ActivityProxy &operator=(const TA_ActivityProxy &other) = delete;
     TA_ActivityProxy &operator=(TA_ActivityProxy &&other) noexcept {
@@ -99,7 +101,9 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
             m_pIdExp = std::exchange(other.m_pIdExp, nullptr);
             m_pMoveThreadExp = std::exchange(other.m_pMoveThreadExp, nullptr);
             m_pStolenEnabledExp = std::exchange(other.m_pStolenEnabledExp, nullptr);
+            m_promise = std::move(other.m_promise);
             m_future = std::move(other.m_future);
+            m_isExecuted.store(other.m_isExecuted.load());
         }
         return *this;
     }
