@@ -32,27 +32,31 @@ template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_ManualCo
         std::atomic_bool m_completed{false};
         static constexpr bool isBlockingType{true};
 
+        struct FinalAwaiter {
+            bool await_ready() const noexcept { return false; }
+            void await_suspend(std::coroutine_handle<promise_type> h) noexcept {
+                auto &promise = h.promise();
+                if constexpr (promise_type::isBlockingType) {
+                    promise.m_completed.store(true, std::memory_order_release);
+                    promise.m_completed.notify_all();
+                }
+            }
+            void await_resume() noexcept {}
+        };
+
         TA_ManualCoroutineTask get_return_object() {
             return TA_ManualCoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         std::suspend_always initial_suspend() noexcept { return {}; }
-        std::suspend_always final_suspend() noexcept { return {}; }
+        FinalAwaiter final_suspend() noexcept { return {}; }
 
         void return_value(const T &value) {
             m_result = value;
-            if constexpr(promise_type::isBlockingType) {
-                m_completed.store(true, std::memory_order_release);
-                m_completed.notify_all();
-            }
         }
 
         void unhandled_exception() {
             m_exception = std::current_exception();
-            if constexpr(promise_type::isBlockingType) {
-                m_completed.store(true, std::memory_order_release);
-                m_completed.notify_all();
-            }
         }
     };
 
@@ -113,27 +117,31 @@ template <typename T> struct [[nodiscard]] TA_ManualCoroutineTask<T, Eager> {
         std::atomic_bool m_completed{false};
         static constexpr bool isBlockingType{true};
 
+        struct FinalAwaiter {
+            bool await_ready() const noexcept { return false; }
+            void await_suspend(std::coroutine_handle<promise_type> h) noexcept {
+                auto &promise = h.promise();
+                if constexpr (promise_type::isBlockingType) {
+                    promise.m_completed.store(true, std::memory_order_release);
+                    promise.m_completed.notify_all();
+                }
+            }
+            void await_resume() noexcept {}
+        };
+
         TA_ManualCoroutineTask get_return_object() {
             return TA_ManualCoroutineTask{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         std::suspend_never initial_suspend() noexcept { return {}; }
-        std::suspend_always final_suspend() noexcept { return {}; }
+        FinalAwaiter final_suspend() noexcept { return {}; }
 
         void return_value(const T &value) {
             m_result = value;
-            if constexpr(promise_type::isBlockingType) {
-                m_completed.store(true, std::memory_order_release);
-                m_completed.notify_all();
-            }
         }
 
         void unhandled_exception() {
             m_exception = std::current_exception();
-            if constexpr(promise_type::isBlockingType) {
-                m_completed.store(true, std::memory_order_release);
-                m_completed.notify_all();
-            }
         }
     };
 
@@ -163,6 +171,7 @@ template <typename T> struct [[nodiscard]] TA_ManualCoroutineTask<T, Eager> {
     ~TA_ManualCoroutineTask() {
         if (m_coroutineHandle && !m_coroutineHandle.done()) {
             m_coroutineHandle.destroy();
+            m_coroutineHandle = nullptr;
         }
     }
 
