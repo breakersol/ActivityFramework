@@ -47,7 +47,6 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_PipelineCreator.cpp
     Src/Components/TA_PipelineCreator.h
     Src/Components/TA_PipelineHolder.h
-    Src/Components/TA_ReceiverObject.h
     Src/Components/TA_TypeFilter.h
     Src/Components/TA_TypeList.h
     Src/Components/TA_Variant.h
