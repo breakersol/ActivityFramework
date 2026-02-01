@@ -20,7 +20,7 @@
 namespace CoreAsync {
 TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_ManualChainPipeline *pPipeline) {
     for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i) {
-        decltype(auto) pActivity{TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
+        decltype(auto) pActivity{TA_CommonTools::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i)};
         (*pActivity)();
         auto var{pActivity->result()};
         TA_CommonTools::replace(pPipeline->m_resultList, i, var);
@@ -69,12 +69,6 @@ void TA_ManualChainPipeline::clear() {
         return;
     }
     m_mutex.lock();
-    for (auto &pActivity : m_pActivityList) {
-        if (pActivity) {
-            delete pActivity;
-            pActivity = nullptr;
-        }
-    }
     m_pActivityList.clear();
     m_resultList.clear();
     m_runningGenerator = runningGenerator(this);

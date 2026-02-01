@@ -22,7 +22,7 @@ TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy>
 runningGenerator(TA_ManualKeyActivityChainPipeline *pPipeline) {
     bool isAtKey{false};
     for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size();) {
-        decltype(auto) pActivity{TA_CommonTools::at<TA_ActivityProxy *>(pPipeline->m_pActivityList, i)};
+        decltype(auto) pActivity{TA_CommonTools::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i)};
         if (!pActivity->isExecuted()) {
             (*pActivity)();
             auto var{pActivity->result()};
@@ -93,12 +93,6 @@ void TA_ManualKeyActivityChainPipeline::clear() {
         return;
     }
     m_mutex.lock();
-    for (auto pActivity : m_pActivityList) {
-        if (pActivity) {
-            delete pActivity;
-            pActivity = nullptr;
-        }
-    }
     m_pActivityList.clear();
     m_resultList.clear();
     m_mutex.unlock();
