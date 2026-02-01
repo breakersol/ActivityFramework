@@ -293,18 +293,13 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
     TA_ActivityFetcherAwaitable &operator=(const TA_ActivityFetcherAwaitable &) = delete;
     TA_ActivityFetcherAwaitable &operator=(TA_ActivityFetcherAwaitable &&) = delete;
 
-    explicit TA_ActivityFetcherAwaitable(TA_ActivityProxy *pActivity) : m_pProxy(pActivity) {
+    explicit TA_ActivityFetcherAwaitable(std::shared_ptr<TA_ActivityProxy> pActivity) : m_pProxy(pActivity) {
         if (!m_pProxy || !m_pProxy->isValid()) {
             throw std::runtime_error("TA_ActivityFetcherAwaitable: Activity Proxy is not valid!");
         }
     }
 
-    ~TA_ActivityFetcherAwaitable() {
-        if (m_pProxy && !m_pProxy->isExecuted()) {
-            delete m_pProxy;
-            m_pProxy = nullptr;
-        }
-    }
+    ~TA_ActivityFetcherAwaitable() = default;
 
     TA_ActivityFetcherAwaitable &operator co_await() & noexcept { return *this; }
 
@@ -347,7 +342,7 @@ class TA_ActivityFetcherAwaitable : public std::enable_shared_from_this<TA_Activ
 
   private:
     std::atomic_bool m_isRunning{false};
-    TA_ActivityProxy *m_pProxy{nullptr};
+    std::shared_ptr<TA_ActivityProxy> m_pProxy{nullptr};
     std::shared_ptr<TA_DefaultVariant> m_res{};
 };
 
@@ -355,7 +350,7 @@ class TA_ActivityExecutingAwaitable : public std::enable_shared_from_this<TA_Act
   public:
     enum class ExecuteType { Async, Sync };
 
-    TA_ActivityExecutingAwaitable(TA_ActivityProxy *pActivity, ExecuteType type)
+    TA_ActivityExecutingAwaitable(std::shared_ptr<TA_ActivityProxy> pActivity, ExecuteType type)
         : m_pProxy(pActivity), m_executeType(type) {
         if (!m_pProxy) {
             throw std::runtime_error("TA_ActivityExecutingAwaitable: pActivity is null!");
@@ -367,13 +362,7 @@ class TA_ActivityExecutingAwaitable : public std::enable_shared_from_this<TA_Act
     TA_ActivityExecutingAwaitable &operator=(const TA_ActivityExecutingAwaitable &) = delete;
     TA_ActivityExecutingAwaitable &operator=(TA_ActivityExecutingAwaitable &&) = delete;
 
-    ~TA_ActivityExecutingAwaitable() {
-        if (m_pProxy && !m_pProxy->isExecuted()) {
-            delete m_pProxy;
-            m_pProxy = nullptr;
-        }
-    }
-
+    ~TA_ActivityExecutingAwaitable() = default;
     TA_ActivityExecutingAwaitable &operator co_await() & noexcept { return *this; }
 
     bool await_ready() const noexcept { return m_pProxy->isExecuted() || !m_pProxy->isValid(); }
@@ -382,10 +371,8 @@ class TA_ActivityExecutingAwaitable : public std::enable_shared_from_this<TA_Act
         if (m_executeType == ExecuteType::Async) {
             m_fetcher = TA_ThreadHolder::get().postActivity(m_pProxy);
         } else {
-            std::shared_ptr<TA_ActivityProxy> sharedProxy(std::make_shared<TA_ActivityProxy>(m_pProxy));
-            m_pProxy = nullptr;
-            sharedProxy->operator()();
-            m_fetcher = {sharedProxy};
+            m_pProxy->operator()();
+            m_fetcher = {m_pProxy};
         }
         handle.resume();
     }
@@ -393,7 +380,7 @@ class TA_ActivityExecutingAwaitable : public std::enable_shared_from_this<TA_Act
     auto await_resume() const noexcept { return m_fetcher; }
 
   private:
-    TA_ActivityProxy *m_pProxy{nullptr};
+    std::shared_ptr<TA_ActivityProxy> m_pProxy{nullptr};
     ExecuteType m_executeType{ExecuteType::Async};
     TA_ActivityResultFetcher m_fetcher{};
 };

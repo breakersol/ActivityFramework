@@ -175,7 +175,9 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     [[nodiscard]] auto postActivity(TA_ActivityProxy *&pActivity) -> TA_ActivityResultFetcher {
         if (!pActivity)
             throw std::invalid_argument("Activity proxy is null");
-        std::shared_ptr<TA_ActivityProxy> pProxy{pActivity};
+        auto weakRef = pActivity->weakRef();
+        std::shared_ptr<TA_ActivityProxy> pProxy =
+            weakRef.expired() ? std::shared_ptr<TA_ActivityProxy>(pActivity) : weakRef.lock();
         auto affinityId{pActivity->affinityThread()};
         auto dependencyThreadId{pActivity->dependencyThreadId()};
         pActivity = nullptr;
@@ -192,6 +194,26 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
 #endif
         m_states[idx].resource.release();
         return {pProxy};
+    }
+
+    [[nodiscard]] auto postActivity(const std::shared_ptr<TA_ActivityProxy> &pActivity) -> TA_ActivityResultFetcher {
+        if (!pActivity)
+            throw std::invalid_argument("Activity proxy is null");
+        auto affinityId{pActivity->affinityThread()};
+        auto dependencyThreadId{pActivity->dependencyThreadId()};
+        std::size_t idx = affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
+        //std::cout << "Post activity to thread: " << idx << "\n";
+#if defined(__ANDROID__)
+            auto handle = std::unique_ptr<HandleType>(new HandleType{pActivity});
+            if (!m_activityQueues[idx].push(handle.get()))
+                throw std::runtime_error("Failed to push activity to queue");
+            handle.release();
+#else
+            if (!m_activityQueues[idx].push(pActivity))
+                throw std::runtime_error("Failed to push activity to queue");
+#endif
+        m_states[idx].resource.release();
+        return {pActivity};
     }
 
     std::size_t size() const { return m_threads.size(); }

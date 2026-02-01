@@ -192,9 +192,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             idx = pHost->affinityThread();
         }
         pActivity->moveToThread(idx);
-        TA_ActivityProxy *proxy = new TA_ActivityProxy(pActivity, autoDelete);
         std::shared_ptr<TA_ActivityFetcherAwaitable> fetcherAwaitable =
-            std::make_shared<TA_ActivityFetcherAwaitable>(proxy);
+            std::make_shared<TA_ActivityFetcherAwaitable>(std::make_shared<TA_ActivityProxy>(pActivity, autoDelete));
         auto res = co_await *fetcherAwaitable;
         pHost->pendingCountDecrement();
         co_return res;
