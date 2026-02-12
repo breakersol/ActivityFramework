@@ -290,7 +290,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             delete this;
         });
         activity->setStolenEnabled(false);
-        invokeActivityNoAwait(activity, this);
+        activity->moveToThread(this->affinityThread());
+        auto fetcher = TA_ThreadHolder::get().postActivity(activity, false);
         return true;
     }
 
