@@ -626,6 +626,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         bool isAutoDestroy() const { return m_autoDestroy; }
 
       private:
+        //Users need to ensure the validity of the returned pointer and check for nullptr before use.
         TA_MetaObject *resolveSender() const {
             bool isEmpty = !m_wpSender.owner_before(std::weak_ptr<TA_MetaObject>{}) && 
                            !std::weak_ptr<TA_MetaObject>{}.owner_before(m_wpSender);
@@ -633,6 +634,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             return m_wpSender.lock().get();
         }
 
+        //Users need to ensure the validity of the returned pointer and check for nullptr before use.
         TA_MetaObject *resolveReceiver() const {
             bool isEmpty = !m_wpReceiver.owner_before(std::weak_ptr<TA_MetaObject>{}) && 
                            !std::weak_ptr<TA_MetaObject>{}.owner_before(m_wpReceiver);
@@ -653,10 +655,14 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
   private:
     void destroyConnections() {
         for (auto &&[signal, obj] : m_outputConnections) {
-            auto &&[start, end] = obj->receiver()->m_inputConnections.equal_range(obj->slotMark());
+            auto receiver = obj->receiver();
+            if(!receiver) {
+                continue;
+            }
+            auto &&[start, end] = receiver->m_inputConnections.equal_range(obj->slotMark());
             while (start != end) {
                 if (start->second == obj) {
-                    obj->receiver()->m_inputConnections.erase(start);
+                    receiver->m_inputConnections.erase(start);
                     break;
                 }
                 ++start;
@@ -665,10 +671,14 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         m_outputConnections.clear();
 
         for (auto &&[slot, obj] : m_inputConnections) {
-            auto &&[start, end] = obj->sender()->m_outputConnections.equal_range(obj->signalMark());
+            auto sender = obj->sender();
+            if(!sender) {
+                continue;
+            }
+            auto &&[start, end] = sender->m_outputConnections.equal_range(obj->signalMark());
             while (start != end) {
                 if (start->second == obj) {
-                    obj->sender()->m_outputConnections.erase(start);
+                    sender->m_outputConnections.erase(start);
                     break;
                 }
                 ++start;
@@ -735,17 +745,19 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             return false;
         }
         Sender *pSender = pConnection->sender();
-        auto &&signalMark = pConnection->signalMark();
-        auto &&slotMark = pConnection->slotMark();
-        auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
-        if (startSendIter == endSendIter)
-            return false;
-        while (startSendIter != endSendIter) {
-            if (startSendIter->second == pConnection) {
-                pSender->m_outputConnections.erase(startSendIter);
-                break;
+        if(pSender) {
+            auto &&signalMark = pConnection->signalMark();
+            auto &&slotMark = pConnection->slotMark();
+            auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signalMark);
+            if (startSendIter == endSendIter)
+                return false;
+            while (startSendIter != endSendIter) {
+                if (startSendIter->second == pConnection) {
+                    pSender->m_outputConnections.erase(startSendIter);
+                    break;
+                }
+                startSendIter++;
             }
-            startSendIter++;
         }
         holder.reset();
         return true;
