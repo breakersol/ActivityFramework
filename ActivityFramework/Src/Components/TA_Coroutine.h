@@ -169,7 +169,7 @@ template <typename T> struct [[nodiscard]] TA_ManualCoroutineTask<T, Eager> {
     }
 
     ~TA_ManualCoroutineTask() {
-        if (m_coroutineHandle && !m_coroutineHandle.done()) {
+        if (m_coroutineHandle) {
             m_coroutineHandle.destroy();
             m_coroutineHandle = nullptr;
         }
