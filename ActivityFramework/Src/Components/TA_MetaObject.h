@@ -59,7 +59,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         TA_ConnectionObjectHolder(const std::shared_ptr<TA_ConnectionObject> &pConnection)
             : m_pConnection(pConnection ? pConnection->getSharedPtr() : nullptr) {}
 
-        ~TA_ConnectionObjectHolder() {}
+        ~TA_ConnectionObjectHolder() = default;
 
         bool valid() const { return m_pConnection != nullptr; }
 
@@ -416,7 +416,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
         using ExpType = decltype(m_unregisterConnectionHolderImpl<TA_MetaObject>);
         auto activity = TA_ActivityCreator::create(
-            std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), holder);
+            std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), std::forward<TA_ConnectionObjectHolder>(holder));
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, pSender);
         auto taskResult = res.get();
