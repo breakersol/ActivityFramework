@@ -56,6 +56,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject), m_destroySSOExp(var.m_destroySSOExp),
           m_copySSOExp(var.m_copySSOExp), m_moveSSOExp(var.m_moveSSOExp) {
         if (m_isSmallObject) {
+             std::destroy_at(&m_storage.m_ptr);
             if (var.m_copySSOExp) {
                 var.m_copySSOExp(var.m_storage.m_data, m_storage.m_data);
             }
@@ -66,6 +67,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     TA_Variant(TA_Variant &&var) noexcept : m_typeId(std::move(var.m_typeId)), m_isSmallObject(std::move(var.m_isSmallObject)) {
         if (m_isSmallObject) {
+            std::destroy_at(&m_storage.m_ptr);
             if (var.m_moveSSOExp) {
                 var.m_moveSSOExp(var.m_storage.m_data, m_storage.m_data);
             }
