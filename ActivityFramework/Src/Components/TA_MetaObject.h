@@ -21,6 +21,7 @@
 #include <thread>
 #include <unordered_map>
 #include <any>
+#include <functional>
 
 #include "TA_ThreadPool.h"
 #include "TA_MetaReflex.h"
@@ -416,7 +417,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
         using ExpType = decltype(m_unregisterConnectionHolderImpl<TA_MetaObject>);
         auto activity = TA_ActivityCreator::create(
-            std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), std::forward<TA_ConnectionObjectHolder>(holder));
+            std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), std::ref(holder));
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, pSender);
         auto taskResult = res.get();
