@@ -306,7 +306,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             return m_moveToThreadImpl(idx, m_affinityThreadIdx);
         }
         auto activity = TA_ActivityCreator::create(
-            std::forward<bool (*)(std::size_t, std::atomic_size_t &)>(m_moveToThreadImpl), idx, m_affinityThreadIdx);
+            std::forward<decltype(m_moveToThreadImpl)>(m_moveToThreadImpl), idx, m_affinityThreadIdx);
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, this);
         auto taskResult = res.get();
