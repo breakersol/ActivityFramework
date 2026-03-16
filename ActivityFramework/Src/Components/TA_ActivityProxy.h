@@ -126,7 +126,7 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
         }
         bool expected{false};
         if (m_isExecuted.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
-            m_pExecuteExp(m_pActivity, std::forward<std::promise<TA_DefaultVariant>>(m_promise));
+            m_pExecuteExp(m_pActivity, std::move(m_promise));
             m_pExecuteExp = nullptr;
         }
     }
