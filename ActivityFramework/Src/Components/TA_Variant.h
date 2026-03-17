@@ -29,7 +29,10 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
   public:
     TA_Variant() {}
 
-    template <typename T, typename... Args> TA_Variant(T &&value, Args &&...args) noexcept {
+    template <typename T, typename... Args>
+        requires(!std::is_same_v<std::remove_cvref_t<T>, TA_Variant> &&
+            !std::is_same_v<std::remove_cvref_t<T>, std::in_place_t>)
+    TA_Variant(T &&value, Args &&...args) noexcept {
         using RawType = std::remove_cvref_t<T>;
         m_typeId = typeid(RawType).hash_code();
         if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
@@ -44,7 +47,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
             };
             m_isSmallObject = true;
         } else {
-            m_storage.m_ptr = std::make_shared<RawType>(std::forward<RawType>(value), std::forward<Args>(args)...);
+            m_storage.m_ptr = std::make_shared<RawType>(std::forward<T>(value), std::forward<Args>(args)...);
             m_destroySSOExp = nullptr;
             m_isSmallObject = false;
         }
@@ -135,7 +138,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
                 };
                 m_isSmallObject = true;
             } else {
-                new (&m_storage.m_ptr) std::shared_ptr<void>(std::make_shared<RawType>(std::forward<RawType>(obj)));
+                new (&m_storage.m_ptr) std::shared_ptr<void>(std::make_shared<T>(std::forward<RawType>(obj)));
                 m_destroySSOExp = nullptr;
                 m_copySSOExp = nullptr;
                 m_moveSSOExp = nullptr;
@@ -195,6 +198,10 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 };
 
 using TA_DefaultVariant = TA_Variant<>;
+
+template <typename T>
+TA_Variant(T&&) -> TA_Variant<64>;
+
 } // namespace CoreAsync
 
 #endif // TA_VARIANT_H
