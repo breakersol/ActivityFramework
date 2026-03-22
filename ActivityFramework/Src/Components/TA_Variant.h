@@ -26,6 +26,11 @@
 
 namespace CoreAsync {
 template <std::size_t SSO_SIZE = 64> class TA_Variant {
+    enum class StorageKind {
+        Empty,
+        SmallObject,
+        HeapObject
+    };
   public:
     TA_Variant() {}
 
@@ -45,36 +50,36 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
             m_moveSSOExp = [](void *src, void *dst) {
                 new (dst) RawType(std::move(*reinterpret_cast<RawType *>(src)));
             };
-            m_isSmallObject = true;
+            m_storageKind = StorageKind::SmallObject;
         } else {
             m_storage.m_ptr = std::make_shared<RawType>(std::forward<T>(value), std::forward<Args>(args)...);
             m_destroySSOExp = nullptr;
-            m_isSmallObject = false;
+            m_storageKind = StorageKind::HeapObject;
         }
     }
 
     ~TA_Variant() { destroy(); }
 
     TA_Variant(const TA_Variant &var) noexcept
-        : m_typeId(var.m_typeId), m_isSmallObject(var.m_isSmallObject), m_destroySSOExp(var.m_destroySSOExp),
+        : m_typeId(var.m_typeId), m_storageKind(var.m_storageKind), m_destroySSOExp(var.m_destroySSOExp),
           m_copySSOExp(var.m_copySSOExp), m_moveSSOExp(var.m_moveSSOExp) {
-        if (m_isSmallObject) {
+        if (m_storageKind == StorageKind::SmallObject) {
              std::destroy_at(&m_storage.m_ptr);
             if (var.m_copySSOExp) {
                 var.m_copySSOExp(var.m_storage.m_data, m_storage.m_data);
             }
-        } else {
+        } else if (m_storageKind == StorageKind::HeapObject) {
             m_storage.m_ptr = var.m_storage.m_ptr;
         }
     }
 
-    TA_Variant(TA_Variant &&var) noexcept : m_typeId(std::move(var.m_typeId)), m_isSmallObject(std::move(var.m_isSmallObject)) {
-        if (m_isSmallObject) {
+    TA_Variant(TA_Variant &&var) noexcept : m_typeId(std::move(var.m_typeId)), m_storageKind(std::move(var.m_storageKind)) {
+        if (m_storageKind == StorageKind::SmallObject) {
             std::destroy_at(&m_storage.m_ptr);
             if (var.m_moveSSOExp) {
                 var.m_moveSSOExp(var.m_storage.m_data, m_storage.m_data);
             }
-        } else {
+        } else if (m_storageKind == StorageKind::HeapObject) {
             m_storage.m_ptr = std::exchange(var.m_storage.m_ptr, nullptr);
         }
         m_destroySSOExp = std::move(var.m_destroySSOExp);
@@ -86,12 +91,12 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         if (this != &var) {
             destroy();
             m_typeId = var.m_typeId;
-            m_isSmallObject = var.m_isSmallObject;
-            if (m_isSmallObject) {
+            m_storageKind = var.m_storageKind;
+            if (m_storageKind == StorageKind::SmallObject) {
                 if (var.m_copySSOExp) {
                     var.m_copySSOExp(var.m_storage.m_data, m_storage.m_data);
                 }
-            } else {
+            } else if (m_storageKind == StorageKind::HeapObject) {
                 new (&m_storage.m_ptr) std::shared_ptr<void>(var.m_storage.m_ptr);
             }
             m_destroySSOExp = var.m_destroySSOExp;
@@ -105,12 +110,12 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         if (this != &var) {
             destroy();
             m_typeId = std::move(var.m_typeId);
-            m_isSmallObject = std::move(var.m_isSmallObject);
-            if (m_isSmallObject) {
+             m_storageKind = std::move(var.m_storageKind);
+            if (m_storageKind == StorageKind::SmallObject) {
                 if (var.m_moveSSOExp) {
                     var.m_moveSSOExp(var.m_storage.m_data, m_storage.m_data);
                 }
-            } else {
+            } else if (m_storageKind == StorageKind::HeapObject) {
                 new (&m_storage.m_ptr) std::shared_ptr<void>(std::exchange(var.m_storage.m_ptr, nullptr));
             }
             m_destroySSOExp = std::move(var.m_destroySSOExp);
@@ -136,13 +141,13 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
                 m_moveSSOExp = [](void *src, void *dst) {
                     new (dst) RawType(std::move(*reinterpret_cast<RawType *>(src)));
                 };
-                m_isSmallObject = true;
+                m_storageKind = StorageKind::SmallObject;
             } else {
                 new (&m_storage.m_ptr) std::shared_ptr<void>(std::make_shared<T>(std::forward<RawType>(obj)));
                 m_destroySSOExp = nullptr;
                 m_copySSOExp = nullptr;
                 m_moveSSOExp = nullptr;
-                m_isSmallObject = false;
+                m_storageKind = StorageKind::HeapObject;
             }
         }
     }
@@ -151,9 +156,9 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
     VAR get() const /* requires (!std::is_pointer<VAR>::value)*/
     {
         if (m_typeId == typeid(VAR).hash_code()) {
-            if (m_isSmallObject) {
+            if (m_storageKind == StorageKind::SmallObject) {
                 return *reinterpret_cast<const VAR *>(m_storage.m_data);
-            } else {
+            } else if (m_storageKind == StorageKind::HeapObject) {
                 return *reinterpret_cast<VAR *>(m_storage.m_ptr.get());
             }
         }
@@ -169,13 +174,15 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
   private:
     void destroy() {
-        if (m_isSmallObject) {
+        if(m_storageKind == StorageKind::Empty) return;
+        if (m_storageKind == StorageKind::SmallObject) {
             if (m_destroySSOExp)
                 m_destroySSOExp(m_storage.m_data);
-        } else {
+        } else if (m_storageKind == StorageKind::HeapObject) {
             std::destroy_at(&m_storage.m_ptr);
         }
         m_destroySSOExp = nullptr;
+        m_storageKind = StorageKind::Empty;
     }
 
   private:
@@ -191,7 +198,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         ~Storage() {}
     } m_storage;
 
-    bool m_isSmallObject{false};
+    StorageKind m_storageKind{StorageKind::Empty};
     void (*m_destroySSOExp)(void *){nullptr};
     void (*m_copySSOExp)(const void *, void *){nullptr};
     void (*m_moveSSOExp)(void *, void *){nullptr};
