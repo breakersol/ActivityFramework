@@ -292,7 +292,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         });
         activity->setStolenEnabled(false);
         activity->moveToThread(this->affinityThread());
-        auto fetcher = TA_ThreadHolder::get().postActivity(activity, false);
+        auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
         return true;
     }
 
