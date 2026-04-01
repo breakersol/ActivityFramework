@@ -128,7 +128,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     }
 
     bool isIdle() const {
-        return m_pendingCounter.isIdle() && !m_isBeingDestroyed.load(std::memory_order_acquire);;
+        return m_pendingCounter.isIdle() && !m_isBeingDestroyed.load(std::memory_order_acquire);
     }
 
     void resetPendingCount() {
