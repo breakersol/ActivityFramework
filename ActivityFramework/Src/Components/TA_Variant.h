@@ -143,7 +143,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
                 };
                 m_storageKind = StorageKind::SmallObject;
             } else {
-                new (&m_storage.m_ptr) std::shared_ptr<void>(std::make_shared<T>(std::forward<RawType>(obj)));
+                new (&m_storage.m_ptr) std::shared_ptr<void>(std::make_shared<RawType>(std::forward<T>(obj)));
                 m_destroySSOExp = nullptr;
                 m_copySSOExp = nullptr;
                 m_moveSSOExp = nullptr;
