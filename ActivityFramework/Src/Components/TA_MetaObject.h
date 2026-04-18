@@ -583,7 +583,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             auto *pRealSender = resolveSender();
             auto *pRealReceiver = resolveReceiver();
             if(pRealSender && pRealReceiver) {
-                activity->moveToThread(pRealSender->affinityThread());
+                activity->moveToThread(pRealReceiver->affinityThread());
                 if (pRealSender->affinityThread() == pRealReceiver->affinityThread() &&
                     (m_type == TA_ConnectionType::Direct || m_type == TA_ConnectionType::Auto)) {
                     activity->operator()();
