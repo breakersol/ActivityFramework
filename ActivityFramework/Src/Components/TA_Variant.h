@@ -198,7 +198,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         ~Storage() {}
     } m_storage;
 
-    StorageKind m_storageKind{StorageKind::Empty};
+    StorageKind m_storageKind{StorageKind::HeapObject};
     void (*m_destroySSOExp)(void *){nullptr};
     void (*m_copySSOExp)(const void *, void *){nullptr};
     void (*m_moveSSOExp)(void *, void *){nullptr};
