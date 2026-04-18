@@ -111,7 +111,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         auto weakRef = pObject->weak_from_this();
         if(weakRef.expired())
             return std::shared_ptr<std::remove_cvref_t<Object>>(pObject, [](TA_MetaObject *){});
-        return dynamic_pointer_cast<std::remove_cvref_t<Object>>(weakRef.lock());
+        return std::dynamic_pointer_cast<std::remove_cvref_t<Object>>(weakRef.lock());
     }
 
     bool hasSharedRef() {
