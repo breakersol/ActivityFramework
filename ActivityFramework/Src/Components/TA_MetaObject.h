@@ -39,6 +39,9 @@ concept EnableConnectObjectType = requires(T *t) {
     { t } -> std::convertible_to<TA_MetaObject *>;
 };
 
+template <typename T>
+concept ConnectionParameter = std::copy_constructible<T> && std::is_trivially_copyable_v<T>;
+
 template <typename T> struct TA_MetaObjectTraits {
     static constexpr bool isMetaObject = std::is_base_of_v<CoreAsync::TA_MetaObject, T>;
 };
@@ -424,8 +427,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         return taskResult->template get<bool>();
     }
 
-    template <EnableConnectObjectType Sender, typename Signal, typename... Args>
-    static constexpr bool emitSignal(Sender *pSender, Signal &&signal, Args &&...args) {
+    template <EnableConnectObjectType Sender, typename Signal, typename... ConnectionParameter>
+    static constexpr bool emitSignal(Sender *pSender, Signal &&signal, ConnectionParameter &&...args) {
         if constexpr (!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag ||
                       !IsReturnTypeEqual<void, Signal, std::is_same>::value) {
             static_assert(false, "The signal must be an instance method and return void.");
@@ -433,25 +436,27 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if constexpr (!std::is_convertible_v<std::decay_t<Sender *>, typename MethodTypeInfo<Signal>::ParentClass *>) {
             static_assert(false, "The signal must belong to the sender class.");
         }
+        static_assert((std::is_copy_constructible_v<std::remove_cvref_t<ConnectionParameter>> && ...),
+                      "Signal arguments must be copy-constructible.");
         if (!pSender) {
             return false;
         }
         if(isOnCurrentThread(pSender)) {
-            m_emitSignalImpl<Sender *, Signal, Args...>(pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
+            m_emitSignalImpl<Sender *, Signal, std::remove_cvref_t<ConnectionParameter>...>(pSender, std::forward<Signal>(signal), std::forward<ConnectionParameter>(args)...);
         } else {
             if(!pSender->hasSharedRef()) {
-                using RawPtrExpType = decltype(m_emitSignalImpl<Sender *, Signal, Args...>);
+                using RawPtrExpType = decltype(m_emitSignalImpl<Sender *, Signal, std::remove_cvref_t<ConnectionParameter>...>);
                 auto activity = TA_ActivityCreator::create(
-                    std::forward<RawPtrExpType>(m_emitSignalImpl<Sender *, Signal, Args...>),
-                    pSender, std::forward<Signal>(signal), std::forward<Args>(args)...);
+                    std::forward<RawPtrExpType>(m_emitSignalImpl<Sender *, Signal, std::remove_cvref_t<ConnectionParameter>...>),
+                    pSender, std::forward<Signal>(signal), std::forward<ConnectionParameter>(args)...);
                 activity->setStolenEnabled(false);
                 invokeActivityNoAwait(activity, pSender);
             } else {
                 auto sharedSender = sharedRef(pSender);
-                using SharedExpType = decltype(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>);
+                using SharedExpType = decltype(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, std::remove_cvref_t<ConnectionParameter>...>);
                 auto activity = TA_ActivityCreator::create(
-                    std::forward<SharedExpType>(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, Args...>),
-                    std::move(sharedSender), std::forward<Signal>(signal), std::forward<Args>(args)...);
+                    std::forward<SharedExpType>(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, std::remove_cvref_t<ConnectionParameter>...>),
+                    std::move(sharedSender), std::forward<Signal>(signal), std::forward<ConnectionParameter>(args)...);
                 activity->setStolenEnabled(false);
                 invokeActivityNoAwait(activity, pSender);
             }
@@ -629,7 +634,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
       private:
         //Users need to ensure the validity of the returned pointer and check for nullptr before use.
         TA_MetaObject *resolveSender() const {
-            bool isEmpty = !m_wpSender.owner_before(std::weak_ptr<TA_MetaObject>{}) && 
+            bool isEmpty = !m_wpSender.owner_before(std::weak_ptr<TA_MetaObject>{}) &&
                            !std::weak_ptr<TA_MetaObject>{}.owner_before(m_wpSender);
             if (isEmpty) return m_pSender;
             return m_wpSender.lock().get();
@@ -637,7 +642,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
 
         //Users need to ensure the validity of the returned pointer and check for nullptr before use.
         TA_MetaObject *resolveReceiver() const {
-            bool isEmpty = !m_wpReceiver.owner_before(std::weak_ptr<TA_MetaObject>{}) && 
+            bool isEmpty = !m_wpReceiver.owner_before(std::weak_ptr<TA_MetaObject>{}) &&
                            !std::weak_ptr<TA_MetaObject>{}.owner_before(m_wpReceiver);
             if (isEmpty) return m_pReceiver;
             return m_wpReceiver.lock().get();
@@ -730,7 +735,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             if(startIter != endIter) {
                 obj->setPara(args...);
             } else {
-                obj->setPara(std::forward<Args>(args)...);
+                obj->setPara(std::move(args)...);
             }
             obj->callSlot();
         }
