@@ -583,7 +583,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
 
         void callSlot() {
-            auto activity = TA_ActivityCreator::create(std::forward<SlotExpType>(m_slotExp));
+            auto slotExp = m_slotExp;
+            auto activity = TA_ActivityCreator::create(std::forward<SlotExpType>(slotExp));
             activity->setStolenEnabled(false);
             auto *pRealSender = resolveSender();
             auto *pRealReceiver = resolveReceiver();
