@@ -42,7 +42,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         m_typeId = typeid(RawType).hash_code();
         if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
             std::destroy_at(&m_storage.m_ptr);
-            new (m_storage.m_data) RawType(std::forward<RawType>(value), std::forward<Args>(args)...);
+            new (m_storage.m_data) RawType(std::forward<T>(value), std::forward<Args>(args)...);
             m_destroySSOExp = [](void *data) { std::destroy_at(reinterpret_cast<RawType *>(data)); };
             m_copySSOExp = [](const void *src, void *dst) {
                 new (dst) RawType(*reinterpret_cast<const RawType *>(src));
@@ -133,7 +133,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         } else {
             m_typeId = typeid(RawType).hash_code();
             if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
-                new (m_storage.m_data) RawType(std::forward<RawType>(obj));
+                new (m_storage.m_data) RawType(std::forward<T>(obj));
                 m_destroySSOExp = [](void *data) { std::destroy_at(reinterpret_cast<RawType *>(data)); };
                 m_copySSOExp = [](const void *src, void *dst) {
                     new (dst) RawType(*reinterpret_cast<const RawType *>(src));
