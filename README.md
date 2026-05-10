@@ -156,9 +156,9 @@ APIs: `add/remove/clear`, `execute(Async|Sync)`, `result(index, out)`, `reset`, 
 `TA_ManualCoroutineTask` (lazy/eager) and `TA_CoroutineGenerator` wrap standard coroutines with blocking `get()`/`value()` helpers. Awaitables include waiting on signals, executing activities (sync/async), and fetching results, letting coroutine code integrate with the ActivityFramework scheduler.
 
 ## Releases
+- [v0.5.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.5.1)
 - [v0.5.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.5.0)
 - [v0.4.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.4.1)
-- [v0.4.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.4.0)
 
 ## Authors
 - Sol Zhu — breakersol@outlook.com
