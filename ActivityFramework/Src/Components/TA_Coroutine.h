@@ -221,10 +221,17 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineGenerator {
         std::suspend_always initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
 
-        std::suspend_always yield_value(const T &value) {
+        struct YieldAwaiter {
+            bool await_ready() const noexcept { return false; }
+            void await_suspend(std::coroutine_handle<promise_type> h) noexcept {
+                h.promise().m_completed.store(true, std::memory_order_release);
+                h.promise().m_completed.notify_all();
+            }
+            void await_resume() noexcept {}
+        };
+
+        YieldAwaiter yield_value(const T &value) {
             m_currentValue = value;
-            m_completed.store(true, std::memory_order_release);
-            m_completed.notify_all();
             return {};
         }
 
@@ -304,10 +311,17 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
 
-        std::suspend_always yield_value(const T &value) {
+        struct YieldAwaiter {
+            bool await_ready() const noexcept { return false; }
+            void await_suspend(std::coroutine_handle<promise_type> h) noexcept {
+                h.promise().m_completed.store(true, std::memory_order_release);
+                h.promise().m_completed.notify_all();
+            }
+            void await_resume() noexcept {}
+        };
+
+        YieldAwaiter yield_value(const T &value) {
             m_currentValue = value;
-            m_completed.store(true, std::memory_order_release);
-            m_completed.notify_all();
             return {};
         }
 
@@ -359,7 +373,7 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
     T value() {
         auto &pr = m_coroutineHandle.promise();
         pr.m_completed.wait(false, std::memory_order_acquire);
-        auto currentVal = pr.m_currentValue;
+        auto currentVal = std::move(pr.m_currentValue);
         pr.m_completed.store(false, std::memory_order_release);
         return std::move(currentVal);
     }
