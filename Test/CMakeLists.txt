@@ -78,5 +78,7 @@ elseif(UNIX)
     target_link_directories(ActivityFrameworkTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Linux)
 endif()
 
+add_test(NAME ActivityFrameworkTest COMMAND ActivityFrameworkTest)
+
 install(TARGETS ActivityFrameworkTest
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

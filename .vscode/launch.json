@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "name": "Debug ActivityFrameworkTest (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/windows-msvc/debug/Test/ActivityFrameworkTest.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/windows-msvc/debug/Test",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "CMake Build: Windows MSVC Debug"
+        },
+        {
+            "name": "Launch ActivityFrameworkTest Release (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/windows-msvc/release/Test/ActivityFrameworkTest.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/windows-msvc/release/Test",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "CMake Build: Windows MSVC Release"
+        }
+    ],
+    "version": "2.0.0"
+}

@@ -1,0 +1,104 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake Configure: Windows MSVC Debug",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\.vscode\\scripts\\cmake-msvc.ps1",
+                "configure",
+                "Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake Build: Windows MSVC Debug",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\.vscode\\scripts\\cmake-msvc.ps1",
+                "build",
+                "Debug"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile",
+            "dependsOn": "CMake Configure: Windows MSVC Debug"
+        },
+        {
+            "label": "CMake Configure: Windows MSVC Release",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\.vscode\\scripts\\cmake-msvc.ps1",
+                "configure",
+                "Release"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake Build: Windows MSVC Release",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\.vscode\\scripts\\cmake-msvc.ps1",
+                "build",
+                "Release"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile",
+            "dependsOn": "CMake Configure: Windows MSVC Release"
+        },
+        {
+            "label": "Run ActivityFrameworkTest Debug",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\.vscode\\scripts\\cmake-msvc.ps1",
+                "test",
+                "Debug"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "CMake Build: Windows MSVC Debug"
+        },
+        {
+            "label": "Run ActivityFrameworkTest Release",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\.vscode\\scripts\\cmake-msvc.ps1",
+                "test",
+                "Release"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "CMake Build: Windows MSVC Release"
+        }
+    ]
+}
