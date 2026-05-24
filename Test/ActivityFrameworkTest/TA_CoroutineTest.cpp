@@ -61,8 +61,8 @@ TEST_F(TA_CoroutineTest, testLazyCoroutineGenerator) {
     auto gen = testLazyCoroutineGenerator(m_sender.get());
 
     int r1, r2, r3;
-    CoreAsync::TA_Connection::active(m_sender.get(), &CoroutineTestSender::sendSignal, 3);
     gen.start();
+    CoreAsync::TA_Connection::active(m_sender.get(), &CoroutineTestSender::sendSignal, 3);
     r1 = gen.value();
     gen.next();
 
