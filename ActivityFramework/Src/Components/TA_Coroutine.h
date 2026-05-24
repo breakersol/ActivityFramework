@@ -30,16 +30,13 @@ template <typename T, CorotuineBehavior = Lazy> struct [[nodiscard]] TA_ManualCo
         std::optional<T> m_result{};
         std::exception_ptr m_exception{};
         std::atomic_bool m_completed{false};
-        static constexpr bool isBlockingType{true};
 
         struct FinalAwaiter {
             bool await_ready() const noexcept { return false; }
             void await_suspend(std::coroutine_handle<promise_type> h) noexcept {
                 auto &promise = h.promise();
-                if constexpr (promise_type::isBlockingType) {
-                    promise.m_completed.store(true, std::memory_order_release);
-                    promise.m_completed.notify_all();
-                }
+                promise.m_completed.store(true, std::memory_order_release);
+                promise.m_completed.notify_all();
             }
             void await_resume() noexcept {}
         };
@@ -115,16 +112,13 @@ template <typename T> struct [[nodiscard]] TA_ManualCoroutineTask<T, Eager> {
         std::optional<T> m_result{};
         std::exception_ptr m_exception{};
         std::atomic_bool m_completed{false};
-        static constexpr bool isBlockingType{true};
 
         struct FinalAwaiter {
             bool await_ready() const noexcept { return false; }
             void await_suspend(std::coroutine_handle<promise_type> h) noexcept {
                 auto &promise = h.promise();
-                if constexpr (promise_type::isBlockingType) {
-                    promise.m_completed.store(true, std::memory_order_release);
-                    promise.m_completed.notify_all();
-                }
+                promise.m_completed.store(true, std::memory_order_release);
+                promise.m_completed.notify_all();
             }
             void await_resume() noexcept {}
         };
@@ -212,7 +206,6 @@ template <typename T, CorotuineBehavior = Lazy> struct TA_CoroutineGenerator {
         T m_currentValue{};
         std::exception_ptr m_exception{};
         std::atomic_bool m_completed{false};
-        static constexpr bool isBlockingType{false};
 
         TA_CoroutineGenerator get_return_object() {
             return TA_CoroutineGenerator{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -302,7 +295,6 @@ template <typename T> struct TA_CoroutineGenerator<T, Eager> {
         T m_currentValue{};
         std::exception_ptr m_exception{};
         std::atomic_bool m_completed{false};
-        static constexpr bool isBlockingType{false};
 
         TA_CoroutineGenerator get_return_object() {
             return TA_CoroutineGenerator{std::coroutine_handle<promise_type>::from_promise(*this)};
