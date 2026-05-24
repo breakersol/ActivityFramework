@@ -56,3 +56,24 @@ TEST_F(TA_CoroutineTest, testCoroutineGenerator) {
     EXPECT_EQ(r2, 12);
     EXPECT_EQ(r3, 15);
 }
+
+TEST_F(TA_CoroutineTest, testLazyCoroutineGenerator) {
+    auto gen = testLazyCoroutineGenerator(m_sender.get());
+
+    int r1, r2, r3;
+    CoreAsync::TA_Connection::active(m_sender.get(), &CoroutineTestSender::sendSignal, 3);
+    gen.start();
+    r1 = gen.value();
+    gen.next();
+
+    CoreAsync::TA_Connection::active(m_sender.get(), &CoroutineTestSender::sendSignal, 4);
+    r2 = gen.value();
+    gen.next(); 
+
+    CoreAsync::TA_Connection::active(m_sender.get(), &CoroutineTestSender::sendSignal, 5);
+    r3 = gen.value();
+    
+    EXPECT_EQ(r1, 9);
+    EXPECT_EQ(r2, 12);
+    EXPECT_EQ(r3, 15);
+}
