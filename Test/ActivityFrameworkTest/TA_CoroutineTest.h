@@ -45,6 +45,17 @@ class TA_CoroutineTest : public ::testing::Test {
         co_return;
     }
 
+    CoreAsync::TA_CoroutineGenerator<int, CoreAsync::Lazy> testLazyCoroutineGenerator(CoroutineTestSender *pSender) {
+        while (true) {
+            auto val = co_await CoreAsync::TA_SignalAwaitable(pSender, &CoroutineTestSender::sendSignal);
+            co_yield val * 3;
+            if (val > 10) {
+                break;
+            }
+        }
+        co_return;
+    }
+
     std::size_t m_count{0};
     std::shared_ptr<CoroutineTestSender> m_sender{nullptr};
 };
