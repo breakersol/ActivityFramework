@@ -1,0 +1,8 @@
+{
+    "cmake.useCMakePresets": "always",
+    "cmake.configureOnOpen": false,
+    "cmake.configurePreset": "windows-msvc-debug",
+    "cmake.buildPreset": "windows-msvc-debug",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/windows-msvc/debug/compile_commands.json"
+}
