@@ -142,8 +142,8 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
         if constexpr (std::is_same_v<std::vector<typename T::value_type>, T> ||
                       std::is_same_v<std::deque<typename T::value_type>, T>) {
             t.resize(size);
-            for (auto i = 0; i < size; ++i) {
-                *this >> t[i];
+            for (auto &v : t) {
+                *this >> v;
             }
         } else if constexpr (std::is_same_v<std::list<typename T::value_type>, T>) {
             for (auto i = 0; i < size; ++i) {
@@ -253,8 +253,8 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     template <typename T, int N> TA_Serializer &operator>>(T (&a)[N]) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
-        for (int i = 0; i < N; ++i) {
-            *this >> a[i];
+        for(auto &ele : a) {
+            *this >> ele;
         }
         return *this;
     }
