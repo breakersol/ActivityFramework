@@ -158,7 +158,7 @@ class TA_CommonTools {
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-static Container mid(const Container &container, std::size_t startIndex, std::size_t length) {
+static Container subRanges(const Container &container, std::size_t startIndex, std::size_t length) {
     return container 
          | std::views::drop(startIndex) 
          | std::views::take(length)
