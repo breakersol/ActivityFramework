@@ -34,7 +34,7 @@ TEST_F(TA_CommonToolsTest, midTest) {
     std::list<int> l{1, 2, 3, 4, 5, 6, 7, 8};
     auto res = CoreAsync::TA_CommonTools::mid<int>(l, 2, 4);
     EXPECT_EQ(res.front(), 3);
-    EXPECT_EQ(res.back(), 5);
+    EXPECT_EQ(res.back(), 6);
 }
 
 TEST_F(TA_CommonToolsTest, takeAtTest) {
