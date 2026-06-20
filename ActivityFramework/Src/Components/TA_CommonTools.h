@@ -118,34 +118,32 @@ class TA_CommonTools {
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
     static bool removeOne(Container &container, const T &t) {
-        for (auto iter = container.begin(); iter != container.end(); ++iter) {
-            if (*iter == t) {
-                container.erase(iter);
-                return true;
-            }
+        auto iter = std::ranges::find(container, t);
+        if (iter == container.end()) {
+            return false;
         }
-        return false;
+        container.erase(iter);
+        return true;
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
     static bool removeOne(Container &container, T &&t) {
-        for (auto iter = container.begin(); iter != container.end(); ++iter) {
-            if (*iter == t) {
-                container.erase(iter);
-                return true;
-            }
+        auto iter = std::ranges::find(container, t);
+        if (iter == container.end()) {
+            return false;
         }
-        return false;
+        container.erase(iter);
+        return true;
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
     static bool contains(const Container &container, const T &t) {
-        return std::find(container.begin(), container.end(), t) != container.end();
+        return std::ranges::find(container, t) != container.end();
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
     static bool contains(const Container &container, T &&t) {
-        return std::find(container.begin(), container.end(), t) != container.end();
+        return std::ranges::find(container, t) != container.end();
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
@@ -160,15 +158,12 @@ class TA_CommonTools {
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-    static Container mid(const Container &container, std::size_t startIndex, std::size_t length) {
-        auto start{container.begin()};
-        auto end{container.begin()};
-        std::advance(start, startIndex);
-        std::advance(end, startIndex + length - 1);
-        Container res;
-        res.assign(start, end);
-        return res;
-    }
+static Container mid(const Container &container, std::size_t startIndex, std::size_t length) {
+    return container 
+         | std::views::drop(startIndex) 
+         | std::views::take(length)
+         | std::ranges::to<Container>(); 
+}
 
     template <typename Text, typename... Paras> static void debugInfo(Text text, Paras &&...paras) {
 #ifdef DEBUG_INFO_ON
