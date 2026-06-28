@@ -229,48 +229,8 @@ class MapUtils {
         return keyType{};
     }
 
-    template <typename Key, typename T, typename Cmp = std::less<Key>,
-              typename Allocator = std::allocator<std::pair<const Key, T>>,
-              template <typename K, typename V, typename C, typename A> class MapType = std::map>
-    static bool contains(const MapType<Key, T, Cmp, Allocator> &map, const Key &key, const T &val) {
-        for (auto &&[k, v] : map) {
-            if (v == val && k == key)
-                return true;
-        }
-        return false;
-    }
-
-    template <typename Key, typename T, typename Cmp = std::less<Key>,
-              typename Allocator = std::allocator<std::pair<const Key, T>>,
-              template <typename K, typename V, typename C, typename A> class MapType = std::map>
-    static bool contains(const MapType<Key, T, Cmp, Allocator> &map, Key &&key, T &&val) {
-        for (auto &&[k, v] : map) {
-            if (v == val && k == key)
-                return true;
-        }
-        return false;
-    }
-
-    template <typename Key, typename T, typename Hasher = std::hash<Key>, typename Eq = std::equal_to<Key>,
-              typename Allocator = std::allocator<std::pair<const Key, T>>,
-              template <typename K, typename V, typename H, typename E, typename A> class MapType = std::unordered_map>
-    static bool contains(const MapType<Key, T, Hasher, Eq, Allocator> &map, const Key &key, const T &val) {
-        for (auto &&[k, v] : map) {
-            if (v == val && k == key)
-                return true;
-        }
-        return false;
-    }
-
-    template <typename Key, typename T, typename Hasher = std::hash<Key>, typename Eq = std::equal_to<Key>,
-              typename Allocator = std::allocator<std::pair<const Key, T>>,
-              template <typename K, typename V, typename H, typename E, typename A> class MapType = std::unordered_map>
-    static bool contains(const MapType<Key, T, Hasher, Eq, Allocator> &map, Key &&key, T &&val) {
-        for (auto &&[k, v] : map) {
-            if (v == val && k == key)
-                return true;
-        }
-        return false;
+    static auto contains(const auto &map, const auto &key) {
+        return map.contains(key);
     }
 };
 
