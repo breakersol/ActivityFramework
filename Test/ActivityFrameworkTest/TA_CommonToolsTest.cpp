@@ -61,6 +61,12 @@ TEST_F(TA_CommonToolsTest, mapUtilsKeyTest) {
     EXPECT_EQ(res == 1, true);
 }
 
+TEST_F(TA_CommonToolsTest, mapUtilsContainsTest) {
+    std::multimap<int, std::string> map{{1, "1"}, {2, "2"}, {3, "3"}, {1, "111"}};
+    auto res = CoreAsync::MapUtils::contains(map, 1);
+    EXPECT_EQ(res == true, true);
+}
+
 TEST_F(TA_CommonToolsTest, splitTest) {
     std::string source{"123,345,456"};
     auto res = CoreAsync::StringUtils::split(source, ',');
