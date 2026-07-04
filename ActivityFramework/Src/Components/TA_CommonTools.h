@@ -26,6 +26,8 @@
 #include <ranges>
 #include <algorithm>
 #include <sstream>
+#include <format>
+#include <concepts>
 
 #include "TA_ActivityFramework_global.h"
 
@@ -172,19 +174,9 @@ static Container subRanges(const Container &container, std::size_t startIndex, s
 #endif
     }
 
-    template <typename Num = std::int_fast64_t> static std::string decimalToBinary(Num n) {
-        static std::string zero{"0"}, one{"1"};
-        if (n == 0) {
-            return zero;
-        }
-
-        std::string binary = "";
-        while (n > 0) {
-            binary = (n % 2 == 0 ? zero : one) + binary;
-            n /= 2;
-        }
-
-        return binary;
+    template <std::integral Num>
+    static std::string decimalToBinary(Num n) {
+        return std::format("{:b}", n);
     }
 };
 
