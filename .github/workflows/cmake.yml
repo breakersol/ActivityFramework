@@ -91,7 +91,7 @@ jobs:
 
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      ANDROID_NDK_VERSION: 27.0.12077973     # change if your project needs a specific NDK
+      ANDROID_NDK_VERSION: 30.0.14904198     # change if your project needs a specific NDK
       ANDROID_API_LEVEL: 24                  # match your minSdkVersion / project requirement
       ANDROID_ABI: x86_64               # build & run tests on emulator (x86_64)
 
