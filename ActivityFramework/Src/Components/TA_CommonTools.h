@@ -161,12 +161,14 @@ class TA_CommonTools {
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-static Container subRanges(const Container &container, std::size_t startIndex, std::size_t length) {
-    return container 
-         | std::views::drop(startIndex) 
-         | std::views::take(length)
-         | std::ranges::to<Container>(); 
-}
+    static Container subRanges(const Container &container, std::size_t startIndex, std::size_t length) {
+        return container | std::views::drop(startIndex) | std::views::take(length) | std::ranges::to<Container>(); 
+    }
+
+    static auto split(const auto &container, const auto &delimiter) {
+        using elementType = std::remove_cvref_t<decltype(container)>;
+        return container | std::views::split(delimiter) | std::ranges::to<std::vector<elementType>>();
+    }
 
     template <typename Text, typename... Paras> static void debugInfo(Text text, Paras &&...paras) {
 #ifdef DEBUG_INFO_ON
@@ -226,10 +228,6 @@ class MapUtils {
     }
 };
 
-class StringUtils {
-  public:
-    static ACTIVITY_FRAMEWORK_EXPORT std::vector<std::string> split(const std::string &source, char delimiter);
-};
 } // namespace CoreAsync
 
 #endif
