@@ -56,25 +56,7 @@ class TA_CommonTools {
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-    static auto insert(Container &container, std::size_t index, T &&val) {
-        typename Container::const_iterator pIter = container.begin();
-        std::advance(pIter, index);
-        return container.insert(pIter, val);
-    }
-
-    template <typename T, typename Container = std::list<std::decay_t<T>>>
     static bool replace(Container &container, std::size_t index, const T &elem) {
-        if (index >= container.size()) {
-            return false;
-        }
-        typename Container::iterator pIter = container.begin();
-        std::advance(pIter, index);
-        *pIter = elem;
-        return true;
-    }
-
-    template <typename T, typename Container = std::list<std::decay_t<T>>>
-    static bool replace(Container &container, std::size_t index, T &&elem) {
         if (index >= container.size()) {
             return false;
         }
@@ -130,33 +112,27 @@ class TA_CommonTools {
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-    static bool removeOne(Container &container, T &&t) {
-        auto iter = std::ranges::find(container, t);
-        if (iter == container.end()) {
-            return false;
-        }
-        container.erase(iter);
-        return true;
-    }
-
-    template <typename T, typename Container = std::list<std::decay_t<T>>>
     static bool contains(const Container &container, const T &t) {
         return std::ranges::find(container, t) != container.end();
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-    static bool contains(const Container &container, T &&t) {
-        return std::ranges::find(container, t) != container.end();
-    }
-
-    template <typename T, typename Container = std::list<std::decay_t<T>>>
     static int indexOf(const Container &container, const T &t) {
-        int index{0};
-        for (auto it = container.begin(); it != container.end(); ++it, ++index) {
-            if (*it == t) {
-                return index;
+#ifdef ANDROID
+        int idx = 0;
+        for(const auto &elem : container) {
+            if (elem == t) {
+                return idx;
+            }
+            ++idx;
+        }
+#else
+        for(auto &[idx, elem] : container | std::views::enumerate) {
+            if (elem == t) {
+                return idx;
             }
         }
+#endif
         return -1;
     }
 
