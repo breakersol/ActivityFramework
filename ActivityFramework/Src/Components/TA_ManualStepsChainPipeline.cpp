@@ -22,10 +22,10 @@ TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_Ma
     auto step{pPipeline->steps()};
     if (step <= pPipeline->m_pActivityList.size()) {
         for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i) {
-            decltype(auto) pActivity{TA_CommonTools::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i)};
+            decltype(auto) pActivity{ContainerUtils::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i)};
             (*pActivity)();
             auto var{pActivity->result()};
-            TA_CommonTools::replace(pPipeline->m_resultList, i, var);
+            ContainerUtils::replace(pPipeline->m_resultList, i, var);
             TA_Connection::active(pPipeline, &TA_ManualStepsChainPipeline::activityCompleted, i, var);
             if (--step == 0) {
                 co_yield var;
