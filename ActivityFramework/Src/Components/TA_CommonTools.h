@@ -17,11 +17,16 @@
 #ifndef TA_COMMONTOOLS_H
 #define TA_COMMONTOOLS_H
 
+#include <cstddef>
+#include <cstdio>
 #include <cstdint>
+#include <iterator>
 #include <list>
 #include <map>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 #include <unordered_map>
 #include <ranges>
