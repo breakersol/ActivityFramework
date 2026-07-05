@@ -32,14 +32,14 @@ TEST_F(TA_CommonToolsTest, decToBinTest) {
 
 TEST_F(TA_CommonToolsTest, midTest) {
     std::list<int> l{1, 2, 3, 4, 5, 6, 7, 8};
-    auto res = CoreAsync::TA_CommonTools::subRanges<int>(l, 2, 4);
+    auto res = CoreAsync::ContainerUtils::subRanges<int>(l, 2, 4);
     EXPECT_EQ(res.front(), 3);
     EXPECT_EQ(res.back(), 6);
 }
 
 TEST_F(TA_CommonToolsTest, takeAtTest) {
     std::list<int> l{1, 2, 3, 4, 5, 6, 7, 8};
-    auto res = CoreAsync::TA_CommonTools::takeAt<int>(l, 2);
+    auto res = CoreAsync::ContainerUtils::takeAt<int>(l, 2);
     EXPECT_EQ(res, 3);
 }
 
@@ -69,7 +69,7 @@ TEST_F(TA_CommonToolsTest, mapUtilsContainsTest) {
 
 TEST_F(TA_CommonToolsTest, splitTest) {
     std::string source{"123,345,456"};
-    auto res = CoreAsync::TA_CommonTools::split(source, ',');
+    auto res = CoreAsync::ContainerUtils::split(source, ',');
     EXPECT_EQ(res.front(), "123");
     EXPECT_EQ(res.back(), "456");
 }

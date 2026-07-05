@@ -28,7 +28,7 @@ bool TA_BasicPipeline::remove(ActivityIndex index) {
     }
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (index < m_pActivityList.size()) {
-        TA_CommonTools::remove<std::shared_ptr<TA_ActivityProxy>>(m_pActivityList, index);
+        ContainerUtils::remove<std::shared_ptr<TA_ActivityProxy>>(m_pActivityList, index);
         return true;
     }
     return false;

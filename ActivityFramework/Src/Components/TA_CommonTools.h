@@ -34,6 +34,20 @@
 namespace CoreAsync {
 class TA_CommonTools {
   public:
+    template <typename Text, typename... Paras> static void debugInfo(Text text, Paras &&...paras) {
+#ifdef DEBUG_INFO_ON
+        std::printf(std::string_view{Text::data()}.data(), std::forward<Paras>(paras)...);
+#endif
+    }
+
+    template <std::integral Num>
+    static std::string decimalToBinary(Num n) {
+        return std::format("{:b}", n);
+    }
+};
+
+class ContainerUtils {
+  public:
     template <typename T, typename Container = std::list<std::decay_t<T>>>
     static auto at(const Container &container, std::size_t index) -> std::decay_t<T> {
         typename Container::const_iterator pIter = container.begin();
@@ -144,17 +158,6 @@ class TA_CommonTools {
     static auto split(const auto &container, const auto &delimiter) {
         using elementType = std::remove_cvref_t<decltype(container)>;
         return container | std::views::split(delimiter) | std::ranges::to<std::vector<elementType>>();
-    }
-
-    template <typename Text, typename... Paras> static void debugInfo(Text text, Paras &&...paras) {
-#ifdef DEBUG_INFO_ON
-        std::printf(std::string_view{Text::data()}.data(), std::forward<Paras>(paras)...);
-#endif
-    }
-
-    template <std::integral Num>
-    static std::string decimalToBinary(Num n) {
-        return std::format("{:b}", n);
     }
 };
 
