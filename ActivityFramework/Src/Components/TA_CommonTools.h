@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <list>
 #include <map>
+#include <string>
 #include <string_view>
 #include <vector>
 #include <unordered_map>
@@ -158,6 +159,14 @@ class ContainerUtils {
     static auto split(const auto &container, const auto &delimiter) {
         using elementType = std::remove_cvref_t<decltype(container)>;
         return container | std::views::split(delimiter) | std::ranges::to<std::vector<elementType>>();
+    }
+};
+
+class StringUtils {
+  public:
+    [[deprecated("Use ContainerUtils::split instead.")]]
+    static std::vector<std::string> split(const std::string &str, char delimiter) {
+        return ContainerUtils::split(str, delimiter);
     }
 };
 

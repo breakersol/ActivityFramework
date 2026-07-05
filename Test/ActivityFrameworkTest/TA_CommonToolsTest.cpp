@@ -73,3 +73,10 @@ TEST_F(TA_CommonToolsTest, splitTest) {
     EXPECT_EQ(res.front(), "123");
     EXPECT_EQ(res.back(), "456");
 }
+
+TEST_F(TA_CommonToolsTest, stringUtilsSplitCompatibilityTest) {
+    std::string source{"123,345,456"};
+    auto res = CoreAsync::StringUtils::split(source, ',');
+    EXPECT_EQ(res.front(), "123");
+    EXPECT_EQ(res.back(), "456");
+}
