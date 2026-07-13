@@ -34,6 +34,7 @@
 #include <sstream>
 #include <format>
 #include <concepts>
+#include <cassert>
 
 #include "TA_ActivityFramework_global.h"
 
@@ -200,10 +201,12 @@ class MapUtils {
     }
 
     static auto first(const auto &map) {
+        assert(!map.empty());
         return *map.begin();
     }
 
     static auto last(const auto &map) {
+        assert(!map.empty());
         return *std::prev(map.end());
     }
 
