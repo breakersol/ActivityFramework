@@ -40,7 +40,7 @@
 namespace CoreAsync {
 class TA_CommonTools {
   public:
-    template <typename Text, typename... Paras> static void debugInfo(Text text, Paras &&...paras) {
+    template <typename Text, typename... Paras> static void debugInfo([[maybe_unused]] Text, Paras &&...paras) {
 #ifdef DEBUG_INFO_ON
         std::printf(std::string_view{Text::data()}.data(), std::forward<Paras>(paras)...);
 #endif
