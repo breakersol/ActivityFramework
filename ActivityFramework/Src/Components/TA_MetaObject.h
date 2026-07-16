@@ -667,12 +667,12 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
                 continue;
             }
             auto &&[start, end] = receiver->m_inputConnections.equal_range(obj->slotMark());
-            while (start != end) {
-                if (start->second == obj) {
-                    receiver->m_inputConnections.erase(start);
-                    break;
-                }
-                ++start;
+            auto subRange = std::ranges::subrange(start, end);
+            auto foundIter = std::ranges::find_if(subRange, [&obj](const auto &pair) {
+                return pair.second == obj;
+            });
+            if (foundIter != subRange.end()) {
+                receiver->m_inputConnections.erase(foundIter);
             }
         }
         m_outputConnections.clear();
@@ -683,12 +683,12 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
                 continue;
             }
             auto &&[start, end] = sender->m_outputConnections.equal_range(obj->signalMark());
-            while (start != end) {
-                if (start->second == obj) {
-                    sender->m_outputConnections.erase(start);
-                    break;
-                }
-                ++start;
+            auto subRange = std::ranges::subrange(start, end);
+            auto foundIter = std::ranges::find_if(subRange, [&obj](const auto &pair) {
+                return pair.second == obj;
+            });
+            if (foundIter != subRange.end()) {
+                sender->m_outputConnections.erase(foundIter);
             }
         }
         m_inputConnections.clear();
