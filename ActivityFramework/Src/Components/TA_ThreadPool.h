@@ -27,6 +27,7 @@
 #include <vector>
 #include <semaphore>
 #include <memory>
+#include <optional>
 
 namespace CoreAsync {
 
@@ -102,52 +103,11 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     void shutDown();
 
     std::size_t topPriorityThread(std::thread::id depencyThread) const {
-        std::size_t lowIdx{std::numeric_limits<std::size_t>::max()}, lowSize{std::numeric_limits<std::size_t>::max()};
-        for (std::size_t idx = 0; idx < m_activityQueues.size(); ++idx) {
-            if (m_threads[idx].get_id() == depencyThread) {
-                continue;
-            }
-            std::size_t curSize = m_activityQueues[idx].size();
-            if (curSize < lowSize) {
-                lowIdx = idx;
-                lowSize = curSize;
-            } else if (curSize == lowSize) {
-                bool curState = m_states[idx].isBusy.load(std::memory_order_acquire);
-                bool isLowState = m_states[lowIdx].isBusy.load(std::memory_order_acquire);
-                if (!curState && isLowState) {
-                    lowIdx = idx;
-                } else if (curState == isLowState) {
-                    if (idx < lowIdx) {
-                        lowIdx = idx;
-                    }
-                }
-            }
-        }
-        return lowIdx;
+        return selectTopPriorityThread(&depencyThread);
     }
 
-        std::size_t topPriorityThread() const {
-        std::size_t lowIdx{std::numeric_limits<std::size_t>::max()}, lowSize{std::numeric_limits<std::size_t>::max()};
-        for (std::size_t idx = 0; idx < m_activityQueues.size(); ++idx) {
-            std::size_t curSize = m_activityQueues[idx].size();
-            if (curSize < lowSize) {
-                lowIdx = idx;
-                lowSize = curSize;
-            } else if (curSize == lowSize) {
-                bool curState = m_states[idx].isBusy.load(std::memory_order_acquire);
-                bool isLowState = m_states[lowIdx].isBusy.load(std::memory_order_acquire);
-                if (curState && !isLowState) {
-                    lowIdx = idx;
-                    lowSize = curSize;
-                } else if (curState == isLowState) {
-                    if (idx < lowIdx) {
-                        lowIdx = idx;
-                        lowSize = curSize;
-                    }
-                }
-            }
-        }
-        return lowIdx;
+    std::size_t topPriorityThread() const {
+        return selectTopPriorityThread(nullptr);
     }
 
     template <ActivityType Activity>
@@ -233,6 +193,68 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     }
 
   private:
+    struct ThreadSnapshot {
+        std::size_t index;
+        std::size_t queueSize;
+        bool isBusy;
+    };
+
+    static bool betterThreadSnapshot(const ThreadSnapshot &lhs, const ThreadSnapshot &rhs) noexcept {
+        if (lhs.queueSize != rhs.queueSize) {
+            return lhs.queueSize < rhs.queueSize;
+        }
+        if (lhs.isBusy != rhs.isBusy) {
+            return !lhs.isBusy;
+        }
+        return lhs.index < rhs.index;
+    }
+
+    std::size_t selectTopPriorityThread(const std::thread::id *dependencyThread) const {
+        ThreadSnapshot bestThread = {};
+        bool hasBestThread = false;
+        for (std::size_t idx = 0; idx < m_activityQueues.size(); ++idx) {
+            if (dependencyThread && m_threads[idx].get_id() == *dependencyThread) {
+                continue;
+            }
+
+            const ThreadSnapshot candidate = {
+                idx,
+                m_activityQueues[idx].size(),
+                m_states[idx].isBusy.load(std::memory_order_acquire),
+            };
+            if (!hasBestThread || betterThreadSnapshot(candidate, bestThread)) {
+                bestThread = candidate;
+                hasBestThread = true;
+            }
+        }
+
+        if (!hasBestThread) {
+            throw std::runtime_error("No available thread found in the thread pool.");
+        }
+        return bestThread.index;
+    }
+
+    [[deprecated("Use the version with const std::thread::id * instead")]] std::size_t selectTopPriorityThread(std::optional<std::thread::id> dependencyThread) const {
+        auto indices = std::views::iota(std::size_t{0}, m_activityQueues.size());
+
+        auto validIndices = indices | std::views::filter([&](std::size_t idx) {
+            return !(dependencyThread.has_value() && m_threads[idx].get_id() == dependencyThread.value());
+        });
+
+        auto bestIter = std::ranges::min_element(validIndices, [&](std::size_t lhs, std::size_t rhs) {
+            ThreadSnapshot snapL = { lhs, m_activityQueues[lhs].size(), m_states[lhs].isBusy.load(std::memory_order_acquire) };
+            ThreadSnapshot snapR = { rhs, m_activityQueues[rhs].size(), m_states[rhs].isBusy.load(std::memory_order_acquire) };
+            
+            return betterThreadSnapshot(snapL, snapR);
+        });
+
+        if (bestIter == validIndices.end()) {
+            throw std::runtime_error("No available thread found in the thread pool.");
+        }
+
+        return *bestIter;
+    }
+
     void init();
     bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx);
 
