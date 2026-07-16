@@ -367,7 +367,7 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
         static constexpr std::size_t size{sizeof...(BASES)};
 
         static constexpr auto typeNames() {
-            std::array<std::string_view, Reflex::TA_TypeInfo<std::decay_t<T>>::TA_BaseTypes::size> arr{
+            constexpr std::array<std::string_view, Reflex::TA_TypeInfo<std::decay_t<T>>::TA_BaseTypes::size> arr{
                 typeid(BASES).name()...};
             return arr;
         }
