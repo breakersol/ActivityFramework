@@ -129,9 +129,7 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
         std::size_t size;
         *this >> size;
-        for (auto &v : array) {
-            *this >> v;
-        }
+        std::ranges::for_each(array, [this](T &val) { *this >> val; });
         return *this;
     }
 
