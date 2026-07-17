@@ -24,11 +24,11 @@ void TA_ThreadPool::shutDown() {
         m_states[idx].resource.release();
         m_states[idx].isBusy.store(false, std::memory_order_release);
     }
-    for (auto &thread : m_threads) {
+    std::ranges::for_each(m_threads, [](std::thread &thread) {
         if (thread.joinable()) {
             thread.join();
         }
-    }
+    });
     m_threads.clear();
 }
 
