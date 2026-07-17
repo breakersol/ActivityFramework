@@ -35,22 +35,22 @@ void TA_ThreadPool::shutDown() {
 void  TA_ThreadPool::init() {
     for (std::size_t idx = 0; idx < m_states.size(); ++idx) {
         m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
-        m_threads.emplace_back([&, idx]() {
-            std::shared_ptr<TA_ActivityProxy> pActivity{nullptr};
+        m_threads.emplace_back([&, idx]() {  
             HandleType *handle{nullptr};
             while(!m_states[idx].stopRequested.load(std::memory_order_acquire)) {
                 m_states[idx].resource.acquire();
                 m_states[idx].isBusy.store(true, std::memory_order_release);
                 while (!m_activityQueues[idx].isEmpty()) {
                     if (m_activityQueues[idx].pop(handle)) {
-                        pActivity = HandleType::extractActivity(handle);
+                        auto pActivity = HandleType::extractActivity(handle);
                         if (pActivity) {
                             (*pActivity)();
                         }
                     }
                 }
-                if (trySteal(pActivity, idx) && pActivity) {
-                    (*pActivity)();
+                std::shared_ptr<TA_ActivityProxy> pStealActivity{nullptr};
+                if (trySteal(pStealActivity, idx) && pStealActivity) {
+                    (*pStealActivity)();
                 }
                 m_states[idx].isBusy.store(false, std::memory_order_release);
             }
