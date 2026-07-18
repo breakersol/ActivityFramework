@@ -17,15 +17,23 @@
 #ifndef TA_ACTIVITYQUEUE_H
 #define TA_ACTIVITYQUEUE_H
 
-#include <atomic>
+#include <algorithm>
 #include <array>
+#include <atomic>
+#include <cstdint>
 #include <stdexcept>
 #include <optional>
+#include <utility>
 
 namespace CoreAsync {
 template <typename T, std::size_t N> class TA_ActivityQueue {
   public:
-    constexpr TA_ActivityQueue() {}
+    TA_ActivityQueue() noexcept {
+        static_assert(N > 0, "Queue capacity must be greater than zero");
+        for (std::size_t idx = 0; idx < N; ++idx) {
+            m_data[idx].sequence.store(idx, std::memory_order_relaxed);
+        }
+    }
 
     //        void print()
     //        {
@@ -47,76 +55,117 @@ template <typename T, std::size_t N> class TA_ActivityQueue {
     static constexpr std::size_t capacity() { return N; }
 
     bool isFull() const {
-        return m_frontIndex.load(std::memory_order_acquire) == (m_rearIndex.load(std::memory_order_acquire) + 1) % N;
+        const std::size_t position = m_rearIndex.load(std::memory_order_relaxed);
+        const Cell &cell = m_data[position % N];
+        const std::size_t sequence = cell.sequence.load(std::memory_order_acquire);
+        return sequenceDifference(sequence, position) < 0;
     }
 
     bool isEmpty() const {
-        return m_frontIndex.load(std::memory_order_acquire) == m_rearIndex.load(std::memory_order_acquire);
+        const std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
+        const Cell &cell = m_data[position % N];
+        const std::size_t sequence = cell.sequence.load(std::memory_order_acquire);
+        return sequenceDifference(sequence, position + 1) < 0;
     }
 
     std::size_t size() const {
-        std::size_t r{m_rearIndex.load(std::memory_order_acquire)};
-        std::size_t f{m_frontIndex.load(std::memory_order_acquire)};
-
-        return r >= f ? r - f : (capacity() - (f - r));
+        const std::size_t rear = m_rearIndex.load(std::memory_order_acquire);
+        const std::size_t front = m_frontIndex.load(std::memory_order_acquire);
+        return rear >= front ? (std::min)(rear - front, capacity()) : 0;
     }
 
     bool push(T &&t) {
-        std::size_t rearIndexOld, rearIndexNew;
-        do {
-            rearIndexOld = m_rearIndex.load(std::memory_order_acquire);
-            rearIndexNew = (rearIndexOld + 1) % N;
-            if (rearIndexNew == m_frontIndex.load(std::memory_order_acquire))
-                return false;
-        } while (!m_rearIndex.compare_exchange_weak(rearIndexOld, rearIndexNew, std::memory_order_acq_rel));
-
-        m_data[rearIndexOld].exchange(t);
-        return true;
+        return pushValue(std::move(t));
     }
 
     bool push(const T &t) {
-        std::size_t rearIndexOld, rearIndexNew;
-        do {
-            rearIndexOld = m_rearIndex.load(std::memory_order_acquire);
-            rearIndexNew = (rearIndexOld + 1) % N;
-            if (rearIndexNew == m_frontIndex.load(std::memory_order_acquire))
-                return false;
-        } while (!m_rearIndex.compare_exchange_weak(rearIndexOld, rearIndexNew, std::memory_order_acq_rel));
-
-        m_data[rearIndexOld].exchange(t);
-        return true;
+        return pushValue(t);
     }
 
     std::optional<T> pop() {
-        std::size_t frontIndexOld, frontIndexNew;
-        do {
-            frontIndexOld = m_frontIndex.load(std::memory_order_acquire);
-            if (frontIndexOld == m_rearIndex.load(std::memory_order_acquire))
-                return std::nullopt; // Queue is empty
-            frontIndexNew = (frontIndexOld + 1) % N;
-        } while (!m_frontIndex.compare_exchange_weak(frontIndexOld, frontIndexNew, std::memory_order_acq_rel));
+        std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
+        Cell *cell = nullptr;
 
-        return std::make_optional(m_data[frontIndexOld].load(std::memory_order_acquire));
+        for (;;) {
+            cell = &m_data[position % N];
+            const std::size_t sequence = cell->sequence.load(std::memory_order_acquire);
+            const std::intptr_t difference = sequenceDifference(sequence, position + 1);
+            if (difference == 0) {
+                if (m_frontIndex.compare_exchange_weak(position, position + 1, std::memory_order_relaxed)) {
+                    break;
+                }
+            } else if (difference < 0) {
+                return std::nullopt;
+            } else {
+                position = m_frontIndex.load(std::memory_order_relaxed);
+            }
+        }
+
+        T value = cell->value.exchange(T{}, std::memory_order_relaxed);
+        cell->sequence.store(position + N, std::memory_order_release);
+        return std::optional<T>{std::move(value)};
     }
 
-    std::optional<T> top() {
-        std::size_t frontIndex = m_frontIndex.load(std::memory_order_acquire);
-        if (frontIndex == m_rearIndex.load(std::memory_order_acquire)) {
-            return std::nullopt; // Queue is empty
+    std::optional<T> top() const {
+        const std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
+        const Cell &cell = m_data[position % N];
+        const std::size_t sequence = cell.sequence.load(std::memory_order_acquire);
+        if (sequenceDifference(sequence, position + 1) != 0) {
+            return std::nullopt;
         }
-        return std::make_optional(m_data[frontIndex].load(std::memory_order_acquire));
+
+        T value = cell.value.load(std::memory_order_relaxed);
+        if (cell.sequence.load(std::memory_order_acquire) != sequence) {
+            return std::nullopt;
+        }
+        return std::optional<T>{std::move(value)};
     }
 
     constexpr auto front() const {
-        return m_data[m_frontIndex.load(std::memory_order_acquire)].load(std::memory_order_acquire);
+        const std::size_t position = m_frontIndex.load(std::memory_order_acquire);
+        return m_data[position % N].value.load(std::memory_order_acquire);
     }
 
     constexpr auto rear() const {
-        return m_data[m_rearIndex.load(std::memory_order_acquire)].load(std::memory_order_acquire);
+        const std::size_t position = m_rearIndex.load(std::memory_order_acquire);
+        return m_data[position % N].value.load(std::memory_order_acquire);
     }
 
   private:
-    std::array<std::atomic<T>, N> m_data{};
+    struct Cell {
+        std::atomic<std::size_t> sequence{0};
+        std::atomic<T> value{};
+    };
+
+    static std::intptr_t sequenceDifference(std::size_t lhs, std::size_t rhs) {
+        return static_cast<std::intptr_t>(lhs) - static_cast<std::intptr_t>(rhs);
+    }
+
+    bool pushValue(T value) {
+        std::size_t position = m_rearIndex.load(std::memory_order_relaxed);
+        Cell *cell = nullptr;
+
+        for (;;) {
+            cell = &m_data[position % N];
+            const std::size_t sequence = cell->sequence.load(std::memory_order_acquire);
+            const std::intptr_t difference = sequenceDifference(sequence, position);
+            if (difference == 0) {
+                if (m_rearIndex.compare_exchange_weak(position, position + 1, std::memory_order_relaxed)) {
+                    break;
+                }
+            } else if (difference < 0) {
+                return false;
+            } else {
+                position = m_rearIndex.load(std::memory_order_relaxed);
+            }
+        }
+
+        cell->value.store(std::move(value), std::memory_order_relaxed);
+        cell->sequence.store(position + 1, std::memory_order_release);
+        return true;
+    }
+
+    std::array<Cell, N> m_data{};
     std::atomic<std::size_t> m_frontIndex{0}, m_rearIndex{0};
 };
 } // namespace CoreAsync
