@@ -48,7 +48,7 @@ TEST_F(TA_ActivityQueueTest, getFront) {
     auto proxy = CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(queue.front());
     (*proxy)();
     CoreAsync::TA_ActivityResultFetcher fetcher{proxy};
-    queue.pop(handle);
+    handle = queue.pop();
 #else
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
     (*queue.front())();
