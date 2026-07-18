@@ -20,6 +20,7 @@
 #include <atomic>
 #include <array>
 #include <stdexcept>
+#include <optional>
 
 namespace CoreAsync {
 template <typename T, std::size_t N> class TA_ActivityQueue {
@@ -86,26 +87,24 @@ template <typename T, std::size_t N> class TA_ActivityQueue {
         return true;
     }
 
-    bool pop(T &t) {
+    std::optional<T> pop() {
         std::size_t frontIndexOld, frontIndexNew;
         do {
             frontIndexOld = m_frontIndex.load(std::memory_order_acquire);
             if (frontIndexOld == m_rearIndex.load(std::memory_order_acquire))
-                return false;
+                return std::nullopt; // Queue is empty
             frontIndexNew = (frontIndexOld + 1) % N;
         } while (!m_frontIndex.compare_exchange_weak(frontIndexOld, frontIndexNew, std::memory_order_acq_rel));
 
-        t = m_data[frontIndexOld].load(std::memory_order_acquire);
-        return true;
+        return std::make_optional(m_data[frontIndexOld].load(std::memory_order_acquire));
     }
 
-    bool top(T &t) {
+    std::optional<T> top() {
         std::size_t frontIndex = m_frontIndex.load(std::memory_order_acquire);
         if (frontIndex == m_rearIndex.load(std::memory_order_acquire)) {
-            return false; // Queue is empty
+            return std::nullopt; // Queue is empty
         }
-        t= m_data[frontIndex].load(std::memory_order_acquire);
-        return true;
+        return std::make_optional(m_data[frontIndex].load(std::memory_order_acquire));
     }
 
     constexpr auto front() const {

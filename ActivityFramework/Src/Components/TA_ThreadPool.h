@@ -27,7 +27,6 @@
 #include <vector>
 #include <semaphore>
 #include <memory>
-#include <optional>
 
 namespace CoreAsync {
 

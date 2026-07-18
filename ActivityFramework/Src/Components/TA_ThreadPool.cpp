@@ -36,20 +36,19 @@ void  TA_ThreadPool::init() {
     for (std::size_t idx = 0; idx < m_states.size(); ++idx) {
         m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
         m_threads.emplace_back([&, idx]() {  
-            HandleType *handle{nullptr};
             while(!m_states[idx].stopRequested.load(std::memory_order_acquire)) {
                 m_states[idx].resource.acquire();
                 m_states[idx].isBusy.store(true, std::memory_order_release);
                 while (!m_activityQueues[idx].isEmpty()) {
-                    if (m_activityQueues[idx].pop(handle)) {
-                        auto pActivity = HandleType::extractActivity(handle);
+                    if (auto handle = m_activityQueues[idx].pop(); handle.has_value() && handle.value()) {
+                        auto pActivity = HandleType::extractActivity(*handle);
                         if (pActivity) {
                             (*pActivity)();
                         }
                     }
                 }
                 std::shared_ptr<TA_ActivityProxy> pStealActivity{nullptr};
-                if (trySteal(pStealActivity, idx) && pStealActivity) {
+                if (trySteal(pStealActivity, idx)) {
                     (*pStealActivity)();
                 }
                 m_states[idx].isBusy.store(false, std::memory_order_release);
@@ -64,11 +63,10 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
     std::size_t idx{(startIdx + 1) % m_threads.size()};
     while (idx != startIdx) {
         if (idx != excludedIdx) {
-            HandleType *previewHandle{nullptr};
-            if (m_activityQueues[idx].top(previewHandle) && previewHandle && previewHandle->stolenEnabled()) {
-                HandleType *handle{nullptr};
-                if (m_activityQueues[idx].pop(handle)) {
-                    stolenActivity = HandleType::extractActivity(handle);
+            if (auto previewHandle = m_activityQueues[idx].top(); previewHandle && previewHandle.value() &&
+               previewHandle.value()->stolenEnabled()) {
+                if (auto handle = m_activityQueues[idx].pop(); handle.has_value() && handle.value()) {
+                    stolenActivity = HandleType::extractActivity(handle.value());
                     if (stolenActivity) {
                         return true;
                     }
@@ -94,17 +92,17 @@ void  TA_ThreadPool::init() {
     for (std::size_t idx = 0; idx < m_states.size(); ++idx) {
         m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
         m_threads.emplace_back([&, idx](const std::stop_token &st) {
-            std::shared_ptr<TA_ActivityProxy> pActivity{nullptr};
             while (!st.stop_requested()) {
                 m_states[idx].resource.acquire();
                 m_states[idx].isBusy.store(true, std::memory_order_release);
                 while (!m_activityQueues[idx].isEmpty()) {
-                    if (m_activityQueues[idx].pop(pActivity) && pActivity) {
-                        (*pActivity)();
+                    if (auto pActivity = m_activityQueues[idx].pop(); pActivity && pActivity.value()) {
+                        pActivity.value()->operator()();
                     }
                 }
-                if (trySteal(pActivity, idx) && pActivity) {
-                    (*pActivity)();
+                std::shared_ptr<TA_ActivityProxy> pStolenActivity{nullptr};
+                if (trySteal(pStolenActivity, idx)) {
+                    (*pStolenActivity)();
                 }
                 m_states[idx].isBusy.store(false, std::memory_order_release);
             }
@@ -118,10 +116,13 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
     std::size_t idx{(startIdx + 1) % m_threads.size()};
     while (idx != startIdx) {
         if (idx != excludedIdx) {
-            std::shared_ptr<TA_ActivityProxy> activity{};
-            if (m_activityQueues[idx].top(activity) && activity && activity->stolenEnabled() &&
-                m_activityQueues[idx].pop(stolenActivity)) {
-                return true;
+            if (auto previewActivity = m_activityQueues[idx].top(); previewActivity && previewActivity.value() && previewActivity.value()->stolenEnabled()) {
+                auto activity = m_activityQueues[idx].pop();
+                if (activity && activity.value()) {
+                    stolenActivity = activity.value();
+                    return true;
+                }
+                return false;
             }
         }
         idx = (idx + 1) % m_threads.size();
