@@ -36,12 +36,12 @@ add_library(ActivityFramework SHARED
     Src/TA_ActivityFramework_global.h
     Src/ITA_PipelineCreator.h
     Src/ITA_Connection.h
-    Src/Components/TA_ActivityQueue.h
     Src/Components/TA_AutoChainPipeline.cpp
     Src/Components/TA_AutoChainPipeline.h
     Src/Components/TA_BasicPipeline.cpp
     Src/Components/TA_BasicPipeline.h
     Src/Components/TA_CommonTools.h
+    Src/Components/TA_CircularQueue.h
     Src/Components/TA_ConcurrentPipeline.cpp
     Src/Components/TA_ConcurrentPipeline.h
     Src/Components/TA_PipelineCreator.cpp

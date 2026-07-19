@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef TA_ACTIVITYQUEUE_H
-#define TA_ACTIVITYQUEUE_H
+#ifndef TA_CIRCULARQUEUE_H
+#define TA_CIRCULARQUEUE_H
 
 #include <algorithm>
 #include <array>
@@ -25,10 +25,12 @@
 #include <optional>
 #include <utility>
 
+#include "TA_TypeFilter.h"
+
 namespace CoreAsync {
-template <typename T, std::size_t N> class TA_ActivityQueue {
+template <typename T, std::size_t N> class TA_CircularQueue {
   public:
-    TA_ActivityQueue() noexcept {
+    TA_CircularQueue() noexcept {
         static_assert(N > 0, "Queue capacity must be greater than zero");
         for (std::size_t idx = 0; idx < N; ++idx) {
             m_data[idx].sequence.store(idx, std::memory_order_relaxed);
@@ -46,11 +48,11 @@ template <typename T, std::size_t N> class TA_ActivityQueue {
     //            }
     //        }
 
-    TA_ActivityQueue(const TA_ActivityQueue &queue) = delete;
-    TA_ActivityQueue(TA_ActivityQueue &&queue) = delete;
+    TA_CircularQueue(const TA_CircularQueue &queue) = delete;
+    TA_CircularQueue(TA_CircularQueue &&queue) = delete;
 
-    TA_ActivityQueue &operator=(const TA_ActivityQueue &queue) = delete;
-    TA_ActivityQueue &operator=(TA_ActivityQueue &&queue) = delete;
+    TA_CircularQueue &operator=(const TA_CircularQueue &queue) = delete;
+    TA_CircularQueue &operator=(TA_CircularQueue &&queue) = delete;
 
     static constexpr std::size_t capacity() { return N; }
 
@@ -91,6 +93,39 @@ template <typename T, std::size_t N> class TA_ActivityQueue {
             const std::size_t sequence = cell->sequence.load(std::memory_order_acquire);
             const std::intptr_t difference = sequenceDifference(sequence, position + 1);
             if (difference == 0) {
+                if (m_frontIndex.compare_exchange_weak(position, position + 1, std::memory_order_relaxed)) {
+                    break;
+                }
+            } else if (difference < 0) {
+                return std::nullopt;
+            } else {
+                position = m_frontIndex.load(std::memory_order_relaxed);
+            }
+        }
+
+        T value = cell->value.exchange(T{}, std::memory_order_relaxed);
+        cell->sequence.store(position + N, std::memory_order_release);
+        return std::optional<T>{std::move(value)};
+    }
+
+    std::optional<T> pop() requires (ActivityType<T> || ActivityPtrType<T>) {
+        std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
+        Cell *cell = nullptr;
+
+        for (;;) {
+            cell = &m_data[position % N];
+            const std::size_t sequence = cell->sequence.load(std::memory_order_acquire);
+            const std::intptr_t difference = sequenceDifference(sequence, position + 1);
+            if (difference == 0) {
+                if constexpr (std::is_pointer_v<T> || IsSmartPtr_v<T>) {
+                    if (!cell->value.load(std::memory_order_relaxed)->stolenEnabled()) {
+                        return std::nullopt;
+                    }
+                } else {
+                    if (!cell->value.load(std::memory_order_relaxed).stolenEnabled()) {
+                        return std::nullopt;
+                    }
+                }
                 if (m_frontIndex.compare_exchange_weak(position, position + 1, std::memory_order_relaxed)) {
                     break;
                 }
@@ -168,6 +203,7 @@ template <typename T, std::size_t N> class TA_ActivityQueue {
     std::array<Cell, N> m_data{};
     std::atomic<std::size_t> m_frontIndex{0}, m_rearIndex{0};
 };
+
 } // namespace CoreAsync
 
-#endif // TA_ACTIVITYQUEUE_H
+#endif // TA_CIRCULARQUEUE_H
