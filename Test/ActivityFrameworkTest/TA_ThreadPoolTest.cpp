@@ -17,6 +17,11 @@
 #include "TA_ThreadPoolTest.h"
 #include "Components/TA_Activity.h"
 
+#include <atomic>
+#include <chrono>
+#include <semaphore>
+#include <thread>
+
 TA_ThreadPoolTest::TA_ThreadPoolTest() {
     activities.fill(nullptr);
 }
@@ -66,4 +71,49 @@ TEST_F(TA_ThreadPoolTest, notifyResultTest) {
 
 TEST_F(TA_ThreadPoolTest, threadSizeTest) {
     EXPECT_EQ(std::thread::hardware_concurrency(), CoreAsync::TA_ThreadHolder::get().size());
+}
+
+TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
+    CoreAsync::TA_ThreadPool pool{2};
+    std::binary_semaphore ownerStarted{0};
+    std::binary_semaphore releaseOwner{0};
+    std::atomic_bool protectedActivityRan{false};
+    std::atomic_bool ranOnWrongThread{false};
+
+    auto blocker = CoreAsync::TA_ActivityCreator::create([&]() {
+        ownerStarted.release();
+        releaseOwner.acquire();
+    });
+    blocker->moveToThread(1);
+    blocker->setStolenEnabled(false);
+    auto blockerResult = pool.postActivity(blocker, true);
+    if (!ownerStarted.try_acquire_for(std::chrono::seconds{1})) {
+        releaseOwner.release();
+        blockerResult();
+        FAIL() << "Affinity worker did not start the blocking activity";
+    }
+
+    const std::thread::id affinityThread = pool.threadId(1);
+    auto protectedActivity = CoreAsync::TA_ActivityCreator::create([&]() {
+        ranOnWrongThread.store(std::this_thread::get_id() != affinityThread, std::memory_order_relaxed);
+        protectedActivityRan.store(true, std::memory_order_release);
+    });
+    protectedActivity->moveToThread(1);
+    protectedActivity->setStolenEnabled(false);
+    auto protectedResult = pool.postActivity(protectedActivity, true);
+
+    auto thiefTrigger = CoreAsync::TA_ActivityCreator::create([]() { return true; });
+    thiefTrigger->moveToThread(0);
+    auto triggerResult = pool.postActivity(thiefTrigger, true);
+    EXPECT_TRUE(triggerResult().get<bool>());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds{20});
+    EXPECT_FALSE(protectedActivityRan.load(std::memory_order_acquire));
+
+    releaseOwner.release();
+    blockerResult();
+    protectedResult();
+
+    EXPECT_TRUE(protectedActivityRan.load(std::memory_order_acquire));
+    EXPECT_FALSE(ranOnWrongThread.load(std::memory_order_relaxed));
 }

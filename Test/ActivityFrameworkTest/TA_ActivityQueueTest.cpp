@@ -16,7 +16,7 @@
 
 #include "TA_ActivityQueueTest.h"
 #include "Components/TA_Activity.h"
-#include "Components/TA_ActivityQueue.h"
+#include "Components/TA_CircularQueue.h"
 
 #include <array>
 #include <atomic>
@@ -38,7 +38,7 @@ void TA_ActivityQueueTest::TearDown() {
 
 TEST_F(TA_ActivityQueueTest, capacityTest) {
     //    auto activity = CoreAsync::TA_ActivityCreator::create<int>(&MetaTest::sub, m_pTest, 6,3);
-    CoreAsync::TA_ActivityQueue<int, 10240> queue;
+    CoreAsync::TA_CircularQueue<int, 10240> queue;
     EXPECT_EQ(10240, queue.capacity());
 }
 
@@ -49,10 +49,11 @@ TEST_F(TA_ActivityQueueTest, getFront) {
     auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
         std::make_shared<CoreAsync::TA_ActivityProxy>(activity)};
     queue.push(handle);
-    auto proxy = CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(queue.front());
+    const auto poppedHandle = queue.pop();
+    ASSERT_TRUE(poppedHandle.has_value());
+    auto proxy = CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(*poppedHandle);
     (*proxy)();
     CoreAsync::TA_ActivityResultFetcher fetcher{proxy};
-    handle = queue.pop();
 #else
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
     (*queue.front())();
@@ -119,12 +120,12 @@ TEST_F(TA_ActivityQueueTest, multiThreadTest) {
 }
 
 TEST_F(TA_ActivityQueueTest, emptyTest) {
-    CoreAsync::TA_ActivityQueue<int, 10240> queue;
+    CoreAsync::TA_CircularQueue<int, 10240> queue;
     EXPECT_EQ(queue.isEmpty(), true);
 }
 
 TEST_F(TA_ActivityQueueTest, fullTest) {
-    CoreAsync::TA_ActivityQueue<int, 10240> queue;
+    CoreAsync::TA_CircularQueue<int, 10240> queue;
     for (int i = 0; i < queue.capacity(); ++i) {
         queue.push(i);
     }
@@ -132,7 +133,7 @@ TEST_F(TA_ActivityQueueTest, fullTest) {
 }
 
 TEST_F(TA_ActivityQueueTest, popPublishesAndReclaimsSlotsInOrder) {
-    CoreAsync::TA_ActivityQueue<int, 4> queue;
+    CoreAsync::TA_CircularQueue<int, 4> queue;
 
     EXPECT_FALSE(queue.pop().has_value());
     EXPECT_TRUE(queue.push(1));
@@ -158,7 +159,7 @@ TEST_F(TA_ActivityQueueTest, concurrentPushAndPopPublishesEachValueOnce) {
     constexpr int valuesPerProducer = 5000;
     constexpr int valueCount = producerCount * valuesPerProducer;
 
-    CoreAsync::TA_ActivityQueue<int, 64> queue;
+    CoreAsync::TA_CircularQueue<int, 64> queue;
     std::array<std::atomic_uint, valueCount> seen{};
     std::atomic_int consumed{0};
     std::atomic_bool timedOut{false};

@@ -63,13 +63,10 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
     std::size_t idx{(startIdx + 1) % m_threads.size()};
     while (idx != startIdx) {
         if (idx != excludedIdx) {
-            if (auto previewHandle = m_activityQueues[idx].top(); previewHandle && previewHandle.value() &&
-               previewHandle.value()->stolenEnabled()) {
-                if (auto handle = m_activityQueues[idx].pop(); handle.has_value() && handle.value()) {
-                    stolenActivity = HandleType::extractActivity(handle.value());
-                    if (stolenActivity) {
-                        return true;
-                    }
+            if (auto handle = m_activityQueues[idx].pop(); handle.has_value() && handle.value()) {
+                stolenActivity = HandleType::extractActivity(handle.value());
+                if (stolenActivity) {
+                    return true;
                 }
             }
         }
@@ -116,14 +113,12 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
     std::size_t idx{(startIdx + 1) % m_threads.size()};
     while (idx != startIdx) {
         if (idx != excludedIdx) {
-            if (auto previewActivity = m_activityQueues[idx].top(); previewActivity && previewActivity.value() && previewActivity.value()->stolenEnabled()) {
-                auto activity = m_activityQueues[idx].pop();
-                if (activity && activity.value()) {
-                    stolenActivity = activity.value();
-                    return true;
-                }
-                return false;
+            auto activity = m_activityQueues[idx].pop();
+            if (activity && activity.value()) {
+                stolenActivity = activity.value();
+                return true;
             }
+            return false;
         }
         idx = (idx + 1) % m_threads.size();
     }
