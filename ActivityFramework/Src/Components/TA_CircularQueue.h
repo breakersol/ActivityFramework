@@ -108,7 +108,7 @@ template <typename T, std::size_t N> class TA_CircularQueue {
         return std::optional<T>{std::move(value)};
     }
 
-    std::optional<T> pop() requires (ActivityType<T> || ActivityPtrType<T>) {
+    std::optional<T> tryPop() requires (ActivityType<T> || ActivityPtrType<T>) {
         std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
         Cell *cell = nullptr;
 

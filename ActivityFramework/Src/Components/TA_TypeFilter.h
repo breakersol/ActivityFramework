@@ -307,7 +307,7 @@ template <typename T>
 concept ActivityPtrType = requires(T t, const T ct) {
     { *t } -> ActivityType;
     { *ct } -> ActivityType;
-    requires !IsTrivalCopyable<std::decay_t<T>>;
+    requires std::is_pointer_v<std::decay_t<T>> || IsSmartPtr_v<std::decay_t<T>>;
 };
 
 } // namespace CoreAsync
