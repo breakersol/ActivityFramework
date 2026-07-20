@@ -118,7 +118,6 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
                 stolenActivity = activity.value();
                 return true;
             }
-            return false;
         }
         idx = (idx + 1) % m_threads.size();
     }
