@@ -76,7 +76,7 @@ function Invoke-InVsDevCmd {
 
 switch ($Action) {
     "configure" {
-        Invoke-InVsDevCmd "`"$cmakePath`" -S `"$workspace`" -B `"$buildDir`" -G Ninja -D CMAKE_MAKE_PROGRAM=`"$ninjaPath`" -D CMAKE_BUILD_TYPE=$Config -D CMAKE_EXPORT_COMPILE_COMMANDS=ON -D ACTIVITYFRAMEWORK_BUILD_TESTS=ON"
+        Invoke-InVsDevCmd "`"$cmakePath`" -S `"$workspace`" -B `"$buildDir`" -G Ninja -D CMAKE_MAKE_PROGRAM=`"$ninjaPath`" -D CMAKE_CXX_COMPILER=cl.exe -D CMAKE_BUILD_TYPE=$Config -D CMAKE_EXPORT_COMPILE_COMMANDS=ON -D ACTIVITYFRAMEWORK_BUILD_TESTS=ON"
     }
     "build" {
         Invoke-InVsDevCmd "`"$cmakePath`" --build `"$buildDir`""

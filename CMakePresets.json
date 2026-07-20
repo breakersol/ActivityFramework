@@ -82,6 +82,7 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/windows-msvc/debug",
             "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "cl.exe",
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "ACTIVITYFRAMEWORK_BUILD_TESTS": "ON"
@@ -93,6 +94,7 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/windows-msvc/release",
             "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "cl.exe",
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "ACTIVITYFRAMEWORK_BUILD_TESTS": "ON"

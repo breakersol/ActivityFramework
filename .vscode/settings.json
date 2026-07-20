@@ -1,5 +1,6 @@
 {
     "cmake.useCMakePresets": "always",
+    "cmake.useVsDeveloperEnvironment": "always",
     "cmake.configureOnOpen": false,
     "cmake.configurePreset": "windows-msvc-debug",
     "cmake.buildPreset": "windows-msvc-debug",
