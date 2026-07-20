@@ -141,7 +141,7 @@ template <typename T, std::size_t N> class TA_CircularQueue {
         return std::optional<T>{std::move(value)};
     }
 
-    std::optional<T> top() const {
+    std::optional<T> top() const requires (!std::is_pointer_v<T>) {
         const std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
         const Cell &cell = m_data[position % N];
         const std::size_t sequence = cell.sequence.load(std::memory_order_acquire);
@@ -156,12 +156,12 @@ template <typename T, std::size_t N> class TA_CircularQueue {
         return std::optional<T>{std::move(value)};
     }
 
-    constexpr auto front() const {
+    constexpr auto front() const requires (!std::is_pointer_v<T>) {
         const std::size_t position = m_frontIndex.load(std::memory_order_acquire);
         return m_data[position % N].value.load(std::memory_order_acquire);
     }
 
-    constexpr auto rear() const {
+    constexpr auto rear() const requires (!std::is_pointer_v<T>) {
         const std::size_t position = m_rearIndex.load(std::memory_order_acquire);
         return m_data[position % N].value.load(std::memory_order_acquire);
     }

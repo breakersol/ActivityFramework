@@ -24,6 +24,18 @@
 #include <thread>
 #include <vector>
 
+namespace {
+template <typename Queue>
+concept HasQueueObservers = requires(const Queue &queue) {
+    queue.top();
+    queue.front();
+    queue.rear();
+};
+
+static_assert(HasQueueObservers<CoreAsync::TA_CircularQueue<int, 4>>);
+static_assert(!HasQueueObservers<CoreAsync::TA_CircularQueue<int *, 4>>);
+} // namespace
+
 TA_ActivityQueueTest::TA_ActivityQueueTest() {}
 
 TA_ActivityQueueTest::~TA_ActivityQueueTest() {}
@@ -70,11 +82,14 @@ TEST_F(TA_ActivityQueueTest, getRear) {
     auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
         std::make_shared<CoreAsync::TA_ActivityProxy>(activity)};
     queue.push(handle);
+    const auto poppedHandle = queue.pop();
+    ASSERT_TRUE(poppedHandle.has_value());
+    CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(*poppedHandle);
 #else
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
-#endif
     auto pActivity = queue.rear();
     EXPECT_EQ(pActivity, nullptr);
+#endif
 }
 
 TEST_F(TA_ActivityQueueTest, multiThreadTest) {
@@ -151,6 +166,29 @@ TEST_F(TA_ActivityQueueTest, popPublishesAndReclaimsSlotsInOrder) {
 
     EXPECT_TRUE(queue.isEmpty());
     EXPECT_FALSE(queue.pop().has_value());
+}
+
+TEST_F(TA_ActivityQueueTest, nonStealableActivityRemainsAvailableToOwner) {
+    CoreAsync::TA_ThreadPool::QueueType queue;
+    auto activity = CoreAsync::TA_ActivityCreator::create([]() {});
+    activity->setStolenEnabled(false);
+
+#if defined(__ANDROID__)
+    auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
+        std::make_shared<CoreAsync::TA_ActivityProxy>(activity)};
+    ASSERT_TRUE(queue.push(handle));
+    EXPECT_FALSE(queue.tryPop().has_value());
+    const auto ownerHandle = queue.pop();
+    ASSERT_TRUE(ownerHandle.has_value());
+    CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(*ownerHandle);
+#else
+    auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
+    ASSERT_TRUE(queue.push(proxy));
+    EXPECT_FALSE(queue.tryPop().has_value());
+    const auto ownerActivity = queue.pop();
+    ASSERT_TRUE(ownerActivity.has_value());
+    EXPECT_EQ(*ownerActivity, proxy);
+#endif
 }
 
 TEST_F(TA_ActivityQueueTest, concurrentPushAndPopPublishesEachValueOnce) {
