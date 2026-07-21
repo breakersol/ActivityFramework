@@ -17,7 +17,7 @@
 #ifndef TA_THREADPOOL_H
 #define TA_THREADPOOL_H
 
-#include "TA_CircularQueue.h"
+#include "TA_ActivityQueue.h"
 #include "TA_ActivityProxy.h"
 #include "TA_CommonTools.h"
 #include "TA_MetaStringView.h"
@@ -62,7 +62,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
             }
         };
 
-        using ActivityQueue = TA_CircularQueue<ActivityHandle *, 10240>;
+        using ActivityQueue = TA_ActivityQueue<ActivityHandle *, 10240>;
 
         struct ThreadState {
             ThreadState() = default;
@@ -78,7 +78,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         using Tag = DefaultPlatformTag;
         using ThreadModel = std::jthread;
         static constexpr bool activityHandleRequired = false;
-        using ActivityQueue = TA_CircularQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
+        using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
 
         struct ThreadState {
             ThreadState() = default;

@@ -21,17 +21,15 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
-#include <stdexcept>
 #include <optional>
+#include <type_traits>
 #include <utility>
-
-#include "TA_TypeFilter.h"
 
 namespace CoreAsync {
 template <typename T, std::size_t N> class TA_CircularQueue {
   public:
     TA_CircularQueue() noexcept {
-        static_assert(N > 0, "Queue capacity must be greater than zero");
+        static_assert(N > 1, "Queue capacity must be greater than zero");
         for (std::size_t idx = 0; idx < N; ++idx) {
             m_data[idx].sequence.store(idx, std::memory_order_relaxed);
         }
@@ -85,60 +83,7 @@ template <typename T, std::size_t N> class TA_CircularQueue {
     }
 
     std::optional<T> pop() {
-        std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
-        Cell *cell = nullptr;
-
-        for (;;) {
-            cell = &m_data[position % N];
-            const std::size_t sequence = cell->sequence.load(std::memory_order_acquire);
-            const std::intptr_t difference = sequenceDifference(sequence, position + 1);
-            if (difference == 0) {
-                if (m_frontIndex.compare_exchange_weak(position, position + 1, std::memory_order_relaxed)) {
-                    break;
-                }
-            } else if (difference < 0) {
-                return std::nullopt;
-            } else {
-                position = m_frontIndex.load(std::memory_order_relaxed);
-            }
-        }
-
-        T value = cell->value.exchange(T{}, std::memory_order_relaxed);
-        cell->sequence.store(position + N, std::memory_order_release);
-        return std::optional<T>{std::move(value)};
-    }
-
-    std::optional<T> tryPop() requires (ActivityType<T> || ActivityPtrType<T>) {
-        std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
-        Cell *cell = nullptr;
-
-        for (;;) {
-            cell = &m_data[position % N];
-            const std::size_t sequence = cell->sequence.load(std::memory_order_acquire);
-            const std::intptr_t difference = sequenceDifference(sequence, position + 1);
-            if (difference == 0) {
-                if constexpr (std::is_pointer_v<T> || IsSmartPtr_v<T>) {
-                    if (!cell->value.load(std::memory_order_relaxed)->stolenEnabled()) {
-                        return std::nullopt;
-                    }
-                } else {
-                    if (!cell->value.load(std::memory_order_relaxed).stolenEnabled()) {
-                        return std::nullopt;
-                    }
-                }
-                if (m_frontIndex.compare_exchange_weak(position, position + 1, std::memory_order_relaxed)) {
-                    break;
-                }
-            } else if (difference < 0) {
-                return std::nullopt;
-            } else {
-                position = m_frontIndex.load(std::memory_order_relaxed);
-            }
-        }
-
-        T value = cell->value.exchange(T{}, std::memory_order_relaxed);
-        cell->sequence.store(position + N, std::memory_order_release);
-        return std::optional<T>{std::move(value)};
+        return popIf([](std::size_t) { return true; });
     }
 
     std::optional<T> top() const requires (!std::is_pointer_v<T>) {
@@ -166,17 +111,11 @@ template <typename T, std::size_t N> class TA_CircularQueue {
         return m_data[position % N].value.load(std::memory_order_acquire);
     }
 
-  private:
-    struct Cell {
-        std::atomic<std::size_t> sequence{0};
-        std::atomic<T> value{};
-    };
-
-    static std::intptr_t sequenceDifference(std::size_t lhs, std::size_t rhs) {
-        return static_cast<std::intptr_t>(lhs) - static_cast<std::intptr_t>(rhs);
-    }
-
-    bool pushValue(T value) {
+  protected:
+    template <typename Publisher>
+    bool pushValueWithMetadata(T value, Publisher publisher) {
+        static_assert(std::is_nothrow_invocable_v<Publisher &, std::size_t>,
+                      "Queue metadata publication must not throw after a slot is claimed");
         std::size_t position = m_rearIndex.load(std::memory_order_relaxed);
         Cell *cell = nullptr;
 
@@ -196,8 +135,55 @@ template <typename T, std::size_t N> class TA_CircularQueue {
         }
 
         cell->value.store(std::move(value), std::memory_order_relaxed);
+        publisher(position % N);
         cell->sequence.store(position + 1, std::memory_order_release);
         return true;
+    }
+
+    template <typename Predicate>
+    std::optional<T> popIf(Predicate predicate) {
+        std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
+        Cell *cell = nullptr;
+
+        for (;;) {
+            cell = &m_data[position % N];
+            const std::size_t sequence = cell->sequence.load(std::memory_order_acquire);
+            const std::intptr_t difference = sequenceDifference(sequence, position + 1);
+            if (difference == 0) {
+                if (!predicate(position % N)) {
+                    if (cell->sequence.load(std::memory_order_acquire) != sequence) {
+                        position = m_frontIndex.load(std::memory_order_relaxed);
+                        continue;
+                    }
+                    return std::nullopt;
+                }
+                if (m_frontIndex.compare_exchange_weak(position, position + 1, std::memory_order_relaxed)) {
+                    break;
+                }
+            } else if (difference < 0) {
+                return std::nullopt;
+            } else {
+                position = m_frontIndex.load(std::memory_order_relaxed);
+            }
+        }
+
+        T value = cell->value.exchange(T{}, std::memory_order_relaxed);
+        cell->sequence.store(position + N, std::memory_order_release);
+        return std::optional<T>{std::move(value)};
+    }
+
+  private:
+    struct Cell {
+        std::atomic<std::size_t> sequence{0};
+        std::atomic<T> value{};
+    };
+
+    static std::intptr_t sequenceDifference(std::size_t lhs, std::size_t rhs) {
+        return static_cast<std::intptr_t>(lhs) - static_cast<std::intptr_t>(rhs);
+    }
+
+    bool pushValue(T value) {
+        return pushValueWithMetadata(std::move(value), [](std::size_t) noexcept {});
     }
 
     std::array<Cell, N> m_data{};
