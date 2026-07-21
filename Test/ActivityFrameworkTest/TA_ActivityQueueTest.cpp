@@ -16,6 +16,7 @@
 
 #include "TA_ActivityQueueTest.h"
 #include "Components/TA_Activity.h"
+#include "Components/TA_ActivityQueue.h"
 #include "Components/TA_CircularQueue.h"
 
 #include <array>
@@ -32,8 +33,15 @@ concept HasQueueObservers = requires(const Queue &queue) {
     queue.rear();
 };
 
+template <typename Queue>
+concept HasTryPop = requires(Queue &queue) {
+    queue.tryPop();
+};
+
 static_assert(HasQueueObservers<CoreAsync::TA_CircularQueue<int, 4>>);
 static_assert(!HasQueueObservers<CoreAsync::TA_CircularQueue<int *, 4>>);
+static_assert(!HasTryPop<CoreAsync::TA_CircularQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
+static_assert(HasTryPop<CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
 } // namespace
 
 TA_ActivityQueueTest::TA_ActivityQueueTest() {}
@@ -183,12 +191,65 @@ TEST_F(TA_ActivityQueueTest, nonStealableActivityRemainsAvailableToOwner) {
     CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(*ownerHandle);
 #else
     auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
+    ASSERT_FALSE(proxy->stolenEnabled());
     ASSERT_TRUE(queue.push(proxy));
     EXPECT_FALSE(queue.tryPop().has_value());
     const auto ownerActivity = queue.pop();
     ASSERT_TRUE(ownerActivity.has_value());
     EXPECT_EQ(*ownerActivity, proxy);
 #endif
+}
+
+TEST_F(TA_ActivityQueueTest, concurrentOwnerAndThiefClaimActivityOnce) {
+    constexpr int iterationCount = 10000;
+    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4> queue;
+    auto activity = CoreAsync::TA_ActivityCreator::create([]() {});
+    auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
+    std::optional<std::shared_ptr<CoreAsync::TA_ActivityProxy>> ownerResult;
+    std::optional<std::shared_ptr<CoreAsync::TA_ActivityProxy>> thiefResult;
+    std::atomic_int iterationStarted{0};
+    std::atomic_int ownerFinished{0};
+    std::atomic_int thiefFinished{0};
+
+    std::thread owner([&]() {
+        for (int iteration = 1; iteration <= iterationCount; ++iteration) {
+            while (iterationStarted.load(std::memory_order_acquire) < iteration) {
+                std::this_thread::yield();
+            }
+            ownerResult = queue.pop();
+            ownerFinished.store(iteration, std::memory_order_release);
+        }
+    });
+    std::thread thief([&]() {
+        for (int iteration = 1; iteration <= iterationCount; ++iteration) {
+            while (iterationStarted.load(std::memory_order_acquire) < iteration) {
+                std::this_thread::yield();
+            }
+            thiefResult = queue.tryPop();
+            thiefFinished.store(iteration, std::memory_order_release);
+        }
+    });
+
+    for (int iteration = 1; iteration <= iterationCount; ++iteration) {
+        EXPECT_TRUE(queue.push(proxy));
+        iterationStarted.store(iteration, std::memory_order_release);
+        while (ownerFinished.load(std::memory_order_acquire) < iteration ||
+               thiefFinished.load(std::memory_order_acquire) < iteration) {
+            std::this_thread::yield();
+        }
+
+        EXPECT_NE(ownerResult.has_value(), thiefResult.has_value());
+        if (ownerResult) {
+            EXPECT_EQ(*ownerResult, proxy);
+        }
+        if (thiefResult) {
+            EXPECT_EQ(*thiefResult, proxy);
+        }
+    }
+
+    owner.join();
+    thief.join();
+    EXPECT_TRUE(queue.isEmpty());
 }
 
 TEST_F(TA_ActivityQueueTest, concurrentPushAndPopPublishesEachValueOnce) {
