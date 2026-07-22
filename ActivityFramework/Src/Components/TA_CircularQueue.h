@@ -94,7 +94,7 @@ template <typename T, std::size_t N> class TA_CircularQueue {
             return std::nullopt;
         }
 
-        T value = cell.value.load(std::memory_order_relaxed);
+        T value = cell.value.load(std::memory_order_acquire);
         if (cell.sequence.load(std::memory_order_acquire) != sequence) {
             return std::nullopt;
         }
@@ -134,7 +134,11 @@ template <typename T, std::size_t N> class TA_CircularQueue {
             }
         }
 
-        cell->value.store(std::move(value), std::memory_order_relaxed);
+        // Republish the claimed generation before changing the value. A top()
+        // that acquires this value must then observe this generation or a later
+        // one during its final sequence validation.
+        cell->sequence.store(position, std::memory_order_relaxed);
+        cell->value.store(std::move(value), std::memory_order_release);
         publisher(position % N);
         cell->sequence.store(position + 1, std::memory_order_release);
         return true;
@@ -167,7 +171,12 @@ template <typename T, std::size_t N> class TA_CircularQueue {
             }
         }
 
-        T value = cell->value.exchange(T{}, std::memory_order_relaxed);
+        // Mark the cell claimed before clearing its value. If top() observes the
+        // cleared value through its acquire load, the release exchange makes
+        // this marker visible to its final sequence validation. Producers still
+        // cannot reuse the cell until the free sequence is published below.
+        cell->sequence.store(position, std::memory_order_relaxed);
+        T value = cell->value.exchange(T{}, std::memory_order_release);
         cell->sequence.store(position + N, std::memory_order_release);
         return std::optional<T>{std::move(value)};
     }
