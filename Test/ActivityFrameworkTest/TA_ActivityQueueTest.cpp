@@ -176,6 +176,86 @@ TEST_F(TA_ActivityQueueTest, popPublishesAndReclaimsSlotsInOrder) {
     EXPECT_FALSE(queue.pop().has_value());
 }
 
+// Exercise both consumer clearing and immediate producer reuse of the observed cell.
+TEST_F(TA_ActivityQueueTest, concurrentTopPopAndReuseNeverReturnsWrongGeneration) {
+    constexpr int iterationCount = 20000;
+    CoreAsync::TA_CircularQueue<int, 2> queue;
+    std::optional<int> topResult = std::nullopt;
+    std::optional<int> popResult = std::nullopt;
+    std::atomic_int iterationStarted = {0};
+    std::atomic_int topFinished = {0};
+    std::atomic_int popFinished = {0};
+    std::atomic_int producerFinished = {0};
+
+    std::thread observer = std::thread([&]() {
+        for (int iteration = 1; iteration <= iterationCount; ++iteration) {
+            while (iterationStarted.load(std::memory_order_acquire) < iteration) {
+                std::this_thread::yield();
+            }
+            topResult = queue.top();
+            topFinished.store(iteration, std::memory_order_release);
+        }
+    });
+    std::thread consumer = std::thread([&]() {
+        for (int iteration = 1; iteration <= iterationCount; ++iteration) {
+            while (iterationStarted.load(std::memory_order_acquire) < iteration) {
+                std::this_thread::yield();
+            }
+            popResult = queue.pop();
+            popFinished.store(iteration, std::memory_order_release);
+        }
+    });
+    std::thread producer = std::thread([&]() {
+        for (int iteration = 1; iteration <= iterationCount; ++iteration) {
+            while (iterationStarted.load(std::memory_order_acquire) < iteration) {
+                std::this_thread::yield();
+            }
+            const int value = iteration * 3;
+            while (!queue.push(value)) {
+                std::this_thread::yield();
+            }
+            producerFinished.store(iteration, std::memory_order_release);
+        }
+    });
+
+    for (int iteration = 1; iteration <= iterationCount; ++iteration) {
+        const int frontValue = iteration * 3 - 2;
+        const int secondValue = iteration * 3 - 1;
+        EXPECT_TRUE(queue.push(frontValue));
+        EXPECT_TRUE(queue.push(secondValue));
+        iterationStarted.store(iteration, std::memory_order_release);
+        while (topFinished.load(std::memory_order_acquire) < iteration ||
+               popFinished.load(std::memory_order_acquire) < iteration ||
+               producerFinished.load(std::memory_order_acquire) < iteration) {
+            std::this_thread::yield();
+        }
+
+        EXPECT_TRUE(popResult.has_value());
+        if (popResult.has_value()) {
+            EXPECT_EQ(*popResult, frontValue);
+        }
+        if (topResult.has_value()) {
+            EXPECT_TRUE(*topResult == frontValue || *topResult == secondValue);
+        }
+
+        const auto secondResult = queue.pop();
+        EXPECT_TRUE(secondResult.has_value());
+        if (secondResult.has_value()) {
+            EXPECT_EQ(*secondResult, secondValue);
+        }
+        const auto producerResult = queue.pop();
+        EXPECT_TRUE(producerResult.has_value());
+        if (producerResult.has_value()) {
+            EXPECT_EQ(*producerResult, iteration * 3);
+        }
+    }
+
+    observer.join();
+    consumer.join();
+    producer.join();
+    EXPECT_TRUE(queue.isEmpty());
+}
+
 TEST_F(TA_ActivityQueueTest, nonStealableActivityRemainsAvailableToOwner) {
     CoreAsync::TA_ThreadPool::QueueType queue;
     auto activity = CoreAsync::TA_ActivityCreator::create([]() {});
