@@ -86,29 +86,19 @@ template <typename T, std::size_t N> class TA_CircularQueue {
         return popIf([](std::size_t) { return true; });
     }
 
-    std::optional<T> top() const requires (!std::is_pointer_v<T>) {
+    std::optional<T> front() const requires (!std::is_pointer_v<T>) {
         const std::size_t position = m_frontIndex.load(std::memory_order_relaxed);
-        const Cell &cell = m_data[position % N];
-        const std::size_t sequence = cell.sequence.load(std::memory_order_acquire);
-        if (sequenceDifference(sequence, position + 1) != 0) {
+        return snapshot(position);
+    }
+
+    std::optional<T> rear() const requires (!std::is_pointer_v<T>) {
+        const std::size_t rear = m_rearIndex.load(std::memory_order_relaxed);
+        const std::size_t front = m_frontIndex.load(std::memory_order_relaxed);
+        if (rear == front) {
             return std::nullopt;
         }
 
-        T value = cell.value.load(std::memory_order_acquire);
-        if (cell.sequence.load(std::memory_order_acquire) != sequence) {
-            return std::nullopt;
-        }
-        return std::optional<T>{std::move(value)};
-    }
-
-    constexpr auto front() const requires (!std::is_pointer_v<T>) {
-        const std::size_t position = m_frontIndex.load(std::memory_order_acquire);
-        return m_data[position % N].value.load(std::memory_order_acquire);
-    }
-
-    constexpr auto rear() const requires (!std::is_pointer_v<T>) {
-        const std::size_t position = m_rearIndex.load(std::memory_order_acquire);
-        return m_data[position % N].value.load(std::memory_order_acquire);
+        return snapshot(rear - 1);
     }
 
   protected:
@@ -134,7 +124,7 @@ template <typename T, std::size_t N> class TA_CircularQueue {
             }
         }
 
-        // Republish the claimed generation before changing the value. A top()
+        // Republish the claimed generation before changing the value. A front()
         // that acquires this value must then observe this generation or a later
         // one during its final sequence validation.
         cell->sequence.store(position, std::memory_order_relaxed);
@@ -171,7 +161,7 @@ template <typename T, std::size_t N> class TA_CircularQueue {
             }
         }
 
-        // Mark the cell claimed before clearing its value. If top() observes the
+        // Mark the cell claimed before clearing its value. If front() observes the
         // cleared value through its acquire load, the release exchange makes
         // this marker visible to its final sequence validation. Producers still
         // cannot reuse the cell until the free sequence is published below.
@@ -186,6 +176,20 @@ template <typename T, std::size_t N> class TA_CircularQueue {
         std::atomic<std::size_t> sequence{0};
         std::atomic<T> value{};
     };
+
+    std::optional<T> snapshot(std::size_t position) const requires (!std::is_pointer_v<T>) {
+        const Cell &cell = m_data[position % N];
+        const std::size_t sequence = cell.sequence.load(std::memory_order_acquire);
+        if (sequenceDifference(sequence, position + 1) != 0) {
+            return std::nullopt;
+        }
+
+        T value = cell.value.load(std::memory_order_acquire);
+        if (cell.sequence.load(std::memory_order_acquire) != sequence) {
+            return std::nullopt;
+        }
+        return std::optional<T>{std::move(value)};
+    }
 
     static std::intptr_t sequenceDifference(std::size_t lhs, std::size_t rhs) {
         return static_cast<std::intptr_t>(lhs) - static_cast<std::intptr_t>(rhs);
