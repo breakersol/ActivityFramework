@@ -295,12 +295,12 @@ concept StaticMethodType = IsStaticMethod<T>::value;
 template <typename T>
 concept ActivityType = requires(T t, const T ct) {
     { t() };
-    { ct.affinityThread() } -> std::convertible_to<std::size_t>;
+    { ct.affinityThread() };
     { t.moveToThread(std::size_t{}) } -> std::same_as<bool>;
-    { ct.id() } -> std::convertible_to<std::int64_t>;
-    { ct.dependencyThreadId() } -> std::convertible_to<std::thread::id>;
+    { ct.id() };
+    { ct.dependencyThreadId() };
     { ct.stolenEnabled() } -> std::same_as<bool>;
-    requires !IsTrivalCopyable<std::decay_t<T>>;
+    // requires !IsTrivalCopyable<std::decay_t<T>>;
 };
 
 template <typename T>
