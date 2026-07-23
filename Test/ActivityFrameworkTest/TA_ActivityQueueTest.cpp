@@ -28,9 +28,13 @@
 namespace {
 template <typename Queue>
 concept HasQueueObservers = requires(const Queue &queue) {
-    queue.top();
     queue.front();
     queue.rear();
+};
+
+template <typename Queue>
+concept HasTop = requires(const Queue &queue) {
+    queue.top();
 };
 
 template <typename Queue>
@@ -40,6 +44,7 @@ concept HasTryPop = requires(Queue &queue) {
 
 static_assert(HasQueueObservers<CoreAsync::TA_CircularQueue<int, 4>>);
 static_assert(!HasQueueObservers<CoreAsync::TA_CircularQueue<int *, 4>>);
+static_assert(!HasTop<CoreAsync::TA_CircularQueue<int, 4>>);
 static_assert(!HasTryPop<CoreAsync::TA_CircularQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
 static_assert(HasTryPop<CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
 } // namespace
@@ -76,8 +81,10 @@ TEST_F(TA_ActivityQueueTest, getFront) {
     CoreAsync::TA_ActivityResultFetcher fetcher{proxy};
 #else
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
-    (*queue.front())();
-    CoreAsync::TA_ActivityResultFetcher fetcher{queue.front()};
+    const auto front = queue.front();
+    ASSERT_TRUE(front.has_value());
+    (**front)();
+    CoreAsync::TA_ActivityResultFetcher fetcher{*front};
 #endif
     int res = fetcher().get<int>();
     EXPECT_EQ(3, res);
@@ -94,9 +101,11 @@ TEST_F(TA_ActivityQueueTest, getRear) {
     ASSERT_TRUE(poppedHandle.has_value());
     CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(*poppedHandle);
 #else
-    queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
-    auto pActivity = queue.rear();
-    EXPECT_EQ(pActivity, nullptr);
+    auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
+    queue.push(proxy);
+    const auto rear = queue.rear();
+    ASSERT_TRUE(rear.has_value());
+    EXPECT_EQ(*rear, proxy);
 #endif
 }
 
@@ -147,6 +156,29 @@ TEST_F(TA_ActivityQueueTest, emptyTest) {
     EXPECT_EQ(queue.isEmpty(), true);
 }
 
+TEST_F(TA_ActivityQueueTest, observerSnapshotsHandleEmptyAndWraparound) {
+    CoreAsync::TA_CircularQueue<int, 2> queue;
+
+    EXPECT_FALSE(queue.front().has_value());
+    EXPECT_FALSE(queue.rear().has_value());
+
+    EXPECT_TRUE(queue.push(1));
+    EXPECT_TRUE(queue.push(2));
+    EXPECT_EQ(queue.front(), 1);
+    EXPECT_EQ(queue.rear(), 2);
+
+    EXPECT_EQ(queue.pop(), 1);
+    EXPECT_EQ(queue.front(), 2);
+    EXPECT_EQ(queue.rear(), 2);
+    EXPECT_EQ(queue.pop(), 2);
+    EXPECT_FALSE(queue.front().has_value());
+    EXPECT_FALSE(queue.rear().has_value());
+
+    EXPECT_TRUE(queue.push(3));
+    EXPECT_EQ(queue.front(), 3);
+    EXPECT_EQ(queue.rear(), 3);
+}
+
 TEST_F(TA_ActivityQueueTest, fullTest) {
     CoreAsync::TA_CircularQueue<int, 10240> queue;
     for (int i = 0; i < queue.capacity(); ++i) {
@@ -177,13 +209,14 @@ TEST_F(TA_ActivityQueueTest, popPublishesAndReclaimsSlotsInOrder) {
 }
 
 // Exercise both consumer clearing and immediate producer reuse of the observed cell.
-TEST_F(TA_ActivityQueueTest, concurrentTopPopAndReuseNeverReturnsWrongGeneration) {
+TEST_F(TA_ActivityQueueTest, concurrentFrontPopAndReuseNeverReturnsWrongGeneration) {
     constexpr int iterationCount = 20000;
     CoreAsync::TA_CircularQueue<int, 2> queue;
-    std::optional<int> topResult = std::nullopt;
+    std::optional<int> frontResult = std::nullopt;
+    std::optional<int> rearResult = std::nullopt;
     std::optional<int> popResult = std::nullopt;
     std::atomic_int iterationStarted = {0};
-    std::atomic_int topFinished = {0};
+    std::atomic_int observerFinished = {0};
     std::atomic_int popFinished = {0};
     std::atomic_int producerFinished = {0};
 
@@ -192,8 +225,9 @@ TEST_F(TA_ActivityQueueTest, concurrentTopPopAndReuseNeverReturnsWrongGeneration
             while (iterationStarted.load(std::memory_order_acquire) < iteration) {
                 std::this_thread::yield();
             }
-            topResult = queue.top();
-            topFinished.store(iteration, std::memory_order_release);
+            frontResult = queue.front();
+            rearResult = queue.rear();
+            observerFinished.store(iteration, std::memory_order_release);
         }
     });
     std::thread consumer = std::thread([&]() {
@@ -224,7 +258,7 @@ TEST_F(TA_ActivityQueueTest, concurrentTopPopAndReuseNeverReturnsWrongGeneration
         EXPECT_TRUE(queue.push(frontValue));
         EXPECT_TRUE(queue.push(secondValue));
         iterationStarted.store(iteration, std::memory_order_release);
-        while (topFinished.load(std::memory_order_acquire) < iteration ||
+        while (observerFinished.load(std::memory_order_acquire) < iteration ||
                popFinished.load(std::memory_order_acquire) < iteration ||
                producerFinished.load(std::memory_order_acquire) < iteration) {
             std::this_thread::yield();
@@ -234,8 +268,11 @@ TEST_F(TA_ActivityQueueTest, concurrentTopPopAndReuseNeverReturnsWrongGeneration
         if (popResult.has_value()) {
             EXPECT_EQ(*popResult, frontValue);
         }
-        if (topResult.has_value()) {
-            EXPECT_TRUE(*topResult == frontValue || *topResult == secondValue);
+        if (frontResult.has_value()) {
+            EXPECT_TRUE(*frontResult == frontValue || *frontResult == secondValue);
+        }
+        if (rearResult.has_value()) {
+            EXPECT_TRUE(*rearResult == secondValue || *rearResult == iteration * 3);
         }
 
         const auto secondResult = queue.pop();

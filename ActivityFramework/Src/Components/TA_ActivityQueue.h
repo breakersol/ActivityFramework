@@ -48,7 +48,6 @@ class TA_ActivityQueue final : private TA_CircularQueue<T, N> {
     using Base::pop;
     using Base::rear;
     using Base::size;
-    using Base::top;
 
     bool push(T &&value) {
         return pushActivity(std::move(value));
