@@ -23,10 +23,22 @@
 #include <functional>
 #include <concepts>
 #include <thread>
+#include <type_traits>
 
 namespace CoreAsync {
 
-#include <type_traits>
+template <typename T>
+struct is_shared_ptr : std::false_type {};
+
+template <typename T>
+struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_shared_ptr_v =
+    is_shared_ptr<std::remove_cvref_t<T>>::value;
+
+template <typename T>
+concept IsSharedPtr = is_shared_ptr_v<T>;
 
 template <typename, typename = void> struct IsSmartPtr : std::false_type {};
 
@@ -307,7 +319,7 @@ template <typename T>
 concept ActivityPtrType = requires(T t, const T ct) {
     { *t } -> ActivityType;
     { *ct } -> ActivityType;
-    requires std::is_pointer_v<std::decay_t<T>> || IsSmartPtr_v<std::decay_t<T>>;
+    requires std::is_pointer_v<std::decay_t<T>> || IsSharedPtr<std::decay_t<T>>;
 };
 
 } // namespace CoreAsync
