@@ -46,11 +46,11 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
             explicit ActivityHandle(const std::shared_ptr<TA_ActivityProxy> &proxyIn) : proxy(proxyIn) {}
             std::shared_ptr<TA_ActivityProxy> proxy{nullptr};
             bool stolenEnabled() const { return proxy && proxy->stolenEnabled(); }
-            std::size_t affinityThread() const { return proxy->affinityThread(); }
-            std::thread::id dependencyThreadId() const { return proxy->dependencyThreadId(); }
-            int64_t id() const { return proxy->id(); }
-            bool moveToThread(std::size_t thread) { return proxy->moveToThread(thread); }
-            void operator()() { (*proxy)(); }
+            std::optional<std::size_t> affinityThread() const { return proxy ? std::optional<std::size_t>(proxy->affinityThread()) : std::nullopt; }
+            std::optional<std::thread::id> dependencyThreadId() const { return proxy ? std::optional<std::thread::id>(proxy->dependencyThreadId()) : std::nullopt; }
+            std::optional<int64_t> id() const { return proxy ? std::optional<int64_t>(proxy->id()) : std::nullopt; }
+            bool moveToThread(std::size_t thread) { return proxy && proxy->moveToThread(thread); }
+            void operator()() { if (proxy) { (*proxy)(); } }
 
             static std::shared_ptr<TA_ActivityProxy> extractActivity(ActivityHandle *handle) {
                 if (!handle) {
