@@ -40,11 +40,8 @@ void  TA_ThreadPool::init() {
                 m_states[idx].resource.acquire();
                 m_states[idx].isBusy.store(true, std::memory_order_release);
                 while (!m_activityQueues[idx].isEmpty()) {
-                    if (auto handle = m_activityQueues[idx].pop(); handle.has_value() && handle.value()) {
-                        auto pActivity = HandleType::extractActivity(*handle);
-                        if (pActivity) {
-                            (*pActivity)();
-                        }
+                    if (auto pActivity = m_activityQueues[idx].pop(); pActivity && pActivity.value()) {
+                        (*pActivity.value())();
                     }
                 }
                 std::shared_ptr<TA_ActivityProxy> pStealActivity{nullptr};
@@ -63,16 +60,15 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
     std::size_t idx{(startIdx + 1) % m_threads.size()};
     while (idx != startIdx) {
         if (idx != excludedIdx) {
-            if (auto handle = m_activityQueues[idx].tryPop(); handle.has_value() && handle.value()) {
-                stolenActivity = HandleType::extractActivity(handle.value());
-                if (stolenActivity) {
-                    return true;
-                }
+            auto activity = m_activityQueues[idx].tryPop();
+            if (activity && activity.value()) {
+                stolenActivity = std::move(activity.value());
+                return true;
             }
         }
         idx = (idx + 1) % m_threads.size();
     }
-    stolenActivity.reset();
+    stolenActivity = nullptr;
     return false;
 }
 #else
