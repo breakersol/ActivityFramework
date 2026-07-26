@@ -21,11 +21,57 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <type_traits>
 #include <utility>
 
 namespace CoreAsync {
+namespace Detail {
+template <typename T> class TA_AtomicQueueValue {
+  public:
+    static_assert(std::is_trivially_copyable_v<T>,
+                  "Queue values must be trivially copyable or std::shared_ptr");
+
+    void store(T value, std::memory_order order) noexcept {
+        m_value.store(std::move(value), order);
+    }
+
+    T load(std::memory_order order) const noexcept {
+        return m_value.load(order);
+    }
+
+    T exchange(T value, std::memory_order order) noexcept {
+        return m_value.exchange(std::move(value), order);
+    }
+
+  private:
+    std::atomic<T> m_value{};
+};
+
+// Android libc++ does not provide the C++20 std::atomic<std::shared_ptr<T>>
+// specialization. The shared_ptr atomic access functions are available there
+// and provide the same synchronization without requiring a trivially copyable
+// shared_ptr representation.
+template <typename T> class TA_AtomicQueueValue<std::shared_ptr<T>> {
+  public:
+    void store(std::shared_ptr<T> value, std::memory_order order) noexcept {
+        std::atomic_store_explicit(&m_value, std::move(value), order);
+    }
+
+    std::shared_ptr<T> load(std::memory_order order) const noexcept {
+        return std::atomic_load_explicit(&m_value, order);
+    }
+
+    std::shared_ptr<T> exchange(std::shared_ptr<T> value, std::memory_order order) noexcept {
+        return std::atomic_exchange_explicit(&m_value, std::move(value), order);
+    }
+
+  private:
+    std::shared_ptr<T> m_value{};
+};
+} // namespace Detail
+
 template <typename T, std::size_t N> class TA_CircularQueue {
   public:
     TA_CircularQueue() noexcept {
@@ -174,7 +220,7 @@ template <typename T, std::size_t N> class TA_CircularQueue {
   private:
     struct Cell {
         std::atomic<std::size_t> sequence{0};
-        std::atomic<T> value{};
+        Detail::TA_AtomicQueueValue<T> value{};
     };
 
     std::optional<T> snapshot(std::size_t position) const requires (!std::is_pointer_v<T>) {

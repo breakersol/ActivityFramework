@@ -70,22 +70,11 @@ TEST_F(TA_ActivityQueueTest, capacityTest) {
 TEST_F(TA_ActivityQueueTest, getFront) {
     CoreAsync::TA_ThreadPool::QueueType queue;
     auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 6, 3);
-#if defined(__ANDROID__)
-    auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
-        std::make_shared<CoreAsync::TA_ActivityProxy>(activity)};
-    queue.push(handle);
-    const auto poppedHandle = queue.pop();
-    ASSERT_TRUE(poppedHandle.has_value());
-    auto proxy = CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(*poppedHandle);
-    (*proxy)();
-    CoreAsync::TA_ActivityResultFetcher fetcher{proxy};
-#else
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
     const auto front = queue.front();
     ASSERT_TRUE(front.has_value());
     (**front)();
     CoreAsync::TA_ActivityResultFetcher fetcher{*front};
-#endif
     int res = fetcher().get<int>();
     EXPECT_EQ(3, res);
 }
@@ -93,35 +82,19 @@ TEST_F(TA_ActivityQueueTest, getFront) {
 TEST_F(TA_ActivityQueueTest, getRear) {
     CoreAsync::TA_ThreadPool::QueueType queue;
     auto activity = CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, 6, 3);
-#if defined(__ANDROID__)
-    auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
-        std::make_shared<CoreAsync::TA_ActivityProxy>(activity)};
-    queue.push(handle);
-    const auto poppedHandle = queue.pop();
-    ASSERT_TRUE(poppedHandle.has_value());
-    CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(*poppedHandle);
-#else
     auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
     queue.push(proxy);
     const auto rear = queue.rear();
     ASSERT_TRUE(rear.has_value());
     EXPECT_EQ(*rear, proxy);
-#endif
 }
 
 TEST_F(TA_ActivityQueueTest, multiThreadTest) {
     CoreAsync::TA_ThreadPool::QueueType queue;
     std::function<bool()> func_1 = [&]() {
         for (int i = 0; i < 150; ++i) {
-#if defined(__ANDROID__)
-            auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
-                std::make_shared<CoreAsync::TA_ActivityProxy>(
-                    CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, i, 3))};
-            queue.push(handle);
-#else
             queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(
                 CoreAsync::TA_ActivityCreator::create(&MetaTest::sub, m_pTest, i, 3)));
-#endif
         }
         return true;
     };
@@ -129,15 +102,8 @@ TEST_F(TA_ActivityQueueTest, multiThreadTest) {
     std::function<bool()> func_2 = [&]() {
         for (int i = 0; i < 150; ++i) {
             std::string str{"321"};
-#if defined(__ANDROID__)
-            auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
-                std::make_shared<CoreAsync::TA_ActivityProxy>(
-                    CoreAsync::TA_ActivityCreator::create(&MetaTest::getStr, str))};
-            queue.push(handle);
-#else
             queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(
                 CoreAsync::TA_ActivityCreator::create(&MetaTest::getStr, str)));
-#endif
         }
         return true;
     };
@@ -298,15 +264,6 @@ TEST_F(TA_ActivityQueueTest, nonStealableActivityRemainsAvailableToOwner) {
     auto activity = CoreAsync::TA_ActivityCreator::create([]() {});
     activity->setStolenEnabled(false);
 
-#if defined(__ANDROID__)
-    auto handle = new CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle{
-        std::make_shared<CoreAsync::TA_ActivityProxy>(activity)};
-    ASSERT_TRUE(queue.push(handle));
-    EXPECT_FALSE(queue.tryPop().has_value());
-    const auto ownerHandle = queue.pop();
-    ASSERT_TRUE(ownerHandle.has_value());
-    CoreAsync::TA_ThreadPool::PlatformSelector::ActivityHandle::extractActivity(*ownerHandle);
-#else
     auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
     ASSERT_FALSE(proxy->stolenEnabled());
     ASSERT_TRUE(queue.push(proxy));
@@ -314,7 +271,6 @@ TEST_F(TA_ActivityQueueTest, nonStealableActivityRemainsAvailableToOwner) {
     const auto ownerActivity = queue.pop();
     ASSERT_TRUE(ownerActivity.has_value());
     EXPECT_EQ(*ownerActivity, proxy);
-#endif
 }
 
 TEST_F(TA_ActivityQueueTest, concurrentOwnerAndThiefClaimActivityOnce) {

@@ -39,30 +39,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     struct PlatformSelector {
         using Tag = AndroidPlatformTag;
         using ThreadModel = std::thread;
-        static constexpr bool activityHandleRequired = true;
-
-        struct ActivityHandle {
-            ActivityHandle() = default;
-            explicit ActivityHandle(const std::shared_ptr<TA_ActivityProxy> &proxyIn) : proxy(proxyIn) {}
-            std::shared_ptr<TA_ActivityProxy> proxy{nullptr};
-            bool stolenEnabled() const { return proxy && proxy->stolenEnabled(); }
-            std::optional<std::size_t> affinityThread() const { return proxy ? std::optional<std::size_t>(proxy->affinityThread()) : std::nullopt; }
-            std::optional<std::thread::id> dependencyThreadId() const { return proxy ? std::optional<std::thread::id>(proxy->dependencyThreadId()) : std::nullopt; }
-            std::optional<int64_t> id() const { return proxy ? std::optional<int64_t>(proxy->id()) : std::nullopt; }
-            bool moveToThread(std::size_t thread) { return proxy && proxy->moveToThread(thread); }
-            void operator()() { if (proxy) { (*proxy)(); } }
-
-            static std::shared_ptr<TA_ActivityProxy> extractActivity(ActivityHandle *handle) {
-                if (!handle) {
-                    return nullptr;
-                }
-                std::shared_ptr<TA_ActivityProxy> proxy{std::move(handle->proxy)};
-                delete handle;
-                return proxy;
-            }
-        };
-
-        using ActivityQueue = TA_ActivityQueue<ActivityHandle *, 10240>;
+        using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
 
         struct ThreadState {
             ThreadState() = default;
@@ -72,12 +49,10 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
             std::atomic_bool stopRequested{false};
         };
     };
-    using HandleType = typename PlatformSelector::ActivityHandle;
 #else
     struct PlatformSelector {
         using Tag = DefaultPlatformTag;
         using ThreadModel = std::jthread;
-        static constexpr bool activityHandleRequired = false;
         using ActivityQueue = TA_ActivityQueue<std::shared_ptr<TA_ActivityProxy>, 10240>;
 
         struct ThreadState {
@@ -123,15 +98,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         std::size_t idx =
             affinityId < m_threads.size() ? affinityId : topPriorityThread(pActivity->dependencyThreadId());
         //std::cout << "Post activity to thread: " << idx << "\n";
-#if defined(__ANDROID__)
-            auto handle = std::unique_ptr<HandleType>(new HandleType{pProxy});
-            if (!m_activityQueues[idx].push(handle.get()))
-                throw std::runtime_error("Failed to push activity to queue");
-            handle.release();
-#else
-            if (!m_activityQueues[idx].push(pProxy))
-                throw std::runtime_error("Failed to push activity to queue");
-#endif
+        if (!m_activityQueues[idx].push(pProxy))
+            throw std::runtime_error("Failed to push activity to queue");
         m_states[idx].resource.release();
         return {pProxy};
     }
@@ -147,15 +115,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         pActivity = nullptr;
         std::size_t idx = affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
         //std::cout << "Post activity to thread: " << idx << "\n";
-#if defined(__ANDROID__)
-            auto handle = std::unique_ptr<HandleType>(new HandleType{pProxy});
-            if (!m_activityQueues[idx].push(handle.get()))
-                throw std::runtime_error("Failed to push activity to queue");
-            handle.release();
-#else
-            if (!m_activityQueues[idx].push(pProxy))
-                throw std::runtime_error("Failed to push activity to queue");
-#endif
+        if (!m_activityQueues[idx].push(pProxy))
+            throw std::runtime_error("Failed to push activity to queue");
         m_states[idx].resource.release();
         return {pProxy};
     }
@@ -167,15 +128,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         auto dependencyThreadId{pActivity->dependencyThreadId()};
         std::size_t idx = affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
         //std::cout << "Post activity to thread: " << idx << "\n";
-#if defined(__ANDROID__)
-            auto handle = std::unique_ptr<HandleType>(new HandleType{pActivity});
-            if (!m_activityQueues[idx].push(handle.get()))
-                throw std::runtime_error("Failed to push activity to queue");
-            handle.release();
-#else
-            if (!m_activityQueues[idx].push(pActivity))
-                throw std::runtime_error("Failed to push activity to queue");
-#endif
+        if (!m_activityQueues[idx].push(pActivity))
+            throw std::runtime_error("Failed to push activity to queue");
         m_states[idx].resource.release();
         return {pActivity};
     }
