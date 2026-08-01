@@ -437,6 +437,7 @@ TEST_F(TA_ActivityQueueTest, concurrentPushAndPopPublishesEachValueOnce) {
     CoreAsync::TA_CircularQueue<int, 64> queue;
     std::array<std::atomic_uint, valueCount> seen{};
     std::atomic_int consumed{0};
+    std::atomic_int activeProducers{producerCount};
     std::atomic_bool timedOut{false};
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
 
@@ -444,14 +445,18 @@ TEST_F(TA_ActivityQueueTest, concurrentPushAndPopPublishesEachValueOnce) {
     consumers.reserve(consumerCount);
     for (int idx = 0; idx < consumerCount; ++idx) {
         consumers.emplace_back([&]() {
-            while (consumed.load(std::memory_order_relaxed) < valueCount) {
+            while (!timedOut.load(std::memory_order_acquire)) {
                 if (std::chrono::steady_clock::now() >= deadline) {
-                    timedOut.store(true, std::memory_order_relaxed);
+                    timedOut.store(true, std::memory_order_release);
                     return;
                 }
 
+                const bool producersFinished = activeProducers.load(std::memory_order_acquire) == 0;
                 const auto value = queue.pop();
                 if (!value.has_value()) {
+                    if (producersFinished) {
+                        return;
+                    }
                     std::this_thread::yield();
                     continue;
                 }
@@ -468,16 +473,21 @@ TEST_F(TA_ActivityQueueTest, concurrentPushAndPopPublishesEachValueOnce) {
     producers.reserve(producerCount);
     for (int producer = 0; producer < producerCount; ++producer) {
         producers.emplace_back([&, producer]() {
+            const auto finish = [&]() { activeProducers.fetch_sub(1, std::memory_order_acq_rel); };
             const int firstValue = producer * valuesPerProducer;
             for (int offset = 0; offset < valuesPerProducer; ++offset) {
                 const int value = firstValue + offset;
                 while (!queue.push(value)) {
-                    if (timedOut.load(std::memory_order_relaxed)) {
+                    if (timedOut.load(std::memory_order_acquire) ||
+                        std::chrono::steady_clock::now() >= deadline) {
+                        timedOut.store(true, std::memory_order_release);
+                        finish();
                         return;
                     }
                     std::this_thread::yield();
                 }
             }
+            finish();
         });
     }
 
