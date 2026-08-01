@@ -128,7 +128,7 @@ template <typename T, std::size_t N> class TA_CircularQueue {
         return pushValue(t);
     }
 
-    std::optional<T> pop() {
+    [[nodiscard]] std::optional<T> pop() {
         return popIf([](std::size_t) { return true; });
     }
 
