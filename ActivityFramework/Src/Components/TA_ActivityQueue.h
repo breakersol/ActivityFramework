@@ -71,7 +71,7 @@ class TA_ActivityQueue final : private TA_CircularQueue<T, N> {
         return markDequeued(Base::pop());
     }
 
-    [[nodiscard]] std::optional<T> tryPop() {
+    [[nodiscard]] std::optional<T> tryPopStealable() {
         return markDequeued(
             Base::popIf([this](std::size_t cellIndex) {
                 return m_stealEligible[cellIndex].load(std::memory_order_relaxed);
