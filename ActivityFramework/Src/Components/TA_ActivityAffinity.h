@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef TA_ACTIVITYCOMPONENTS_H
-#define TA_ACTIVITYCOMPONENTS_H
+#ifndef TA_ACTIVITYAFFINITY_H
+#define TA_ACTIVITYAFFINITY_H
 
 #include <atomic>
+#include <cstddef>
 #include <thread>
+#include <utility>
 
 #include "TA_ThreadPool.h"
 
@@ -61,18 +63,6 @@ class TA_ActivityAffinityThread {
     const std::thread::id m_sourceThread;
     std::atomic_size_t m_affinityThread;
 };
-
-class TA_ActivityId {
-  public:
-    TA_ActivityId() : m_id(m_count.load(std::memory_order_acquire)) { m_count.fetch_add(1); }
-
-    std::int64_t id() const { return m_id; }
-
-  private:
-    inline static std::atomic_int64_t m_count{0};
-    const std::int64_t m_id;
-};
-
 } // namespace CoreAsync
 
-#endif // TA_ACTIVITYCOMPONENTS_H
+#endif // TA_ACTIVITYAFFINITY_H
