@@ -117,3 +117,37 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
     EXPECT_TRUE(protectedActivityRan.load(std::memory_order_acquire));
     EXPECT_FALSE(ranOnWrongThread.load(std::memory_order_relaxed));
 }
+
+TEST_F(TA_ThreadPoolTest, sameActivityCannotBeSubmittedThroughDifferentProxies) {
+    CoreAsync::TA_ThreadPool pool{1};
+    std::binary_semaphore blockerStarted{0};
+    std::binary_semaphore releaseBlocker{0};
+
+    auto blocker = CoreAsync::TA_ActivityCreator::create([&]() {
+        blockerStarted.release();
+        releaseBlocker.acquire();
+    });
+    auto blockerResult = pool.postActivity(blocker, true);
+    if (!blockerStarted.try_acquire_for(std::chrono::seconds{1})) {
+        releaseBlocker.release();
+        blockerResult();
+        FAIL() << "Worker did not start the blocking activity";
+        return;
+    }
+
+    auto activity = CoreAsync::TA_ActivityCreator::create([]() { return 42; });
+    {
+        auto firstProxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity, false);
+        auto secondProxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity, false);
+        auto result = pool.postActivity(firstProxy);
+
+        EXPECT_THROW(static_cast<void>(pool.postActivity(secondProxy)), std::runtime_error);
+        EXPECT_EQ(activity->state(), CoreAsync::TA_ActivityState::Queued);
+
+        releaseBlocker.release();
+        blockerResult();
+        EXPECT_EQ(result().get<int>(), 42);
+        EXPECT_EQ(activity->state(), CoreAsync::TA_ActivityState::Completed);
+    }
+    delete activity;
+}

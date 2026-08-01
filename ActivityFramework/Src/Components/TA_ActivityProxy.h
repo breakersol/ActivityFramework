@@ -20,6 +20,7 @@
 #include <future>
 #include <utility>
 
+#include "TA_ActivityState.h"
 #include "TA_TypeFilter.h"
 #include "TA_Variant.h"
 
@@ -64,6 +65,15 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
             m_pStolenEnabledExp = [](auto &pObj) -> bool {
                 return static_cast<RawActivity *>(pObj.get())->stolenEnabled();
             };
+            m_pStateExp = [](auto const &pObj) -> TA_ActivityState {
+                return static_cast<RawActivity *>(pObj.get())->state();
+            };
+            m_pPrepareSubmissionExp = [](auto &pObj) -> std::optional<TA_ActivitySubmission> {
+                return static_cast<RawActivity *>(pObj.get())->prepareSubmission();
+            };
+            m_pTryMarkDequeuedExp = [](auto &pObj) -> bool {
+                return static_cast<RawActivity *>(pObj.get())->tryMarkDequeued();
+            };
         }
     }
 
@@ -78,6 +88,9 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
           m_pIdExp(std::exchange(other.m_pIdExp, nullptr)),
           m_pMoveThreadExp(std::exchange(other.m_pMoveThreadExp, nullptr)),
           m_pStolenEnabledExp(std::exchange(other.m_pStolenEnabledExp, nullptr)),
+          m_pStateExp(std::exchange(other.m_pStateExp, nullptr)),
+          m_pPrepareSubmissionExp(std::exchange(other.m_pPrepareSubmissionExp, nullptr)),
+          m_pTryMarkDequeuedExp(std::exchange(other.m_pTryMarkDequeuedExp, nullptr)),
           m_promise(std::move(other.m_promise)),
           m_future(std::move(other.m_future)),
           m_isExecuted(other.m_isExecuted.load()) {}
@@ -92,6 +105,9 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
             m_pIdExp = std::exchange(other.m_pIdExp, nullptr);
             m_pMoveThreadExp = std::exchange(other.m_pMoveThreadExp, nullptr);
             m_pStolenEnabledExp = std::exchange(other.m_pStolenEnabledExp, nullptr);
+            m_pStateExp = std::exchange(other.m_pStateExp, nullptr);
+            m_pPrepareSubmissionExp = std::exchange(other.m_pPrepareSubmissionExp, nullptr);
+            m_pTryMarkDequeuedExp = std::exchange(other.m_pTryMarkDequeuedExp, nullptr);
             m_promise = std::move(other.m_promise);
             m_future = std::move(other.m_future);
             m_isExecuted.store(other.m_isExecuted.load());
@@ -115,10 +131,20 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
         if (!m_pExecuteExp || !m_pActivity) {
             throw std::runtime_error("Execute function or activity is null");
         }
+        if (state() == TA_ActivityState::Queued) {
+            throw std::logic_error("Queued activity must be dequeued before execution");
+        }
         bool expected{false};
         if (m_isExecuted.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
-            m_pExecuteExp(m_pActivity, std::move(m_promise));
-            m_pExecuteExp = nullptr;
+            try {
+                m_pExecuteExp(m_pActivity, std::move(m_promise));
+                m_pExecuteExp = nullptr;
+            } catch (...) {
+                if (state() == TA_ActivityState::Queued) {
+                    m_isExecuted.store(false, std::memory_order_release);
+                }
+                throw;
+            }
         }
     }
 
@@ -136,6 +162,17 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
         return m_pStolenEnabledExp(m_pActivity);
     }
 
+    TA_ActivityState state() const { return m_pStateExp(m_pActivity); }
+
+    std::optional<TA_ActivitySubmission> prepareSubmission() {
+        if (m_isExecuted.load(std::memory_order_acquire)) {
+            return std::nullopt;
+        }
+        return m_pPrepareSubmissionExp(m_pActivity);
+    }
+
+    bool tryMarkDequeued() { return m_pTryMarkDequeuedExp(m_pActivity); }
+
   private:
     std::unique_ptr<void, void (*)(void *)> m_pActivity;
     Executor<void, std::unique_ptr<void, void (*)(void *)> &, std::promise<TA_DefaultVariant> &&> m_pExecuteExp{nullptr};
@@ -144,6 +181,10 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
     Executor<std::int64_t, std::unique_ptr<void, void (*)(void *)> const &> m_pIdExp{nullptr};
     Executor<bool, std::unique_ptr<void, void (*)(void *)> &, std::size_t> m_pMoveThreadExp{nullptr};
     Executor<bool, std::unique_ptr<void, void (*)(void *)> const &> m_pStolenEnabledExp{nullptr};
+    Executor<TA_ActivityState, std::unique_ptr<void, void (*)(void *)> const &> m_pStateExp{nullptr};
+    Executor<std::optional<TA_ActivitySubmission>, std::unique_ptr<void, void (*)(void *)> &>
+        m_pPrepareSubmissionExp{nullptr};
+    Executor<bool, std::unique_ptr<void, void (*)(void *)> &> m_pTryMarkDequeuedExp{nullptr};
     std::promise<TA_DefaultVariant> m_promise{};
     std::shared_future<TA_DefaultVariant> m_future{m_promise.get_future().share()};
     std::atomic_bool m_isExecuted{false};

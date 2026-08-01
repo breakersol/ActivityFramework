@@ -1,5 +1,5 @@
 /*
- * Copyright [2025] [Shuang Zhu / Sol]
+ * Copyright [2026] [Shuang Zhu / Sol]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,14 @@
 #ifndef TA_ACTIVITYQUEUE_H
 #define TA_ACTIVITYQUEUE_H
 
+#include "TA_ActivityState.h"
 #include "TA_CircularQueue.h"
 #include "TA_TypeFilter.h"
 
 #include <array>
 #include <atomic>
+#include <cassert>
+#include <exception>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -45,22 +48,34 @@ class TA_ActivityQueue final : private TA_CircularQueue<T, N> {
     using Base::front;
     using Base::isEmpty;
     using Base::isFull;
-    using Base::pop;
     using Base::rear;
     using Base::size;
 
     bool push(T &&value) {
-        return pushActivity(std::move(value));
+        return prepareAndPush(std::move(value));
     }
 
     bool push(const T &value) {
-        return pushActivity(value);
+        return prepareAndPush(value);
+    }
+
+    bool push(T &&value, TA_ActivitySubmission &&submission) {
+        return pushActivity(std::move(value), std::move(submission));
+    }
+
+    bool push(const T &value, TA_ActivitySubmission &&submission) {
+        return pushActivity(value, std::move(submission));
+    }
+
+    std::optional<T> pop() {
+        return markDequeued(Base::pop());
     }
 
     std::optional<T> tryPop() {
-        return Base::popIf([this](std::size_t cellIndex) {
-            return m_stealEligible[cellIndex].load(std::memory_order_relaxed);
-        });
+        return markDequeued(
+            Base::popIf([this](std::size_t cellIndex) {
+                return m_stealEligible[cellIndex].load(std::memory_order_relaxed);
+            }));
     }
 
   private:
@@ -72,12 +87,75 @@ class TA_ActivityQueue final : private TA_CircularQueue<T, N> {
         }
     }
 
-    bool pushActivity(T value) {
+    static std::optional<TA_ActivitySubmission> prepareSubmission(T &value) {
+        if constexpr (std::is_pointer_v<T> || IsSmartPtr_v<T>) {
+            return value ? value->prepareSubmission() : std::nullopt;
+        } else {
+            return value.prepareSubmission();
+        }
+    }
+
+    static std::int64_t activityId(const T &value) {
+        if constexpr (std::is_pointer_v<T> || IsSmartPtr_v<T>) {
+            return value->id();
+        } else {
+            return value.id();
+        }
+    }
+
+    static bool tryMarkDequeued(T &value) {
+        if constexpr (std::is_pointer_v<T> || IsSmartPtr_v<T>) {
+            return value && value->tryMarkDequeued();
+        } else {
+            return value.tryMarkDequeued();
+        }
+    }
+
+    static std::optional<T> markDequeued(std::optional<T> value) {
+        if (value.has_value()) {
+            const bool transitioned = tryMarkDequeued(*value);
+            assert(transitioned && "Dequeued activity was not in the Queued state");
+            static_cast<void>(transitioned);
+        }
+        return value;
+    }
+
+    bool prepareAndPush(T value) {
+        auto submission = prepareSubmission(value);
+        if (!submission.has_value()) {
+            return false;
+        }
+        return pushActivity(std::move(value), std::move(*submission));
+    }
+
+    bool pushActivity(T value, TA_ActivitySubmission submission) {
+        struct SubmissionLifetime {
+            T owner;
+            TA_ActivitySubmission submission;
+        } lifetime{value, std::move(submission)};
+
+        if constexpr (std::is_pointer_v<T> || IsSmartPtr_v<T>) {
+            if (!lifetime.owner) {
+                return false;
+            }
+        }
+        if (!Detail::TA_ActivitySubmissionAccess::matches(lifetime.submission,
+                                                          activityId(lifetime.owner))) {
+            return false;
+        }
+
         const bool stealEligible = isStealEligible(value);
-        return Base::pushValueWithMetadata(
-            std::move(value), [this, stealEligible](std::size_t cellIndex) noexcept {
+        const bool pushed = Base::pushValueWithMetadata(
+            std::move(value), [this, stealEligible, &lifetime](std::size_t cellIndex) noexcept {
                 m_stealEligible[cellIndex].store(stealEligible, std::memory_order_relaxed);
+                const bool committed =
+                    Detail::TA_ActivitySubmissionAccess::commitQueued(lifetime.submission);
+                assert(committed && "Published activity could not enter the Queued state");
+                if (!committed) {
+                    std::terminate();
+                }
             });
+        return pushed;
     }
 
     std::array<std::atomic_bool, N> m_stealEligible{};

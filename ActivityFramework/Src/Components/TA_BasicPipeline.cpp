@@ -52,10 +52,6 @@ void TA_BasicPipeline::destroy() {
     m_mutex.lock();
     m_pActivityList.clear();
     m_resultList.clear();
-    if (m_pRunningActivity) {
-        delete m_pRunningActivity;
-        m_pRunningActivity = nullptr;
-    }
     m_mutex.unlock();
 }
 
