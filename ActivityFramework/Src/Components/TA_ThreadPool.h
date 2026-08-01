@@ -94,14 +94,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         if (!pActivity)
             throw std::invalid_argument("Activity is null");
         std::shared_ptr<TA_ActivityProxy> pProxy{std::make_shared<TA_ActivityProxy>(pActivity, autoDelete)};
-        auto affinityId{pActivity->affinityThread()};
-        std::size_t idx =
-            affinityId < m_threads.size() ? affinityId : topPriorityThread(pActivity->dependencyThreadId());
-        //std::cout << "Post activity to thread: " << idx << "\n";
-        if (!m_activityQueues[idx].push(pProxy))
-            throw std::runtime_error("Failed to push activity to queue");
-        m_states[idx].resource.release();
-        return {pProxy};
+        return enqueueProxy(pProxy);
     }
 
     [[nodiscard]] auto postActivity(TA_ActivityProxy *&pActivity) -> TA_ActivityResultFetcher {
@@ -110,28 +103,14 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         auto weakRef = pActivity->weakRef();
         std::shared_ptr<TA_ActivityProxy> pProxy =
             weakRef.expired() ? std::shared_ptr<TA_ActivityProxy>(pActivity) : weakRef.lock();
-        auto affinityId{pActivity->affinityThread()};
-        auto dependencyThreadId{pActivity->dependencyThreadId()};
         pActivity = nullptr;
-        std::size_t idx = affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
-        //std::cout << "Post activity to thread: " << idx << "\n";
-        if (!m_activityQueues[idx].push(pProxy))
-            throw std::runtime_error("Failed to push activity to queue");
-        m_states[idx].resource.release();
-        return {pProxy};
+        return enqueueProxy(pProxy);
     }
 
     [[nodiscard]] auto postActivity(const std::shared_ptr<TA_ActivityProxy> &pActivity) -> TA_ActivityResultFetcher {
         if (!pActivity)
             throw std::invalid_argument("Activity proxy is null");
-        auto affinityId{pActivity->affinityThread()};
-        auto dependencyThreadId{pActivity->dependencyThreadId()};
-        std::size_t idx = affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
-        //std::cout << "Post activity to thread: " << idx << "\n";
-        if (!m_activityQueues[idx].push(pActivity))
-            throw std::runtime_error("Failed to push activity to queue");
-        m_states[idx].resource.release();
-        return {pActivity};
+        return enqueueProxy(pActivity);
     }
 
     std::size_t size() const { return m_threads.size(); }
@@ -151,6 +130,24 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     }
 
   private:
+    TA_ActivityResultFetcher enqueueProxy(const std::shared_ptr<TA_ActivityProxy> &activity) {
+        auto submission = activity->prepareSubmission();
+        if (!submission.has_value()) {
+            throw std::runtime_error("Activity is not ready for submission");
+        }
+
+        const auto affinityId = activity->affinityThread();
+        const auto dependencyThreadId = activity->dependencyThreadId();
+        const std::size_t idx =
+            affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
+        if (!m_activityQueues[idx].push(activity, std::move(*submission))) {
+            throw std::runtime_error("Failed to push activity to queue");
+        }
+
+        m_states[idx].resource.release();
+        return {activity};
+    }
+
     struct ThreadSnapshot {
         std::size_t index;
         std::size_t queueSize;

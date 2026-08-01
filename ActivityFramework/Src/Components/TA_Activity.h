@@ -19,8 +19,10 @@
 
 #include "TA_MetaReflex.h"
 #include "TA_ActivityComponents.h"
+#include "TA_ActivityState.h"
 
 #include <coroutine>
+#include <stdexcept>
 
 namespace CoreAsync {
 template <typename T>
@@ -143,6 +145,11 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
         : m_paras(std::forward<Paras>(para)...), m_affinityThread(std::numeric_limits<std::size_t>::max()) {}
 
     decltype(auto) operator()() {
+        if (!m_lifecycle.tryStartExecution()) {
+            throw std::logic_error("Activity is not ready to run");
+        }
+        Detail::TA_ActivityCompletionGuard completionGuard{m_lifecycle};
+
         if constexpr (ExpParser<MethodName, std::remove_reference_t<Paras>...>::isStaticMethod) {
             return std::apply(ExpParser<MethodName, std::remove_reference_t<Paras>...>::exp,
                               getStaticMethodParas(m_paras, std::make_index_sequence<sizeof...(Paras)>{}));
@@ -154,8 +161,9 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
 
     auto dependencyThreadId() const { return m_dependencyThreadId; }
 
-    void setStolenEnabled(bool enabled) {
-        m_stolenEnabled.store(enabled, std::memory_order_release);
+    bool setStolenEnabled(bool enabled) {
+        return m_lifecycle.updateConfiguration(
+            [this, enabled]() { m_stolenEnabled.store(enabled, std::memory_order_release); });
     }
 
     bool stolenEnabled() const {
@@ -171,12 +179,26 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
         if (m_dependencyThreadId == holder.threadId(thread)) {
             return false;
         }
-        return m_affinityThread.moveToThread(thread);
+        bool moved = false;
+        const bool configurable = m_lifecycle.updateConfiguration(
+            [this, thread, &moved]() { moved = m_affinityThread.moveToThread(thread); });
+        return configurable && moved;
     }
 
     std::int64_t id() const { return m_id.id(); }
 
-    void setParas(Paras &&...paras) { m_paras = std::make_tuple(std::forward<Paras>(paras)...); }
+    bool setParas(Paras &&...paras) {
+        return m_lifecycle.updateConfiguration(
+            [this, &paras...]() { m_paras = std::make_tuple(std::forward<Paras>(paras)...); });
+    }
+
+    TA_ActivityState state() const noexcept { return m_lifecycle.state(); }
+
+    std::optional<TA_ActivitySubmission> prepareSubmission() noexcept {
+        return m_lifecycle.prepareSubmission(id());
+    }
+
+    bool tryMarkDequeued() noexcept { return m_lifecycle.tryMarkDequeued(); }
 
   private:
     template <typename T>
@@ -201,6 +223,7 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
     TA_ActivityId m_id{};
     const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
     std::atomic_bool m_stolenEnabled {true};
+    Detail::TA_ActivityLifecycle m_lifecycle{};
 };
 
 template <typename Method, typename... Args> class TA_MethodActivity {
@@ -216,14 +239,21 @@ template <typename Method, typename... Args> class TA_MethodActivity {
 
     virtual ~TA_MethodActivity() = default;
 
-    decltype(auto) operator()() { return run(); }
+    decltype(auto) operator()() {
+        if (!m_lifecycle.tryStartExecution()) {
+            throw std::logic_error("Activity is not ready to run");
+        }
+        Detail::TA_ActivityCompletionGuard completionGuard{m_lifecycle};
+        return run();
+    }
 
     std::size_t affinityThread() const { return m_affinityThread.affinityThread(); }
 
     auto dependencyThreadId() const { return m_dependencyThreadId; }
 
-    void setStolenEnabled(bool enabled) {
-        m_stolenEnabled.store(enabled, std::memory_order_release);
+    bool setStolenEnabled(bool enabled) {
+        return m_lifecycle.updateConfiguration(
+            [this, enabled]() { m_stolenEnabled.store(enabled, std::memory_order_release); });
     }
 
     bool stolenEnabled() const {
@@ -239,18 +269,31 @@ template <typename Method, typename... Args> class TA_MethodActivity {
         if (m_dependencyThreadId == holder.threadId(thread)) {
             return false;
         }
-        return m_affinityThread.moveToThread(thread);
+        bool moved = false;
+        const bool configurable = m_lifecycle.updateConfiguration(
+            [this, thread, &moved]() { moved = m_affinityThread.moveToThread(thread); });
+        return configurable && moved;
     }
 
     std::int64_t id() const { return m_id.id(); }
 
-    template <typename... NewArgs> void setPara(NewArgs &&...args) {
-        if constexpr (IsInstanceMethod<Method>::value) {
-            m_args = std::tuple_cat(std::get<0>(m_args), std::make_tuple(std::forward<NewArgs>(args)...));
-        } else {
-            m_args = std::make_tuple(std::forward<NewArgs>(args)...);
-        }
+    template <typename... NewArgs> bool setPara(NewArgs &&...args) {
+        return m_lifecycle.updateConfiguration([this, &args...]() {
+            if constexpr (IsInstanceMethod<Method>::value) {
+                m_args = std::tuple_cat(std::get<0>(m_args), std::make_tuple(std::forward<NewArgs>(args)...));
+            } else {
+                m_args = std::make_tuple(std::forward<NewArgs>(args)...);
+            }
+        });
     }
+
+    TA_ActivityState state() const noexcept { return m_lifecycle.state(); }
+
+    std::optional<TA_ActivitySubmission> prepareSubmission() noexcept {
+        return m_lifecycle.prepareSubmission(id());
+    }
+
+    bool tryMarkDequeued() noexcept { return m_lifecycle.tryMarkDequeued(); }
 
   private:
     decltype(auto) run() { return std::apply(m_method, m_args); }
@@ -271,6 +314,7 @@ template <typename Method, typename... Args> class TA_MethodActivity {
     const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
     TA_ActivityId m_id{};
     std::atomic_bool m_stolenEnabled {true};
+    Detail::TA_ActivityLifecycle m_lifecycle{};
 };
 
 class TA_ActivityCreator {

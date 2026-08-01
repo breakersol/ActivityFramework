@@ -22,6 +22,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <thread>
 #include <vector>
 
@@ -73,8 +74,11 @@ TEST_F(TA_ActivityQueueTest, getFront) {
     queue.push(std::make_shared<CoreAsync::TA_ActivityProxy>(activity));
     const auto front = queue.front();
     ASSERT_TRUE(front.has_value());
-    (**front)();
-    CoreAsync::TA_ActivityResultFetcher fetcher{*front};
+    const auto popped = queue.pop();
+    ASSERT_TRUE(popped.has_value());
+    EXPECT_EQ(*popped, *front);
+    (**popped)();
+    CoreAsync::TA_ActivityResultFetcher fetcher{*popped};
     int res = fetcher().get<int>();
     EXPECT_EQ(3, res);
 }
@@ -273,11 +277,102 @@ TEST_F(TA_ActivityQueueTest, nonStealableActivityRemainsAvailableToOwner) {
     EXPECT_EQ(*ownerActivity, proxy);
 }
 
-TEST_F(TA_ActivityQueueTest, concurrentOwnerAndThiefClaimActivityOnce) {
-    constexpr int iterationCount = 10000;
+TEST_F(TA_ActivityQueueTest, enqueueSealsConfigurationAndRejectsDuplicatePush) {
+    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4> queue;
+    auto activity = CoreAsync::TA_ActivityCreator::create([](int value) { return value; }, 1);
+    auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
+
+    EXPECT_EQ(activity->state(), CoreAsync::TA_ActivityState::Configuring);
+    EXPECT_TRUE(activity->setPara(2));
+    EXPECT_TRUE(queue.push(proxy));
+    EXPECT_EQ(activity->state(), CoreAsync::TA_ActivityState::Queued);
+
+    EXPECT_FALSE(activity->setPara(3));
+    EXPECT_FALSE(activity->setStolenEnabled(false));
+    EXPECT_TRUE(activity->stolenEnabled());
+    EXPECT_FALSE(queue.push(proxy));
+    EXPECT_THROW((*proxy)(), std::logic_error);
+    EXPECT_FALSE(proxy->isExecuted());
+
+    const auto queuedActivity = queue.pop();
+    ASSERT_TRUE(queuedActivity.has_value());
+    EXPECT_EQ(activity->state(), CoreAsync::TA_ActivityState::Running);
+    (**queuedActivity)();
+    EXPECT_EQ(activity->state(), CoreAsync::TA_ActivityState::Completed);
+    EXPECT_EQ((*queuedActivity)->result().get<int>(), 2);
+    EXPECT_FALSE(queue.push(proxy));
+}
+
+TEST_F(TA_ActivityQueueTest, failedEnqueueRestoresConfiguringState) {
+    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 2> queue;
+    auto first = std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::TA_ActivityCreator::create([]() {}));
+    auto second = std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::TA_ActivityCreator::create([]() {}));
+    auto rejectedActivity = CoreAsync::TA_ActivityCreator::create([]() {});
+    auto rejected = std::make_shared<CoreAsync::TA_ActivityProxy>(rejectedActivity);
+
+    ASSERT_TRUE(queue.push(first));
+    ASSERT_TRUE(queue.push(second));
+    EXPECT_FALSE(queue.push(rejected));
+    EXPECT_EQ(rejectedActivity->state(), CoreAsync::TA_ActivityState::Configuring);
+    EXPECT_TRUE(rejectedActivity->setStolenEnabled(false));
+}
+
+TEST_F(TA_ActivityQueueTest, submissionTokenCannotPublishAnotherActivity) {
+    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4> queue;
+    auto firstActivity = CoreAsync::TA_ActivityCreator::create([]() {});
+    auto secondActivity = CoreAsync::TA_ActivityCreator::create([]() {});
+    auto first = std::make_shared<CoreAsync::TA_ActivityProxy>(firstActivity);
+    auto second = std::make_shared<CoreAsync::TA_ActivityProxy>(secondActivity);
+    auto submission = first->prepareSubmission();
+
+    ASSERT_TRUE(submission.has_value());
+    EXPECT_FALSE(queue.push(second, std::move(*submission)));
+    EXPECT_EQ(firstActivity->state(), CoreAsync::TA_ActivityState::Configuring);
+    EXPECT_EQ(secondActivity->state(), CoreAsync::TA_ActivityState::Configuring);
+    EXPECT_TRUE(queue.isEmpty());
+}
+
+TEST_F(TA_ActivityQueueTest, concurrentDuplicatePushPublishesActivityOnce) {
     CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4> queue;
     auto activity = CoreAsync::TA_ActivityCreator::create([]() {});
     auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
+    std::atomic_int ready = {0};
+    std::atomic_bool start = {false};
+    bool firstResult = false;
+    bool secondResult = false;
+
+    const auto push = [&](bool &result) {
+        ready.fetch_add(1, std::memory_order_release);
+        while (!start.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+        result = queue.push(proxy);
+    };
+    std::thread first = std::thread(push, std::ref(firstResult));
+    std::thread second = std::thread(push, std::ref(secondResult));
+
+    while (ready.load(std::memory_order_acquire) != 2) {
+        std::this_thread::yield();
+    }
+    start.store(true, std::memory_order_release);
+    first.join();
+    second.join();
+
+    EXPECT_NE(firstResult, secondResult);
+    EXPECT_EQ(activity->state(), CoreAsync::TA_ActivityState::Queued);
+    EXPECT_TRUE(queue.pop().has_value());
+    EXPECT_TRUE(queue.isEmpty());
+}
+
+TEST_F(TA_ActivityQueueTest, concurrentOwnerAndThiefClaimActivityOnce) {
+    constexpr int iterationCount = 10000;
+    CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4> queue;
+    std::vector<std::shared_ptr<CoreAsync::TA_ActivityProxy>> proxies;
+    proxies.reserve(iterationCount);
+    for (int iteration = 0; iteration < iterationCount; ++iteration) {
+        proxies.emplace_back(
+            std::make_shared<CoreAsync::TA_ActivityProxy>(CoreAsync::TA_ActivityCreator::create([]() {})));
+    }
     std::optional<std::shared_ptr<CoreAsync::TA_ActivityProxy>> ownerResult;
     std::optional<std::shared_ptr<CoreAsync::TA_ActivityProxy>> thiefResult;
     std::atomic_int iterationStarted{0};
@@ -304,6 +399,7 @@ TEST_F(TA_ActivityQueueTest, concurrentOwnerAndThiefClaimActivityOnce) {
     });
 
     for (int iteration = 1; iteration <= iterationCount; ++iteration) {
+        const auto &proxy = proxies[static_cast<std::size_t>(iteration - 1)];
         EXPECT_TRUE(queue.push(proxy));
         iterationStarted.store(iteration, std::memory_order_release);
         while (ownerFinished.load(std::memory_order_acquire) < iteration ||

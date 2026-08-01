@@ -22,10 +22,14 @@
 #include <memory>
 #include <functional>
 #include <concepts>
+#include <cstdint>
+#include <optional>
 #include <thread>
 #include <type_traits>
 
 namespace CoreAsync {
+enum class TA_ActivityState : std::uint8_t;
+class TA_ActivitySubmission;
 
 template <typename T>
 struct is_shared_ptr : std::false_type {};
@@ -312,6 +316,9 @@ concept ActivityType = requires(T t, const T ct) {
     { ct.id() };
     { ct.dependencyThreadId() };
     { ct.stolenEnabled() } -> std::same_as<bool>;
+    { ct.state() } -> std::same_as<TA_ActivityState>;
+    { t.prepareSubmission() } -> std::same_as<std::optional<TA_ActivitySubmission>>;
+    { t.tryMarkDequeued() } -> std::same_as<bool>;
     // requires !IsTrivalCopyable<std::decay_t<T>>;
 };
 

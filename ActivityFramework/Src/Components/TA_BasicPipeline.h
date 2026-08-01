@@ -80,12 +80,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
     };
 
   public:
-    TA_BasicPipeline()
-        : TA_MetaObject(), m_pRunningActivity(TA_ActivityCreator::create(
-              std::function<void()>([this]() { run(); }))) {
-        m_pRunningActivity->moveToThread(affinityThread());
-        m_pRunningActivity->setStolenEnabled(false);
-    }
+    TA_BasicPipeline() = default;
     TA_BasicPipeline(const TA_BasicPipeline &other) = delete;
     TA_BasicPipeline(TA_BasicPipeline &&other) = delete;
     TA_BasicPipeline &operator=(const TA_BasicPipeline &) = delete;
@@ -145,9 +140,13 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
         }
         setState(State::Busy);
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        auto runningActivity = TA_ActivityCreator::create(std::function<void()>([this]() { run(); }));
+        runningActivity->moveToThread(affinityThread());
+        runningActivity->setStolenEnabled(false);
         std::shared_ptr<TA_ActivityExecutingAwaitable> executingAwaitable =
-        std::make_shared<TA_ActivityExecutingAwaitable>(
-                std::make_shared<TA_ActivityProxy>(m_pRunningActivity, false), (TA_ActivityExecutingAwaitable::ExecuteType)(type));
+            std::make_shared<TA_ActivityExecutingAwaitable>(
+                std::make_shared<TA_ActivityProxy>(runningActivity),
+                static_cast<TA_ActivityExecutingAwaitable::ExecuteType>(type));
         auto fetcher = co_await *executingAwaitable;
         co_return fetcher;
     }
@@ -171,7 +170,6 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
     std::list<std::shared_ptr<TA_ActivityProxy>> m_pActivityList;
     std::vector<TA_DefaultVariant> m_resultList;
     std::recursive_mutex m_mutex;
-    TA_MethodActivity<std::function<void()>> *m_pRunningActivity{nullptr};
 
   private:
     std::atomic<State> m_state{State::Waiting};
