@@ -18,7 +18,8 @@
 #define TA_ACTIVITY_H
 
 #include "TA_MetaReflex.h"
-#include "TA_ActivityComponents.h"
+#include "TA_ActivityAffinity.h"
+#include "TA_ActivityId.h"
 #include "TA_ActivityState.h"
 
 #include <coroutine>
