@@ -77,6 +77,8 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
     CoreAsync::TA_ThreadPool pool{2};
     std::binary_semaphore ownerStarted{0};
     std::binary_semaphore releaseOwner{0};
+    std::binary_semaphore stealableActivityRan{0};
+    std::atomic_bool stealableRanOnAffinityThread{true};
     std::atomic_bool protectedActivityRan{false};
     std::atomic_bool ranOnWrongThread{false};
 
@@ -94,6 +96,15 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
     }
 
     const std::thread::id affinityThread = pool.threadId(1);
+    auto stealableActivity = CoreAsync::TA_ActivityCreator::create([&]() {
+        stealableRanOnAffinityThread.store(std::this_thread::get_id() == affinityThread,
+                                           std::memory_order_relaxed);
+        stealableActivityRan.release();
+    });
+    stealableActivity->moveToThread(1);
+    stealableActivity->setStolenEnabled(true);
+    auto stealableResult = pool.postActivity(stealableActivity, true);
+
     auto protectedActivity = CoreAsync::TA_ActivityCreator::create([&]() {
         ranOnWrongThread.store(std::this_thread::get_id() != affinityThread, std::memory_order_relaxed);
         protectedActivityRan.store(true, std::memory_order_release);
@@ -107,7 +118,17 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
     auto triggerResult = pool.postActivity(thiefTrigger, true);
     EXPECT_TRUE(triggerResult().get<bool>());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds{20});
+    if (!stealableActivityRan.try_acquire_for(std::chrono::seconds{1})) {
+        releaseOwner.release();
+        blockerResult();
+        stealableResult();
+        protectedResult();
+        FAIL() << "Idle worker did not steal the eligible activity";
+        return;
+    }
+
+    stealableResult();
+    EXPECT_FALSE(stealableRanOnAffinityThread.load(std::memory_order_relaxed));
     EXPECT_FALSE(protectedActivityRan.load(std::memory_order_acquire));
 
     releaseOwner.release();
