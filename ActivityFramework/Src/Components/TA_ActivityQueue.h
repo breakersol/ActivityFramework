@@ -67,11 +67,11 @@ class TA_ActivityQueue final : private TA_CircularQueue<T, N> {
         return pushActivity(value, std::move(submission));
     }
 
-    std::optional<T> pop() {
+    [[nodiscard]] std::optional<T> pop() {
         return markDequeued(Base::pop());
     }
 
-    std::optional<T> tryPop() {
+    [[nodiscard]] std::optional<T> tryPop() {
         return markDequeued(
             Base::popIf([this](std::size_t cellIndex) {
                 return m_stealEligible[cellIndex].load(std::memory_order_relaxed);
