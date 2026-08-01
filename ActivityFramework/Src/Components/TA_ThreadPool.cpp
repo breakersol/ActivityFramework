@@ -57,8 +57,8 @@ void  TA_ThreadPool::init() {
 
 bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx) {
     std::size_t startIdx{m_stealIdxs[excludedIdx]};
-    std::size_t idx{(startIdx + 1) % m_threads.size()};
-    while (idx != startIdx) {
+    std::size_t idx{startIdx};
+    do {
         if (idx != excludedIdx) {
             auto activity = m_activityQueues[idx].tryPop();
             if (activity && activity.value()) {
@@ -67,7 +67,7 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
             }
         }
         idx = (idx + 1) % m_threads.size();
-    }
+    } while (idx != startIdx);
     stolenActivity = nullptr;
     return false;
 }
@@ -106,8 +106,8 @@ void  TA_ThreadPool::init() {
 
 bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx) {
     std::size_t startIdx{m_stealIdxs[excludedIdx]};
-    std::size_t idx{(startIdx + 1) % m_threads.size()};
-    while (idx != startIdx) {
+    std::size_t idx{startIdx};
+    do {
         if (idx != excludedIdx) {
             auto activity = m_activityQueues[idx].tryPop();
             if (activity && activity.value()) {
@@ -116,7 +116,7 @@ bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, 
             }
         }
         idx = (idx + 1) % m_threads.size();
-    }
+    } while (idx != startIdx);
     stolenActivity = nullptr;
     return false;
 }
