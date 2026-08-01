@@ -271,8 +271,9 @@ TEST_F(TA_ActivityQueueTest, nonStealableActivityRemainsAvailableToOwner) {
     auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
     ASSERT_FALSE(proxy->stolenEnabled());
     ASSERT_TRUE(queue.push(proxy));
-    EXPECT_FALSE(queue.tryPop().has_value());
-    const auto ownerActivity = queue.pop();
+    const auto stolenActivity = queue.tryPop();
+    EXPECT_FALSE(stolenActivity.has_value());
+    const auto ownerActivity = stolenActivity.has_value() ? stolenActivity : queue.pop();
     ASSERT_TRUE(ownerActivity.has_value());
     EXPECT_EQ(*ownerActivity, proxy);
 }
