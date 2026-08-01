@@ -28,8 +28,12 @@
 
 namespace {
 template <typename Queue>
-concept HasQueueObservers = requires(const Queue &queue) {
+concept HasFront = requires(const Queue &queue) {
     queue.front();
+};
+
+template <typename Queue>
+concept HasRear = requires(const Queue &queue) {
     queue.rear();
 };
 
@@ -43,8 +47,10 @@ concept HasTryPop = requires(Queue &queue) {
     queue.tryPop();
 };
 
-static_assert(HasQueueObservers<CoreAsync::TA_CircularQueue<int, 4>>);
-static_assert(!HasQueueObservers<CoreAsync::TA_CircularQueue<int *, 4>>);
+static_assert(HasFront<CoreAsync::TA_CircularQueue<int, 4>>);
+static_assert(HasRear<CoreAsync::TA_CircularQueue<int, 4>>);
+static_assert(!HasFront<CoreAsync::TA_CircularQueue<int *, 4>>);
+static_assert(!HasRear<CoreAsync::TA_CircularQueue<int *, 4>>);
 static_assert(!HasTop<CoreAsync::TA_CircularQueue<int, 4>>);
 static_assert(!HasTryPop<CoreAsync::TA_CircularQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
 static_assert(HasTryPop<CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
