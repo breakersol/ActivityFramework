@@ -43,8 +43,8 @@ concept HasTop = requires(const Queue &queue) {
 };
 
 template <typename Queue>
-concept HasTryPop = requires(Queue &queue) {
-    queue.tryPop();
+concept HasTryPopStealable = requires(Queue &queue) {
+    queue.tryPopStealable();
 };
 
 static_assert(HasFront<CoreAsync::TA_CircularQueue<int, 4>>);
@@ -52,8 +52,10 @@ static_assert(HasRear<CoreAsync::TA_CircularQueue<int, 4>>);
 static_assert(!HasFront<CoreAsync::TA_CircularQueue<int *, 4>>);
 static_assert(!HasRear<CoreAsync::TA_CircularQueue<int *, 4>>);
 static_assert(!HasTop<CoreAsync::TA_CircularQueue<int, 4>>);
-static_assert(!HasTryPop<CoreAsync::TA_CircularQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
-static_assert(HasTryPop<CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
+static_assert(
+    !HasTryPopStealable<CoreAsync::TA_CircularQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
+static_assert(
+    HasTryPopStealable<CoreAsync::TA_ActivityQueue<std::shared_ptr<CoreAsync::TA_ActivityProxy>, 4>>);
 } // namespace
 
 TA_ActivityQueueTest::TA_ActivityQueueTest() {}
@@ -277,7 +279,7 @@ TEST_F(TA_ActivityQueueTest, nonStealableActivityRemainsAvailableToOwner) {
     auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity);
     ASSERT_FALSE(proxy->stolenEnabled());
     ASSERT_TRUE(queue.push(proxy));
-    const auto stolenActivity = queue.tryPop();
+    const auto stolenActivity = queue.tryPopStealable();
     EXPECT_FALSE(stolenActivity.has_value());
     const auto ownerActivity = stolenActivity.has_value() ? stolenActivity : queue.pop();
     ASSERT_TRUE(ownerActivity.has_value());
@@ -400,7 +402,7 @@ TEST_F(TA_ActivityQueueTest, concurrentOwnerAndThiefClaimActivityOnce) {
             while (iterationStarted.load(std::memory_order_acquire) < iteration) {
                 std::this_thread::yield();
             }
-            thiefResult = queue.tryPop();
+            thiefResult = queue.tryPopStealable();
             thiefFinished.store(iteration, std::memory_order_release);
         }
     });
