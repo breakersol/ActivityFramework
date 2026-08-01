@@ -74,13 +74,13 @@ TEST_F(TA_ThreadPoolTest, threadSizeTest) {
 }
 
 TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
-    CoreAsync::TA_ThreadPool pool{2};
     std::binary_semaphore ownerStarted{0};
     std::binary_semaphore releaseOwner{0};
     std::binary_semaphore stealableActivityRan{0};
     std::atomic_bool stealableRanOnAffinityThread{true};
     std::atomic_bool protectedActivityRan{false};
     std::atomic_bool ranOnWrongThread{false};
+    CoreAsync::TA_ThreadPool pool{2};
 
     auto blocker = CoreAsync::TA_ActivityCreator::create([&]() {
         ownerStarted.release();
@@ -91,7 +91,6 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
     auto blockerResult = pool.postActivity(blocker, true);
     if (!ownerStarted.try_acquire_for(std::chrono::seconds{1})) {
         releaseOwner.release();
-        blockerResult();
         FAIL() << "Affinity worker did not start the blocking activity";
     }
 
@@ -120,11 +119,7 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
 
     if (!stealableActivityRan.try_acquire_for(std::chrono::seconds{1})) {
         releaseOwner.release();
-        blockerResult();
-        stealableResult();
-        protectedResult();
         FAIL() << "Idle worker did not steal the eligible activity";
-        return;
     }
 
     stealableResult();
