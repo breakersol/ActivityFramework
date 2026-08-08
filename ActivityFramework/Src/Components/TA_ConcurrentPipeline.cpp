@@ -20,8 +20,11 @@
 namespace CoreAsync {
 TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_ConcurrentPipeline *pPipeline) {
     std::vector<TA_ActivityResultFetcher> resultFetchers(pPipeline->m_pActivityList.size());
-    for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i) {
-        auto pActivity = ContainerUtils::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i).value();
+    const auto startIndex = pPipeline->startIndex();
+    auto activityIter = pPipeline->m_pActivityList.cbegin();
+    std::ranges::advance(activityIter, startIndex, pPipeline->m_pActivityList.cend());
+    for (auto i = startIndex; activityIter != pPipeline->m_pActivityList.cend(); ++i, ++activityIter) {
+        const auto &pActivity = *activityIter;
         std::shared_ptr<TA_ActivityExecutingAwaitable> executingAwaitable =
             std::make_shared<TA_ActivityExecutingAwaitable>(pActivity, TA_ActivityExecutingAwaitable::ExecuteType::Async);
         resultFetchers[i] = co_await *executingAwaitable;

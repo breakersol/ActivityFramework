@@ -20,8 +20,11 @@ namespace CoreAsync {
 TA_AutoChainPipeline::TA_AutoChainPipeline() : TA_BasicPipeline() {}
 
 TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Eager> runningGenerator(TA_AutoChainPipeline *pPipeline) {
-    for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i) {
-        auto pActivity = ContainerUtils::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i).value();
+    const auto startIndex = pPipeline->startIndex();
+    auto activityIter = pPipeline->m_pActivityList.cbegin();
+    std::ranges::advance(activityIter, startIndex, pPipeline->m_pActivityList.cend());
+    for (auto i = startIndex; activityIter != pPipeline->m_pActivityList.cend(); ++i, ++activityIter) {
+        const auto &pActivity = *activityIter;
         (*pActivity)();
         auto var{pActivity->result()};
         ContainerUtils::replace(pPipeline->m_resultList, i, var);
