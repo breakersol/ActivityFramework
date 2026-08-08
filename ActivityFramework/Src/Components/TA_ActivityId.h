@@ -23,7 +23,7 @@
 namespace CoreAsync {
 class TA_ActivityId {
   public:
-    TA_ActivityId() : m_id(m_count.load(std::memory_order_acquire)) { m_count.fetch_add(1); }
+    TA_ActivityId() : m_id(m_count.fetch_add(1, std::memory_order_relaxed)) {}
 
     std::int64_t id() const { return m_id; }
 
