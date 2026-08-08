@@ -37,16 +37,55 @@ TEST_F(TA_CommonToolsTest, midTest) {
     EXPECT_EQ(res.back(), 6);
 }
 
+TEST_F(TA_CommonToolsTest, atTest) {
+    const std::list<int> l{1, 2, 3};
+    const auto value = CoreAsync::ContainerUtils::at<int>(l, 1);
+
+    ASSERT_TRUE(value.has_value());
+    EXPECT_EQ(*value, 2);
+    EXPECT_FALSE(CoreAsync::ContainerUtils::at<int>(l, l.size()).has_value());
+}
+
+TEST_F(TA_CommonToolsTest, refTest) {
+    std::list<int> l{1, 2, 3};
+    auto value = CoreAsync::ContainerUtils::ref<int>(l, 1);
+
+    ASSERT_TRUE(value.has_value());
+    value->get() = 20;
+    EXPECT_EQ(*std::next(l.begin()), 20);
+    EXPECT_FALSE(CoreAsync::ContainerUtils::ref<int>(l, l.size()).has_value());
+}
+
+TEST_F(TA_CommonToolsTest, insertTest) {
+    std::list<int> l{1, 2};
+
+    CoreAsync::ContainerUtils::insert(l, l.size(), 3);
+    EXPECT_EQ(l.back(), 3);
+    EXPECT_THROW(CoreAsync::ContainerUtils::insert(l, l.size() + 1, 4), std::out_of_range);
+}
+
 TEST_F(TA_CommonToolsTest, takeAtTest) {
     std::list<int> l{1, 2, 3, 4, 5, 6, 7, 8};
     auto res = CoreAsync::ContainerUtils::takeAt<int>(l, 2);
-    EXPECT_EQ(res, 3);
+
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(*res, 3);
+    EXPECT_FALSE(CoreAsync::ContainerUtils::takeAt<int>(l, l.size()).has_value());
 }
 
 TEST_F(TA_CommonToolsTest, mapUtilsValueTest) {
     std::multimap<int, std::string> map{{1, "1"}, {2, "2"}, {3, "3"}, {1, "111"}};
     auto res = CoreAsync::MapUtils::values(map, 1);
     EXPECT_EQ(res.front() == "1" && res.back() == "111", true);
+}
+
+TEST_F(TA_CommonToolsTest, mapUtilsSingleValueTest) {
+    const std::map<int, std::string> map{{1, "1"}, {2, "2"}, {3, "3"}};
+    const auto value = CoreAsync::MapUtils::value(map, 2);
+
+    ASSERT_TRUE(value.has_value());
+    EXPECT_EQ(*value, "2");
+    EXPECT_FALSE(CoreAsync::MapUtils::value(map, 4).has_value());
 }
 
 TEST_F(TA_CommonToolsTest, mapUtilsRemoveTest) {
@@ -58,7 +97,10 @@ TEST_F(TA_CommonToolsTest, mapUtilsRemoveTest) {
 TEST_F(TA_CommonToolsTest, mapUtilsKeyTest) {
     std::multimap<int, std::string> map{{1, "1"}, {2, "2"}, {3, "3"}, {1, "111"}};
     auto res = CoreAsync::MapUtils::key(map, {"111"});
-    EXPECT_EQ(res == 1, true);
+
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(*res, 1);
+    EXPECT_FALSE(CoreAsync::MapUtils::key(map, {"missing"}).has_value());
 }
 
 TEST_F(TA_CommonToolsTest, mapUtilsContainsTest) {
