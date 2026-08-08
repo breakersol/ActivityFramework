@@ -35,6 +35,9 @@
 #include <format>
 #include <concepts>
 #include <cassert>
+#include <functional>
+#include <optional>
+#include <stdexcept>
 
 #include "TA_ActivityFramework_global.h"
 
@@ -56,23 +59,33 @@ class TA_CommonTools {
 class ContainerUtils {
   public:
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-    static auto at(const Container &container, std::size_t index) -> std::decay_t<T> {
+    static auto at(const Container &container, std::size_t index) -> std::optional<std::decay_t<T>> {
         typename Container::const_iterator pIter = container.begin();
-        std::advance(pIter, index);
+        std::ranges::advance(pIter, index, container.end());
+        if (pIter == container.end()) {
+            return std::nullopt;
+        }
         return *pIter;
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-    static auto ref(Container &container, std::size_t index) -> std::decay_t<T> & {
+    static auto ref(Container &container, std::size_t index)
+        -> std::optional<std::reference_wrapper<std::decay_t<T>>> {
         typename Container::iterator pIter = container.begin();
-        std::advance(pIter, index);
-        return *pIter;
+        std::ranges::advance(pIter, index, container.end());
+        if (pIter == container.end()) {
+            return std::nullopt;
+        }
+        return std::ref(*pIter);
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
     static auto insert(Container &container, std::size_t index, const T &val) {
+        if (index > container.size()) {
+            throw std::out_of_range("Index out of range for insert operation.");
+        }
         typename Container::const_iterator pIter = container.begin();
-        std::advance(pIter, index);
+        std::ranges::advance(pIter, index, container.end());
         return container.insert(pIter, val);
     }
 
@@ -82,7 +95,7 @@ class ContainerUtils {
             return false;
         }
         typename Container::iterator pIter = container.begin();
-        std::advance(pIter, index);
+        std::ranges::advance(pIter, index, container.end());
         *pIter = elem;
         return true;
     }
@@ -93,7 +106,7 @@ class ContainerUtils {
             return false;
         }
         typename Container::iterator pIter{container.begin()};
-        std::advance(pIter, index);
+        std::ranges::advance(pIter, index, container.end());
         if constexpr (std::is_pointer_v<decltype(*pIter)>) {
             if (*pIter) {
                 delete *pIter;
@@ -105,12 +118,15 @@ class ContainerUtils {
     }
 
     template <typename T, typename Container = std::list<std::decay_t<T>>>
-    static T takeAt(Container &container, std::size_t index) {
+    static std::optional<T> takeAt(Container &container, std::size_t index) {
         if (index >= container.size()) {
-            return T{};
+            return std::nullopt;
         }
         typename Container::iterator pIter{container.begin()};
-        std::advance(pIter, index);
+        std::ranges::advance(pIter, index, container.end());
+        if (pIter == container.end()) {
+            return std::nullopt;
+        }
         T res{*pIter};
         if constexpr (std::is_pointer_v<decltype(*pIter)>) {
             if (*pIter) {
@@ -191,9 +207,9 @@ class MapUtils {
     static auto value(const auto &map, const auto &key) {
         using valueType = typename std::decay_t<decltype(map)>::mapped_type;
         if(auto iter = map.find(key); iter != map.end()) {
-            return iter->second;
+            return std::optional<valueType>{iter->second};
         }
-        return valueType{};
+        return std::optional<valueType>{};
     }
 
     static auto remove(auto &map, const auto &key) {
@@ -214,9 +230,9 @@ class MapUtils {
         using keyType = typename std::decay_t<Map>::key_type;
         auto iter = std::ranges::find_if(map, [&val](const auto &pair) { return pair.second == val; });
         if (iter != map.end()) {
-            return iter->first;
+            return std::optional<keyType>{iter->first};
         }
-        return keyType{};
+        return std::optional<keyType>{};
     }
 
     static auto contains(const auto &map, const auto &key) {

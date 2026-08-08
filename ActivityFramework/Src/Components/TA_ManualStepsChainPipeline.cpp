@@ -22,7 +22,8 @@ TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy> runningGenerator(TA_Ma
     auto step{pPipeline->steps()};
     if (step <= pPipeline->m_pActivityList.size()) {
         for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size(); ++i) {
-            decltype(auto) pActivity{ContainerUtils::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i)};
+            auto pActivity =
+                ContainerUtils::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i).value();
             (*pActivity)();
             auto var{pActivity->result()};
             ContainerUtils::replace(pPipeline->m_resultList, i, var);
