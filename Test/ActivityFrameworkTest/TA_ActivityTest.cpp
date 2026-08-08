@@ -16,6 +16,12 @@
 
 #include "TA_ActivityTest.h"
 #include "Components/TA_Activity.h"
+#include "Components/TA_ActivityId.h"
+
+#include <algorithm>
+#include <atomic>
+#include <thread>
+#include <vector>
 
 TA_ActivityTest::TA_ActivityTest() {}
 
@@ -27,6 +33,42 @@ void TA_ActivityTest::TearDown() {
     if (m_pTest)
         delete m_pTest;
     m_pTest = nullptr;
+}
+
+TEST(TA_ActivityIdTest, concurrentConstructionProducesUniqueIds) {
+    constexpr int threadCount = 8;
+    constexpr int idsPerThread = 10000;
+    constexpr int idCount = threadCount * idsPerThread;
+    std::vector<std::int64_t> ids(static_cast<std::size_t>(idCount));
+    std::vector<std::thread> workers;
+    workers.reserve(threadCount);
+    std::atomic_int ready{0};
+    std::atomic_bool start{false};
+
+    for (int threadIndex = 0; threadIndex < threadCount; ++threadIndex) {
+        workers.emplace_back([&, threadIndex]() {
+            ready.fetch_add(1, std::memory_order_release);
+            while (!start.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+            for (int offset = 0; offset < idsPerThread; ++offset) {
+                const CoreAsync::TA_ActivityId activityId;
+                const auto index = static_cast<std::size_t>(threadIndex * idsPerThread + offset);
+                ids[index] = activityId.id();
+            }
+        });
+    }
+
+    while (ready.load(std::memory_order_acquire) != threadCount) {
+        std::this_thread::yield();
+    }
+    start.store(true, std::memory_order_release);
+    for (auto &worker : workers) {
+        worker.join();
+    }
+
+    std::sort(ids.begin(), ids.end());
+    EXPECT_EQ(std::adjacent_find(ids.cbegin(), ids.cend()), ids.cend());
 }
 
 TEST_F(TA_ActivityTest, createMemberFunctionActivityWithPointer) {
