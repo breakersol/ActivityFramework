@@ -21,8 +21,11 @@ namespace CoreAsync {
 TA_CoroutineGenerator<TA_DefaultVariant, CoreAsync::Lazy>
 runningGenerator(TA_ManualKeyActivityChainPipeline *pPipeline) {
     bool isAtKey{false};
-    for (auto i = pPipeline->startIndex(); i < pPipeline->m_pActivityList.size();) {
-        auto pActivity = ContainerUtils::at<std::shared_ptr<TA_ActivityProxy>>(pPipeline->m_pActivityList, i).value();
+    auto i = pPipeline->startIndex();
+    auto activityIter = pPipeline->m_pActivityList.cbegin();
+    std::ranges::advance(activityIter, i, pPipeline->m_pActivityList.cend());
+    while (activityIter != pPipeline->m_pActivityList.cend()) {
+        const auto &pActivity = *activityIter;
         if (!pActivity->isExecuted()) {
             (*pActivity)();
             auto var{pActivity->result()};
@@ -34,7 +37,8 @@ runningGenerator(TA_ManualKeyActivityChainPipeline *pPipeline) {
         }
         isAtKey = (i == pPipeline->keyIndex());
         if (!isAtKey) {
-            i++;
+            ++i;
+            ++activityIter;
         }
     }
     co_return;
