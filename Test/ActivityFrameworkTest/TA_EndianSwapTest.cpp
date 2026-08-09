@@ -17,6 +17,10 @@
 #include "TA_EndianSwapTest.h"
 #include "Components/TA_EndianConversion.h"
 
+#include <algorithm>
+#include <array>
+#include <cstring>
+
 TA_EndianSwapTest::TA_EndianSwapTest() {}
 
 TA_EndianSwapTest::~TA_EndianSwapTest() {}
@@ -71,4 +75,17 @@ TEST_F(TA_EndianSwapTest, SwapEndianDouble) {
     ASSERT_DOUBLE_EQ(CoreAsync::TA_EndianConversion::swapEndian(input), expected);
     CoreAsync::TA_EndianConversion::swapEndian(&input);
     ASSERT_EQ(input, expected);
+}
+
+TEST_F(TA_EndianSwapTest, SwapEndianLongDouble) {
+    long double input = 1.23L;
+    std::array<unsigned char, sizeof(input)> expected{};
+    std::memcpy(expected.data(), &input, sizeof(input));
+    std::ranges::reverse(expected);
+
+    CoreAsync::TA_EndianConversion::swapEndian(&input);
+
+    std::array<unsigned char, sizeof(input)> actual{};
+    std::memcpy(actual.data(), &input, sizeof(input));
+    ASSERT_EQ(actual, expected);
 }
