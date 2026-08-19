@@ -146,6 +146,7 @@ template <typename... FIELDS> class TA_MetaFieldList {
     template <std::size_t INDEX> constexpr auto getField() const { return std::get<INDEX>(m_fields); }
 
     template <typename NAME> constexpr auto findType(NAME = {}) const {
+        static_assert(sizeof...(FIELDS) != 0, "The field list is empty. Cannot find the type by name.");
         constexpr std::size_t index = []() {
             constexpr decltype(NAME::data()) names[]{FIELDS::name...};
             for (std::size_t i = 0; i < sizeof...(FIELDS); ++i) {
