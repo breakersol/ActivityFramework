@@ -145,18 +145,17 @@ template <typename... FIELDS> class TA_MetaFieldList {
 
     template <std::size_t INDEX> constexpr auto getField() const { return std::get<INDEX>(m_fields); }
 
-    template <typename NAME> constexpr auto findType(NAME = {}) const {
-        static_assert(sizeof...(FIELDS) != 0, "The field list is empty. Cannot find the type by name.");
-        constexpr std::size_t index = []() {
-            constexpr decltype(NAME::data()) names[]{FIELDS::name...};
-            for (std::size_t i = 0; i < sizeof...(FIELDS); ++i) {
-                if (NAME::data() == names[i]) {
-                    return i;
-                }
-            }
-            return std::size_t(-1);
-        }();
-        return std::get<index>(m_fields).value();
+    template <typename NAME> constexpr auto findValue(NAME = {}) const {
+        constexpr std::size_t index = findFieldIndex<NAME>();
+        if constexpr (index < sizeof...(FIELDS)) {
+            return std::get<index>(m_fields).value();
+        } else if constexpr (sizeof...(FIELDS) == 0) {
+            static_assert(sizeof...(FIELDS) != 0, "The field list is empty. Cannot find the type by name.");
+            return nullptr;
+        } else {
+            static_assert(index < sizeof...(FIELDS), "Field not found.");
+            return nullptr;
+        }
     }
 
     template <typename VALUE> constexpr auto findName(VALUE &&v) const {
@@ -168,15 +167,7 @@ template <typename... FIELDS> class TA_MetaFieldList {
     }
 
     template <typename NAME> constexpr bool containsName(NAME = {}) const {
-        return []() {
-            constexpr decltype(NAME::data()) names[]{FIELDS::name...};
-            for (std::size_t i = 0; i < sizeof...(FIELDS); ++i) {
-                if (NAME::data() == names[i]) {
-                    return true;
-                }
-            }
-            return false;
-        }();
+        return findFieldIndex<NAME>() < sizeof...(FIELDS);
     }
 
     template <FieldType P> struct PropertyFilter {
@@ -192,6 +183,19 @@ template <typename... FIELDS> class TA_MetaFieldList {
     };
 
   private:
+    template <typename NAME, std::size_t INDEX = 0> static consteval std::size_t findFieldIndex() {
+        if constexpr (INDEX == sizeof...(FIELDS)) {
+            return INDEX;
+        } else {
+            using Field = std::tuple_element_t<INDEX, std::tuple<FIELDS...>>;
+            if constexpr (NAME::data() == Field::name) {
+                return INDEX;
+            } else {
+                return findFieldIndex<NAME, INDEX + 1>();
+            }
+        }
+    }
+
     template <typename VALUE> constexpr bool containsMatchedType(VALUE &&, std::index_sequence<>) const {
         return false;
     }
@@ -327,20 +331,20 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
     {
         if constexpr (!TA_MetaTypeInfo<T>::isClass) {
             if constexpr (TA_TypeInfo<T>::fields.containsName(NAME{})) {
-                return TA_TypeInfo<T>::fields.findType(NAME{});
+                return TA_TypeInfo<T>::fields.findValue(NAME{});
             } else {
                 return nullptr;
             }
         }
         if constexpr (!TA_MetaTypeInfo<T>::isPolymorphic && sizeof...(BASES) == 0) {
             if constexpr (TA_TypeInfo<T>::fields.containsName(NAME{})) {
-                return TA_TypeInfo<T>::fields.findType(NAME{});
+                return TA_TypeInfo<T>::fields.findValue(NAME{});
             } else {
                 return nullptr;
             }
         } else {
             if constexpr (TA_TypeInfo<T>::fields.containsName(NAME{})) {
-                return TA_TypeInfo<T>::fields.findType(NAME{});
+                return TA_TypeInfo<T>::fields.findValue(NAME{});
             } else {
                 return findTypeFromBase(std::make_index_sequence<sizeof...(BASES)>{}, NAME{});
             }
