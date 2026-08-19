@@ -606,6 +606,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             auto *pRealSender = resolveSender();
             auto *pRealReceiver = resolveReceiver();
             if(!pRealSender || !pRealReceiver) {
+                throw std::runtime_error("Sender or receiver is null, cannot remove connection references.");
                 return;
             }
             m_removeConnectionReferenceImpl<TA_MetaObject, TA_MetaObject>(
