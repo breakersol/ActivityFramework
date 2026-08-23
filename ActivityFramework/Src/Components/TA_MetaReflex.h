@@ -244,10 +244,9 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
     template <typename NAME, typename... PARAS> static constexpr auto invoke(NAME = {}, PARAS &&...paras) {
         constexpr auto target = findType(NAME{});
         using CF = decltype(target);
-        if constexpr (std::is_same_v<std::nullptr_t, CF>) {
+        if constexpr (std::is_null_pointer_v<CF>) {
             return nullptr;
-        }
-        if constexpr (std::is_enum_v<decltype(target)>) {
+        } else if constexpr (std::is_enum_v<decltype(target)>) {
             return target;
         } else if constexpr (!std::is_function_v<std::remove_pointer_t<CF>> && !std::is_member_object_pointer_v<CF> &&
                              !std::is_member_function_pointer_v<CF>) {

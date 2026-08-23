@@ -63,6 +63,11 @@ TEST_F(TA_MetaReflexTest, findMemberFunction) {
     EXPECT_EQ(res == 4.5, true);
 }
 
+TEST_F(TA_MetaReflexTest, invokeUnknownField) {
+    auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("unknown"));
+    EXPECT_EQ(res, nullptr);
+}
+
 TEST_F(TA_MetaReflexTest, findNonMemberFunction) {
     auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("getStr"), "123");
     EXPECT_EQ(res == "123123", true);
