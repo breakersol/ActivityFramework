@@ -68,6 +68,21 @@ TEST_F(TA_MetaReflexTest, invokeUnknownField) {
     EXPECT_EQ(res, nullptr);
 }
 
+TEST_F(TA_MetaReflexTest, findRuntimeTypeValue) {
+    constexpr auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findTypeValue("Sum<float>");
+    static_assert(res.has_value());
+    ASSERT_TRUE(res.has_value());
+
+    using Method = float (MetaTest::*)(float) const;
+    EXPECT_EQ(std::get<Method>(*res), static_cast<Method>(&MetaTest::Sum));
+}
+
+TEST_F(TA_MetaReflexTest, findUnknownRuntimeTypeValue) {
+    constexpr auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findTypeValue("unknown");
+    static_assert(!res.has_value());
+    EXPECT_FALSE(res.has_value());
+}
+
 TEST_F(TA_MetaReflexTest, findNonMemberFunction) {
     auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("getStr"), "123");
     EXPECT_EQ(res == "123123", true);

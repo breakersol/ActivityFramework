@@ -35,7 +35,9 @@ template <typename Receiver> class TA_ReceiverObject : public TA_BaseReceiverObj
     virtual TA_ActivityProxy *active(TA_MetaObject *&pReceiver, std::string_view &&rFunc, void **args) override {
         if (!pReceiver)
             return nullptr;
-        auto receiverFunction{Reflex::TA_TypeInfo<RecType>::findTypeValue(rFunc)};
+        auto receiverFunction = Reflex::TA_TypeInfo<RecType>::findTypeValue(rFunc);
+        if (!receiverFunction)
+            return nullptr;
         auto vistor = [&, this](auto &&value) -> auto {
             using FuncType = std::decay_t<decltype(value)>;
             if constexpr (std::is_member_function_pointer_v<FuncType>) {
@@ -48,13 +50,15 @@ template <typename Receiver> class TA_ReceiverObject : public TA_BaseReceiverObj
             }
         };
 
-        return std::visit(vistor, receiverFunction);
+        return std::visit(vistor, *receiverFunction);
     }
 
     virtual void call(TA_MetaObject *&pReceiver, std::string_view &&rFunc, void **args) override {
         if (!pReceiver)
             return;
-        auto receiverFunction{Reflex::TA_TypeInfo<RecType>::findTypeValue(rFunc)};
+        auto receiverFunction = Reflex::TA_TypeInfo<RecType>::findTypeValue(rFunc);
+        if (!receiverFunction)
+            return;
         auto vistor = [&, this](auto &&value) {
             using FuncType = std::decay_t<decltype(value)>;
             if constexpr (std::is_member_function_pointer_v<FuncType>) {
@@ -75,7 +79,7 @@ template <typename Receiver> class TA_ReceiverObject : public TA_BaseReceiverObj
                 }
             }
         };
-        std::visit(vistor, receiverFunction);
+        std::visit(vistor, *receiverFunction);
     }
 
   private:

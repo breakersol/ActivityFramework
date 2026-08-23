@@ -17,6 +17,7 @@
 #ifndef TA_METAREFLEX_H
 #define TA_METAREFLEX_H
 
+#include <optional>
 #include <string_view>
 
 #include "Components/TA_MetaStringView.h"
@@ -306,10 +307,8 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
         return findName(std::forward<VALUE>(v), std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
-    static constexpr auto findTypeValue(std::string_view &str) // run time finding
-    {
-        return findValue(std::forward<std::string_view>(str),
-                         std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
+    static constexpr auto findTypeValue(std::string_view str) { // run time finding
+        return findValue(str, std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
     template <typename NAME> static constexpr bool containsName(NAME = {}) {
@@ -439,17 +438,18 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
         return findName(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
     }
 
-    static constexpr decltype(auto) findValue(std::string_view &&str, std::index_sequence<> = {}) {
-        return typename MetaVariant<typename TA_Values::VariantTypes>::Var{};
+    static constexpr auto findValue(std::string_view, std::index_sequence<> = {}) {
+        using RuntimeValue = typename MetaVariant<typename TA_Values::VariantTypes>::Var;
+        return std::optional<RuntimeValue>{};
     }
 
     template <std::size_t IDX0, std::size_t... IDXS>
-    static constexpr decltype(auto) findValue(std::string_view &&str, std::index_sequence<IDX0, IDXS...> = {}) {
+    static constexpr auto findValue(std::string_view str, std::index_sequence<IDX0, IDXS...> = {}) {
+        using RuntimeValue = typename MetaVariant<typename TA_Values::VariantTypes>::Var;
         if (str == std::get<IDX0>(aggregate()).name) {
-            typename MetaVariant<typename TA_Values::VariantTypes>::Var var{std::get<IDX0>(aggregate()).value()};
-            return var;
+            return std::optional<RuntimeValue>{RuntimeValue{std::get<IDX0>(aggregate()).value()}};
         }
-        return findValue(std::forward<std::string_view>(str), std::index_sequence<IDXS...>{});
+        return findValue(str, std::index_sequence<IDXS...>{});
     }
 };
 
