@@ -77,6 +77,8 @@ class MetaTest : public BaseTest, public OtherTest {
 
     void productMM(int a, int b) { std::printf("The numbers are: %d, %d\n.", a, b); }
 
+    void unregisteredTest(int, int) {}
+
     int xx{3};
 
     static std::string str;

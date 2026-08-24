@@ -58,6 +58,12 @@ TEST_F(TA_MetaReflexTest, findEnumName) {
     EXPECT_EQ("META_RED" == name, true);
 }
 
+TEST_F(TA_MetaReflexTest, findUnknownName) {
+    constexpr auto name = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findName(&MetaTest::unregisteredTest);
+    static_assert(name.empty());
+    EXPECT_TRUE(name.empty());
+}
+
 TEST_F(TA_MetaReflexTest, findMemberFunction) {
     auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("Sum<float>"), m_pTest, 1.5);
     EXPECT_EQ(res == 4.5, true);
