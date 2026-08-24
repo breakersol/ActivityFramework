@@ -303,7 +303,7 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
                              std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
-    template <typename VALUE> static constexpr auto findName(VALUE &&v) {
+    template <typename VALUE> static constexpr std::string_view findName(VALUE &&v) {
         return findName(std::forward<VALUE>(v), std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
@@ -425,15 +425,15 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
         return containsField(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
     }
 
-    template <typename VALUE> static constexpr auto findName(VALUE &&, std::index_sequence<>) {
-        return std::string_view{}.data();
+    template <typename VALUE> static constexpr std::string_view findName(VALUE &&, std::index_sequence<>) {
+        return {};
     }
 
     template <typename VALUE, std::size_t IDX0, std::size_t... IDXS>
-    static constexpr auto findName(VALUE &&v, std::index_sequence<IDX0, IDXS...> = {}) {
+    static constexpr std::string_view findName(VALUE &&v, std::index_sequence<IDX0, IDXS...> = {}) {
         if constexpr (std::is_same_v<decltype(std::get<IDX0>(aggregate()).value()), std::decay_t<VALUE>>) {
             if (v == std::get<IDX0>(aggregate()).value())
-                return std::get<IDX0>(aggregate()).name.data();
+                return std::get<IDX0>(aggregate()).name;
         }
         return findName(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
     }

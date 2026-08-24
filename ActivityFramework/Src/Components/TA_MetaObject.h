@@ -405,6 +405,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
+        if (signalMark.empty() || slotMark.empty()) {
+            return false;
+        }
         return m_unregisterConnectionImpl<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
             sharedSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
             sharedReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
@@ -439,6 +442,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         static_assert((std::is_copy_constructible_v<std::remove_cvref_t<ConnectionParameter>> && ...),
                       "Signal arguments must be copy-constructible.");
         if (!pSender) {
+            return false;
+        }
+        if (Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(signal).empty()) {
             return false;
         }
         if(isOnCurrentThread(pSender)) {
@@ -488,6 +494,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{
             Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
+        if (signalMark.empty() || slotMark.empty()) {
+            return false;
+        }
         auto sharedSender = sharedRef(pSender);
         auto sharedReceiver = sharedRef(pReceiver);
         if(isOnCurrentThread(pSender)) {
@@ -730,8 +739,11 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             return;
         }
         using RawType = typename ExtractRawType<Sender>::type;
-        auto [startIter, endIter] = pSender->m_outputConnections.equal_range(
-            Reflex::TA_TypeInfo<RawType>::findName(std::forward<Signal>(signal)));
+        auto signalMark = Reflex::TA_TypeInfo<RawType>::findName(std::forward<Signal>(signal));
+        if (signalMark.empty()) {
+            return;
+        }
+        auto [startIter, endIter] = pSender->m_outputConnections.equal_range(signalMark);
         while (startIter != endIter) {
             auto obj = startIter++->second;
             if(startIter != endIter) {
@@ -837,6 +849,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         TA_ConnectionObject::FuncMark signalMark{
             Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
         TA_ConnectionObject::FuncMark slotMark{typeid(Exp).name()};
+        if (signalMark.empty()) {
+            return {nullptr};
+        }
         auto [first, last] = pSender->m_outputConnections.equal_range(signalMark);
         auto subRange = std::ranges::subrange(first, last);
         while (subRange.begin() != subRange.end()) {
@@ -863,10 +878,16 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         using RawReceiverType = typename ExtractRawType<Receiver>::type;
         TA_ConnectionObject::FuncMark slotMark {
             Reflex::TA_TypeInfo<std::decay_t<RawReceiverType>>::findName(std::forward<Slot>(slot))};
+        if (slotMark.empty()) {
+            return false;
+        }
         if(pSender->affinityThread() == pReceiver->affinityThread()) {
             auto syncRegisterExp = [pSender, &signal, pReceiver, &slot, type, slotMark]() -> bool {
                 TA_ConnectionObject::FuncMark signalMark{
                     Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
+                if (signalMark.empty()) {
+                    return false;
+                }
                 auto [first, last] = pSender->m_outputConnections.equal_range(signalMark);
                 auto subRange = std::ranges::subrange(first, last);
                 while (subRange.begin() != subRange.end()) {
@@ -896,6 +917,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             auto senderRegisterExp = [pSender, &signal, pReceiver, &slot, type, &slotMark]() -> SharedConnection {
                 TA_ConnectionObject::FuncMark signalMark{
                     Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
+                if (signalMark.empty()) {
+                    return nullptr;
+                }
                 auto [first, last] = pSender->m_outputConnections.equal_range(signalMark);
                 auto subRange = std::ranges::subrange(first, last);
                 while (subRange.begin() != subRange.end()) {

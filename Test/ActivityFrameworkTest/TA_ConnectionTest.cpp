@@ -69,3 +69,17 @@ TEST_F(TA_ConnectionTest, lambdaExpTest) {
     EXPECT_TRUE(CoreAsync::ITA_Connection::active(m_pTest.get(), &MetaTest::startTest, 8, 8));
     EXPECT_TRUE(CoreAsync::ITA_Connection::disconnect(conn));
 }
+
+TEST_F(TA_ConnectionTest, rejectUnregisteredSignalAndSlot) {
+    EXPECT_FALSE(CoreAsync::ITA_Connection::connect(
+        m_pTest.get(), &MetaTest::unregisteredTest, m_pTest.get(), &MetaTest::productMM));
+    EXPECT_FALSE(CoreAsync::ITA_Connection::connect(
+        m_pTest.get(), &MetaTest::startTest, m_pTest.get(), &MetaTest::unregisteredTest));
+
+    ConnectionHolder conn = CoreAsync::ITA_Connection::connect(
+        m_pTest.get(), &MetaTest::unregisteredTest, [](int, int) {});
+    EXPECT_FALSE(conn.valid());
+    EXPECT_FALSE(CoreAsync::ITA_Connection::active(m_pTest.get(), &MetaTest::unregisteredTest, 1, 2));
+    EXPECT_FALSE(CoreAsync::ITA_Connection::disconnect(
+        m_pTest.get(), &MetaTest::unregisteredTest, m_pTest.get(), &MetaTest::productMM));
+}
