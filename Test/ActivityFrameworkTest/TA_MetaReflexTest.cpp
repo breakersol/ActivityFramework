@@ -20,6 +20,20 @@
 
 #include <iostream>
 
+namespace {
+
+using MetaTestTypeInfo = CoreAsync::Reflex::TA_TypeInfo<MetaTest>;
+using M2TestTypeInfo = CoreAsync::Reflex::TA_TypeInfo<M2Test>;
+
+static_assert(MetaTestTypeInfo::findName<MetaTest::META_RED>() == "META_RED");
+static_assert(M2TestTypeInfo::findName<&M2Test::mx>() == "mx");
+static_assert(MetaTestTypeInfo::findName<static_cast<float (MetaTest::*)(float) const>(&MetaTest::Sum)>() ==
+              "Sum<float>");
+static_assert(MetaTestTypeInfo::findName<&BaseTest::sub>() == "sub");
+static_assert(MetaTestTypeInfo::findName<&MetaTest::unregisteredTest>().empty());
+
+} // namespace
+
 TA_MetaReflexTest::TA_MetaReflexTest() {}
 
 TA_MetaReflexTest::~TA_MetaReflexTest() {}
