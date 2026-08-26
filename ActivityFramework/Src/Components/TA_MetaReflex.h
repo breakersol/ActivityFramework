@@ -303,8 +303,14 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
                              std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
+    template <auto VALUE>
+    static consteval std::string_view findName() {
+        return findNamePrivate<VALUE>();
+    }
+
     template <typename VALUE> static constexpr std::string_view findName(VALUE &&v) {
-        return findName(std::forward<VALUE>(v), std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
+        return findNamePrivate(std::forward<VALUE>(v),
+                               std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
     static constexpr auto findTypeValue(std::string_view str) { // run time finding
@@ -425,17 +431,21 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
         return containsField(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
     }
 
-    template <typename VALUE> static constexpr std::string_view findName(VALUE &&, std::index_sequence<>) {
+    template <typename VALUE> static constexpr std::string_view findNamePrivate(VALUE &&, std::index_sequence<>) {
         return {};
     }
 
     template <typename VALUE, std::size_t IDX0, std::size_t... IDXS>
-    static constexpr std::string_view findName(VALUE &&v, std::index_sequence<IDX0, IDXS...> = {}) {
+    static constexpr std::string_view findNamePrivate(VALUE &&v, std::index_sequence<IDX0, IDXS...> = {}) {
         if constexpr (std::is_same_v<decltype(std::get<IDX0>(aggregate()).value()), std::decay_t<VALUE>>) {
             if (v == std::get<IDX0>(aggregate()).value())
                 return std::get<IDX0>(aggregate()).name;
         }
-        return findName(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
+        return findNamePrivate(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
+    }
+
+    template <auto VALUE> static consteval std::string_view findNamePrivate() {
+        return findNamePrivate(VALUE, std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
     static constexpr auto findValue(std::string_view, std::index_sequence<> = {}) {
