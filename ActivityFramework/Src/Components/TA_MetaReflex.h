@@ -314,7 +314,7 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
     }
 
     static constexpr auto findTypeValue(std::string_view str) { // run time finding
-        return findValue(str, std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
+        return findTypeValuePrivate(str, std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
     template <typename NAME> static constexpr bool containsName(NAME = {}) {
@@ -448,18 +448,18 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
         return findNamePrivate(VALUE, std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
     }
 
-    static constexpr auto findValue(std::string_view, std::index_sequence<> = {}) {
+    static constexpr auto findTypeValuePrivate(std::string_view, std::index_sequence<> = {}) {
         using RuntimeValue = typename MetaVariant<typename TA_Values::VariantTypes>::Var;
         return std::optional<RuntimeValue>{};
     }
 
     template <std::size_t IDX0, std::size_t... IDXS>
-    static constexpr auto findValue(std::string_view str, std::index_sequence<IDX0, IDXS...> = {}) {
+    static constexpr auto findTypeValuePrivate(std::string_view str, std::index_sequence<IDX0, IDXS...> = {}) {
         using RuntimeValue = typename MetaVariant<typename TA_Values::VariantTypes>::Var;
         if (str == std::get<IDX0>(aggregate()).name) {
             return std::optional<RuntimeValue>{RuntimeValue{std::get<IDX0>(aggregate()).value()}};
         }
-        return findValue(str, std::index_sequence<IDXS...>{});
+        return findTypeValuePrivate(str, std::index_sequence<IDXS...>{});
     }
 };
 
