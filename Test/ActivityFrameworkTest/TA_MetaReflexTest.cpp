@@ -31,6 +31,22 @@ static_assert(MetaTestTypeInfo::findName<static_cast<float (MetaTest::*)(float) 
               "Sum<float>");
 static_assert(MetaTestTypeInfo::findName<&BaseTest::sub>() == "sub");
 static_assert(MetaTestTypeInfo::findName<&MetaTest::unregisteredTest>().empty());
+static_assert(MetaTestTypeInfo::containsValue(MetaTest::META_GREEN));
+static_assert(MetaTestTypeInfo::valueIndex<MetaTest::META_RED>() == 0);
+static_assert(MetaTestTypeInfo::valueIndex<MetaTest::META_GREEN>() == 1);
+static_assert(MetaTestTypeInfo::valueIndex<&MetaTest::printTest>() == 11);
+static_assert(MetaTestTypeInfo::valueIndex<&BaseTest::sub>() == 12);
+static_assert(MetaTestTypeInfo::nameIndex<META_STRING("META_RED")>() == 0);
+static_assert(MetaTestTypeInfo::nameIndex<META_STRING("getStr")>() == 9);
+static_assert(MetaTestTypeInfo::nameIndex<META_STRING("sub")>() == 12);
+static_assert(MetaTestTypeInfo::nameIndex<META_STRING("deduct")>() == 15);
+static_assert(MetaTestTypeInfo::valueAt<0>() == MetaTest::META_RED);
+static_assert(MetaTestTypeInfo::valueAt<12>() == &BaseTest::sub);
+static_assert(MetaTestTypeInfo::nameAt<0>() == "META_RED");
+static_assert(MetaTestTypeInfo::nameAt<15>() == "deduct");
+constexpr auto inheritedNameValue = MetaTestTypeInfo::nameValueAt<15>();
+static_assert(inheritedNameValue.first == "deduct");
+static_assert(inheritedNameValue.second == &TestB::deduct);
 
 } // namespace
 
