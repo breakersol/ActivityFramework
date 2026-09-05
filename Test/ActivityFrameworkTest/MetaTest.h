@@ -26,17 +26,17 @@
 #include "Components/TA_MetaReflex.h"
 #include "Components/TA_MetaObject.h"
 
-class TestA : public virtual CoreAsync::TA_MetaObject {
+class TestA : public CoreAsync::TA_MetaObjectStorage<TestA> {
   public:
     void print() { std::printf("We are the champion\n"); }
 };
 
-class TestB : public virtual CoreAsync::TA_MetaObject {
+class TestB : public CoreAsync::TA_MetaObjectStorage<TestB> {
   public:
     void deduct() { std::printf("We are superman\n"); }
 };
 
-class BaseTest : public TestA {
+class BaseTest : public TestA, public CoreAsync::TA_MetaObjectStorage<BaseTest> {
   public:
     int sub(int a, int b) {
         int res = a - b;
@@ -45,12 +45,12 @@ class BaseTest : public TestA {
     }
 };
 
-class OtherTest : public TestB {
+class OtherTest : public TestB, public CoreAsync::TA_MetaObjectStorage<OtherTest> {
   public:
     void product(int a, int b) { auto x = a * b; }
 };
 
-class M2Test : public CoreAsync::TA_MetaObject {
+class M2Test : public CoreAsync::TA_MetaObjectStorage<M2Test> {
   public:
     ~M2Test() {
         delete px;
@@ -64,7 +64,7 @@ class M2Test : public CoreAsync::TA_MetaObject {
     int *px = new int(10);
 };
 
-class MetaTest : public BaseTest, public OtherTest {
+class MetaTest : public BaseTest, public OtherTest, public CoreAsync::TA_MetaObjectStorage<MetaTest> {
   public:
     enum MetaColor { META_RED, META_BLUE, META_GREEN };
 
@@ -76,6 +76,8 @@ class MetaTest : public BaseTest, public OtherTest {
     bool contains(std::string n) const { return false; }
 
     void productMM(int a, int b) { std::printf("The numbers are: %d, %d\n.", a, b); }
+
+    void unregisteredTest(int lhs, int rhs) { xx += lhs + rhs; }
 
     int xx{3};
 
@@ -89,7 +91,7 @@ class MetaTest : public BaseTest, public OtherTest {
     void printTest() {}
 };
 
-class M3Test : public M2Test {
+class M3Test : public M2Test, public CoreAsync::TA_MetaObjectStorage<M3Test> {
     ENABLE_REFLEX
   public:
     void setVec(const std::vector<int> &v) { vec = v; }
@@ -144,7 +146,7 @@ class M3Test : public M2Test {
     std::priority_queue<double> m_prioritQueue;
 };
 
-class CoroutineTestSender : public CoreAsync::TA_MetaObject {
+class CoroutineTestSender : public CoreAsync::TA_MetaObjectStorage<CoroutineTestSender> {
   public:
     CoroutineTestSender() = default;
     ~CoroutineTestSender() = default;

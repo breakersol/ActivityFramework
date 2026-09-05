@@ -17,7 +17,9 @@
 #ifndef TA_METAREFLEX_H
 #define TA_METAREFLEX_H
 
+#include <optional>
 #include <string_view>
+#include <utility>
 
 #include "Components/TA_MetaStringView.h"
 #include "TA_TypeFilter.h"
@@ -135,6 +137,8 @@ struct TA_MetaField : TA_MemberTypeTrait<T>, TA_MetaTypeName<T, NAME>, TA_MetaRo
 
 template <typename... FIELDS> class TA_MetaFieldList {
   public:
+    static constexpr std::size_t npos = sizeof...(FIELDS);
+
     using ValueTypes = TA_MetaTypelist<decltype(FIELDS{}.value())...>;
 
     constexpr TA_MetaFieldList(FIELDS... fs) : m_fields(fs...) {}
@@ -145,21 +149,33 @@ template <typename... FIELDS> class TA_MetaFieldList {
 
     template <std::size_t INDEX> constexpr auto getField() const { return std::get<INDEX>(m_fields); }
 
-    template <typename NAME> constexpr auto findType(NAME = {}) const {
-        constexpr std::size_t index = []() {
-            constexpr decltype(NAME::data()) names[]{FIELDS::name...};
-            for (std::size_t i = 0; i < sizeof...(FIELDS); ++i) {
-                if (NAME::data() == names[i]) {
-                    return i;
-                }
-            }
-            return std::size_t(-1);
-        }();
-        return std::get<index>(m_fields).value();
+    template <typename NAME> constexpr auto findValue(NAME = {}) const {
+        constexpr std::size_t index = findFieldIndex<NAME>();
+        if constexpr (index < sizeof...(FIELDS)) {
+            return std::get<index>(m_fields).value();
+        } else if constexpr (sizeof...(FIELDS) == 0) {
+            static_assert(sizeof...(FIELDS) != 0, "The field list is empty. Cannot find the type by name.");
+            return nullptr;
+        } else {
+            static_assert(index < sizeof...(FIELDS), "Field not found.");
+            return nullptr;
+        }
     }
 
     template <typename VALUE> constexpr auto findName(VALUE &&v) const {
         return findMatchedName(std::forward<VALUE>(v), std::make_index_sequence<sizeof...(FIELDS)>());
+    }
+
+    template <auto VALUE> consteval std::string_view findName() const {
+        return findMatchedName(VALUE, std::make_index_sequence<sizeof...(FIELDS)>{});
+    }
+
+    template <typename VALUE> constexpr std::size_t findValueIndex(VALUE &&v) const {
+        return findMatchedIndex(std::forward<VALUE>(v), std::make_index_sequence<sizeof...(FIELDS)>{});
+    }
+
+    template <auto VALUE> consteval std::size_t valueIndex() const {
+        return valueIndexPrivate<VALUE>(m_fields, std::make_index_sequence<sizeof...(FIELDS)>{});
     }
 
     template <typename VALUE> constexpr bool containsType(VALUE &&v) const {
@@ -167,15 +183,7 @@ template <typename... FIELDS> class TA_MetaFieldList {
     }
 
     template <typename NAME> constexpr bool containsName(NAME = {}) const {
-        return []() {
-            constexpr decltype(NAME::data()) names[]{FIELDS::name...};
-            for (std::size_t i = 0; i < sizeof...(FIELDS); ++i) {
-                if (NAME::data() == names[i]) {
-                    return true;
-                }
-            }
-            return false;
-        }();
+        return findFieldIndex<NAME>() < sizeof...(FIELDS);
     }
 
     template <FieldType P> struct PropertyFilter {
@@ -191,6 +199,19 @@ template <typename... FIELDS> class TA_MetaFieldList {
     };
 
   private:
+    template <typename NAME, std::size_t INDEX = 0> static consteval std::size_t findFieldIndex() {
+        if constexpr (INDEX == sizeof...(FIELDS)) {
+            return INDEX;
+        } else {
+            using Field = std::tuple_element_t<INDEX, std::tuple<FIELDS...>>;
+            if constexpr (NAME::data() == Field::name) {
+                return INDEX;
+            } else {
+                return findFieldIndex<NAME, INDEX + 1>();
+            }
+        }
+    }
+
     template <typename VALUE> constexpr bool containsMatchedType(VALUE &&, std::index_sequence<>) const {
         return false;
     }
@@ -210,13 +231,42 @@ template <typename... FIELDS> class TA_MetaFieldList {
 
     template <typename VALUE, std::size_t IDX0, std::size_t... IDXS>
     constexpr auto findMatchedName(VALUE &&v, std::index_sequence<IDX0, IDXS...>) const {
-        if constexpr (std::is_same_v<VALUE, decltype(std::get<IDX0>(m_fields).value())>) {
+        if constexpr (std::is_same_v<std::decay_t<VALUE>, decltype(std::get<IDX0>(m_fields).value())>) {
             return v == std::get<IDX0>(m_fields).value()
                        ? std::get<IDX0>(m_fields).name
                        : findMatchedName(std::forward<VALUE>(v), std::index_sequence<IDXS...>());
         } else {
             return findMatchedName(std::forward<VALUE>(v), std::index_sequence<IDXS...>());
         }
+    }
+
+    template <typename VALUE> constexpr std::size_t findMatchedIndex(VALUE &&, std::index_sequence<>) const {
+        return npos;
+    }
+
+    template <typename VALUE, std::size_t IDX0, std::size_t... IDXS>
+    constexpr std::size_t findMatchedIndex(VALUE &&v, std::index_sequence<IDX0, IDXS...>) const {
+        if constexpr (std::is_same_v<std::decay_t<VALUE>, decltype(std::get<IDX0>(m_fields).value())>) {
+            if (v == std::get<IDX0>(m_fields).value()) {
+                return IDX0;
+            }
+        }
+        return findMatchedIndex(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
+    }
+
+    template <auto VALUE, typename VALUES>
+    static consteval std::size_t valueIndexPrivate(const VALUES &, std::index_sequence<>) {
+        return npos;
+    }
+
+    template <auto VALUE, typename VALUES, std::size_t IDX0, std::size_t... IDXS>
+    static consteval std::size_t valueIndexPrivate(const VALUES &values, std::index_sequence<IDX0, IDXS...>) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(VALUE)>, decltype(std::get<IDX0>(values).value())>) {
+            if (VALUE == std::get<IDX0>(values).value()) {
+                return IDX0;
+            }
+        }
+        return valueIndexPrivate<VALUE>(values, std::index_sequence<IDXS...>{});
     }
 
   private:
@@ -234,15 +284,16 @@ template <typename T> struct TA_TypeInfo;
 template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAttribute<T> {
     using Raw = T;
 
-    static constexpr std::size_t size() { return std::tuple_size_v<decltype(aggregate())>; }
+    static constexpr std::size_t size() {
+        return std::tuple_size_v<std::remove_cvref_t<decltype(aggregateCache<>())>>;
+    }
 
     template <typename NAME, typename... PARAS> static constexpr auto invoke(NAME = {}, PARAS &&...paras) {
         constexpr auto target = findType(NAME{});
         using CF = decltype(target);
-        if constexpr (std::is_same_v<std::nullptr_t, CF>) {
+        if constexpr (std::is_null_pointer_v<CF>) {
             return nullptr;
-        }
-        if constexpr (std::is_enum_v<decltype(target)>) {
+        } else if constexpr (std::is_enum_v<decltype(target)>) {
             return target;
         } else if constexpr (!std::is_function_v<std::remove_pointer_t<CF>> && !std::is_member_object_pointer_v<CF> &&
                              !std::is_member_function_pointer_v<CF>) {
@@ -294,18 +345,61 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
     // }
 
     template <typename VALUE> static constexpr bool containsValue(VALUE &&v) {
-        return containsField(std::forward<VALUE>(v),
-                             std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
+        return containsField(std::forward<VALUE>(v), std::make_index_sequence<size()>{});
     }
 
-    template <typename VALUE> static constexpr auto findName(VALUE &&v) {
-        return findName(std::forward<VALUE>(v), std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
+    template <auto VALUE>
+    static consteval std::string_view findName() {
+        return findNamePrivate<VALUE>();
     }
 
-    static constexpr auto findTypeValue(std::string_view &str) // run time finding
-    {
-        return findValue(std::forward<std::string_view>(str),
-                         std::make_index_sequence<std::tuple_size_v<decltype(aggregate())>>{});
+    template <auto VALUE>
+    static consteval std::size_t valueIndex() {
+        constexpr auto index = valueIndexPrivate<VALUE>(aggregateCache<>(), std::make_index_sequence<size()>{});
+        static_assert(index < size(), "Value not found in the field list.");
+        return index;
+    }
+
+    template <auto NAME>
+    static consteval std::size_t nameIndex() {
+        constexpr auto index = nameIndexPrivate<NAME>(aggregateCache<>(), std::make_index_sequence<size()>{});
+        static_assert(index < size(), "Name not found in the field list.");
+        return index;
+    }
+
+    template <std::size_t INDEX> static consteval auto valueAt() {
+        if constexpr (INDEX < size()) {
+            return std::get<INDEX>(aggregateCache<>()).value();
+        } else {
+            static_assert(INDEX < size(), "Index out of range.");
+            return nullptr;
+        }
+    }
+
+    template <std::size_t INDEX> static consteval auto nameAt() {
+        if constexpr (INDEX < size()) {
+            return std::get<INDEX>(aggregateCache<>()).name;
+        } else {
+            static_assert(INDEX < size(), "Index out of range.");
+            return std::string_view{};
+        }
+    }
+
+    template <std::size_t INDEX> static consteval auto nameValueAt() {
+        if constexpr (INDEX < size()) {
+            return std::pair{std::get<INDEX>(aggregateCache<>()).name, std::get<INDEX>(aggregateCache<>()).value()};
+        } else {
+            static_assert(INDEX < size(), "Index out of range.");
+            return std::pair{std::string_view{}, nullptr};
+        }
+    }
+
+    template <typename VALUE> static constexpr std::string_view findName(VALUE &&v) {
+        return findNamePrivate(std::forward<VALUE>(v), std::make_index_sequence<size()>{});
+    }
+
+    static constexpr auto findTypeValue(std::string_view str) { // run time finding
+        return findTypeValuePrivate(str, std::make_index_sequence<size()>{});
     }
 
     template <typename NAME> static constexpr bool containsName(NAME = {}) {
@@ -326,20 +420,20 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
     {
         if constexpr (!TA_MetaTypeInfo<T>::isClass) {
             if constexpr (TA_TypeInfo<T>::fields.containsName(NAME{})) {
-                return TA_TypeInfo<T>::fields.findType(NAME{});
+                return TA_TypeInfo<T>::fields.findValue(NAME{});
             } else {
                 return nullptr;
             }
         }
         if constexpr (!TA_MetaTypeInfo<T>::isPolymorphic && sizeof...(BASES) == 0) {
             if constexpr (TA_TypeInfo<T>::fields.containsName(NAME{})) {
-                return TA_TypeInfo<T>::fields.findType(NAME{});
+                return TA_TypeInfo<T>::fields.findValue(NAME{});
             } else {
                 return nullptr;
             }
         } else {
             if constexpr (TA_TypeInfo<T>::fields.containsName(NAME{})) {
-                return TA_TypeInfo<T>::fields.findType(NAME{});
+                return TA_TypeInfo<T>::fields.findValue(NAME{});
             } else {
                 return findTypeFromBase(std::make_index_sequence<sizeof...(BASES)>{}, NAME{});
             }
@@ -383,6 +477,8 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
     }
 
   private:
+    template <typename = void> static constexpr auto aggregateCache() { return aggregate(); }
+
     template <typename NAME> static constexpr bool containsNameFromBase(std::index_sequence<>, NAME = {}) {
         return false;
     }
@@ -415,37 +511,73 @@ template <typename T, typename... BASES> struct TA_MetaTypeInfo : TA_MetaTypeAtt
 
     template <typename VALUE, std::size_t IDX0, std::size_t... IDXS>
     static constexpr bool containsField(VALUE &&v, std::index_sequence<IDX0, IDXS...> = {}) {
-        if constexpr (std::is_same_v<decltype(std::get<IDX0>(aggregate()).value()), VALUE>) {
-            if constexpr (v == std::get<IDX0>(aggregate()).value())
+        if constexpr (
+            std::is_same_v<decltype(std::get<IDX0>(aggregateCache<>()).value()), std::decay_t<VALUE>>) {
+            if (v == std::get<IDX0>(aggregateCache<>()).value())
                 return true;
         }
         return containsField(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
     }
 
-    template <typename VALUE> static constexpr auto findName(VALUE &&, std::index_sequence<>) {
-        return std::string_view{}.data();
+    template <typename VALUE> static constexpr std::string_view findNamePrivate(VALUE &&, std::index_sequence<>) {
+        return {};
     }
 
     template <typename VALUE, std::size_t IDX0, std::size_t... IDXS>
-    static constexpr auto findName(VALUE &&v, std::index_sequence<IDX0, IDXS...> = {}) {
-        if constexpr (std::is_same_v<decltype(std::get<IDX0>(aggregate()).value()), std::decay_t<VALUE>>) {
-            if (v == std::get<IDX0>(aggregate()).value())
-                return std::get<IDX0>(aggregate()).name.data();
+    static constexpr std::string_view findNamePrivate(VALUE &&v, std::index_sequence<IDX0, IDXS...> = {}) {
+        if constexpr (std::is_same_v<decltype(std::get<IDX0>(aggregateCache<>()).value()), std::decay_t<VALUE>>) {
+            if (v == std::get<IDX0>(aggregateCache<>()).value())
+                return std::get<IDX0>(aggregateCache<>()).name;
         }
-        return findName(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
+        return findNamePrivate(std::forward<VALUE>(v), std::index_sequence<IDXS...>{});
     }
 
-    static constexpr decltype(auto) findValue(std::string_view &&str, std::index_sequence<> = {}) {
-        return typename MetaVariant<typename TA_Values::VariantTypes>::Var{};
+    template <auto VALUE> static consteval std::string_view findNamePrivate() {
+        return findNamePrivate(VALUE, std::make_index_sequence<size()>{});
+    }
+
+    template <auto VALUE, typename VALUES>
+    static consteval std::size_t valueIndexPrivate(const VALUES &, std::index_sequence<> = {}) {
+        return std::tuple_size_v<VALUES>;
+    }
+
+    template <auto VALUE, typename VALUES, std::size_t IDX0, std::size_t... IDXS>
+    static consteval std::size_t valueIndexPrivate(const VALUES &values,
+                                                   std::index_sequence<IDX0, IDXS...> = {}) {
+        if constexpr (
+            std::is_same_v<decltype(std::get<IDX0>(values).value()), std::decay_t<decltype(VALUE)>>) {
+            if (VALUE == std::get<IDX0>(values).value())
+                return IDX0;
+        }
+        return valueIndexPrivate<VALUE>(values, std::index_sequence<IDXS...>{});
+    }
+
+    template <auto NAME, typename VALUES>
+    static consteval std::size_t nameIndexPrivate(const VALUES &, std::index_sequence<> = {}) {
+        return std::tuple_size_v<VALUES>;
+    }
+
+    template <auto NAME, typename VALUES, std::size_t IDX0, std::size_t... IDXS>
+    static consteval std::size_t nameIndexPrivate(const VALUES &values,
+                                                  std::index_sequence<IDX0, IDXS...> = {}) {
+        if (decltype(NAME)::data() == std::get<IDX0>(values).name) {
+            return IDX0;
+        }
+        return nameIndexPrivate<NAME>(values, std::index_sequence<IDXS...>{});
+    }
+
+    static constexpr auto findTypeValuePrivate(std::string_view, std::index_sequence<> = {}) {
+        using RuntimeValue = typename MetaVariant<typename TA_Values::VariantTypes>::Var;
+        return std::optional<RuntimeValue>{};
     }
 
     template <std::size_t IDX0, std::size_t... IDXS>
-    static constexpr decltype(auto) findValue(std::string_view &&str, std::index_sequence<IDX0, IDXS...> = {}) {
-        if (str == std::get<IDX0>(aggregate()).name) {
-            typename MetaVariant<typename TA_Values::VariantTypes>::Var var{std::get<IDX0>(aggregate()).value()};
-            return var;
+    static constexpr auto findTypeValuePrivate(std::string_view str, std::index_sequence<IDX0, IDXS...> = {}) {
+        using RuntimeValue = typename MetaVariant<typename TA_Values::VariantTypes>::Var;
+        if (str == std::get<IDX0>(aggregateCache<>()).name) {
+            return std::optional<RuntimeValue>{RuntimeValue{std::get<IDX0>(aggregateCache<>()).value()}};
         }
-        return findValue(std::forward<std::string_view>(str), std::index_sequence<IDXS...>{});
+        return findTypeValuePrivate(str, std::index_sequence<IDXS...>{});
     }
 };
 

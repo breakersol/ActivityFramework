@@ -48,21 +48,20 @@ if(MSVC)
         $<$<CONFIG:Release>:${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Windows/Release>
     )
 
-    set(DLL_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
     set(GTEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/googletest/output/Windows)
 
     add_custom_command(
         TARGET ActivityFrameworkTest POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:ActivityFramework>
-            "${DLL_TARGET_DIR}"
+            $<TARGET_FILE_DIR:ActivityFrameworkTest>
     )
 
     add_custom_command(
         TARGET ActivityFrameworkTest POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "$<IF:$<CONFIG:Release>,${GTEST_DIR}/Release/gtest.dll,${GTEST_DIR}/Debug/gtest.dll>"
-            "${DLL_TARGET_DIR}"
+            $<TARGET_FILE_DIR:ActivityFrameworkTest>
     )
 elseif(ANDROID)
     message(STATUS "Configuring for Android")

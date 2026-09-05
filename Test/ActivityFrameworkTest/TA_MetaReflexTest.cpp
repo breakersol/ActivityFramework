@@ -20,6 +20,36 @@
 
 #include <iostream>
 
+namespace {
+
+using MetaTestTypeInfo = CoreAsync::Reflex::TA_TypeInfo<MetaTest>;
+using M2TestTypeInfo = CoreAsync::Reflex::TA_TypeInfo<M2Test>;
+
+static_assert(MetaTestTypeInfo::findName<MetaTest::META_RED>() == "META_RED");
+static_assert(M2TestTypeInfo::findName<&M2Test::mx>() == "mx");
+static_assert(MetaTestTypeInfo::findName<static_cast<float (MetaTest::*)(float) const>(&MetaTest::Sum)>() ==
+              "Sum<float>");
+static_assert(MetaTestTypeInfo::findName<&BaseTest::sub>() == "sub");
+static_assert(MetaTestTypeInfo::findName<&MetaTest::unregisteredTest>().empty());
+static_assert(MetaTestTypeInfo::containsValue(MetaTest::META_GREEN));
+static_assert(MetaTestTypeInfo::valueIndex<MetaTest::META_RED>() == 0);
+static_assert(MetaTestTypeInfo::valueIndex<MetaTest::META_GREEN>() == 1);
+static_assert(MetaTestTypeInfo::valueIndex<&MetaTest::printTest>() == 11);
+static_assert(MetaTestTypeInfo::valueIndex<&BaseTest::sub>() == 12);
+static_assert(MetaTestTypeInfo::nameIndex<META_STRING("META_RED")>() == 0);
+static_assert(MetaTestTypeInfo::nameIndex<META_STRING("getStr")>() == 9);
+static_assert(MetaTestTypeInfo::nameIndex<META_STRING("sub")>() == 12);
+static_assert(MetaTestTypeInfo::nameIndex<META_STRING("deduct")>() == 15);
+static_assert(MetaTestTypeInfo::valueAt<0>() == MetaTest::META_RED);
+static_assert(MetaTestTypeInfo::valueAt<12>() == &BaseTest::sub);
+static_assert(MetaTestTypeInfo::nameAt<0>() == "META_RED");
+static_assert(MetaTestTypeInfo::nameAt<15>() == "deduct");
+constexpr auto inheritedNameValue = MetaTestTypeInfo::nameValueAt<15>();
+static_assert(inheritedNameValue.first == "deduct");
+static_assert(inheritedNameValue.second == &TestB::deduct);
+
+} // namespace
+
 TA_MetaReflexTest::TA_MetaReflexTest() {}
 
 TA_MetaReflexTest::~TA_MetaReflexTest() {}
@@ -36,6 +66,16 @@ TEST_F(TA_MetaReflexTest, findMemberFunctionName) {
     std::string_view name = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findName(
         static_cast<float (MetaTest::*)(float) const>(&MetaTest::Sum));
     EXPECT_EQ("Sum<float>" == name, true);
+}
+
+TEST_F(TA_MetaReflexTest, compileTimeLocalFieldMetadata) {
+    constexpr auto index = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::fields
+                               .template valueIndex<&MetaTest::startTest>();
+    constexpr auto name = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::fields
+                              .template findName<&MetaTest::startTest>();
+    static_assert(index < CoreAsync::Reflex::TA_TypeInfo<MetaTest>::fields.size());
+    static_assert(name == "startTest");
+    EXPECT_EQ(name, "startTest");
 }
 
 TEST_F(TA_MetaReflexTest, findNonMemberFunctionName) {
@@ -58,9 +98,35 @@ TEST_F(TA_MetaReflexTest, findEnumName) {
     EXPECT_EQ("META_RED" == name, true);
 }
 
+TEST_F(TA_MetaReflexTest, findUnknownName) {
+    constexpr auto name = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findName(&MetaTest::unregisteredTest);
+    static_assert(name.empty());
+    EXPECT_TRUE(name.empty());
+}
+
 TEST_F(TA_MetaReflexTest, findMemberFunction) {
     auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("Sum<float>"), m_pTest, 1.5);
     EXPECT_EQ(res == 4.5, true);
+}
+
+TEST_F(TA_MetaReflexTest, invokeUnknownField) {
+    auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::invoke(META_STRING("unknown"));
+    EXPECT_EQ(res, nullptr);
+}
+
+TEST_F(TA_MetaReflexTest, findRuntimeTypeValue) {
+    constexpr auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findTypeValue("Sum<float>");
+    static_assert(res.has_value());
+    ASSERT_TRUE(res.has_value());
+
+    using Method = float (MetaTest::*)(float) const;
+    EXPECT_EQ(std::get<Method>(*res), static_cast<Method>(&MetaTest::Sum));
+}
+
+TEST_F(TA_MetaReflexTest, findUnknownRuntimeTypeValue) {
+    constexpr auto res = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findTypeValue("unknown");
+    static_assert(!res.has_value());
+    EXPECT_FALSE(res.has_value());
 }
 
 TEST_F(TA_MetaReflexTest, findNonMemberFunction) {
