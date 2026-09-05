@@ -35,7 +35,7 @@ class TA_ManualStepsChainPipeline;
 class TA_ManualKeyActivityChainPipeline;
 class TA_ConcurrentPipeline;
 
-class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObject {
+class ACTIVITY_FRAMEWORK_EXPORT TA_BasicPipeline : public TA_MetaObjectStorage<TA_BasicPipeline> {
   protected:
     using Milliseconds = std::chrono::duration<int, std::milli>;
     using AsyncTask = TA_ManualCoroutineTask<TA_ActivityResultFetcher, CorotuineBehavior::Eager>;

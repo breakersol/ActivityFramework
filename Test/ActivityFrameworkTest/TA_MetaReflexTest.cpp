@@ -68,6 +68,16 @@ TEST_F(TA_MetaReflexTest, findMemberFunctionName) {
     EXPECT_EQ("Sum<float>" == name, true);
 }
 
+TEST_F(TA_MetaReflexTest, compileTimeLocalFieldMetadata) {
+    constexpr auto index = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::fields
+                               .template valueIndex<&MetaTest::startTest>();
+    constexpr auto name = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::fields
+                              .template findName<&MetaTest::startTest>();
+    static_assert(index < CoreAsync::Reflex::TA_TypeInfo<MetaTest>::fields.size());
+    static_assert(name == "startTest");
+    EXPECT_EQ(name, "startTest");
+}
+
 TEST_F(TA_MetaReflexTest, findNonMemberFunctionName) {
     std::string_view name = CoreAsync::Reflex::TA_TypeInfo<MetaTest>::findName(&MetaTest::getStr);
     EXPECT_EQ("getStr" == name, true);

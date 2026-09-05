@@ -30,7 +30,9 @@ namespace CoreAsync {
 using Pipelines = TA_MetaTypelist<TA_AutoChainPipeline, TA_ManualChainPipeline, TA_ConcurrentPipeline,
                                   TA_ManualStepsChainPipeline, TA_ManualKeyActivityChainPipeline>;
 
-template <typename Holder> class ACTIVITY_FRAMEWORK_EXPORT TA_MainPipelineHolder : public TA_MetaObject {
+template <typename Holder>
+class ACTIVITY_FRAMEWORK_EXPORT TA_MainPipelineHolder
+    : public TA_MetaObjectStorage<TA_MainPipelineHolder<Holder>> {
     friend class TA_PipelineCreator;
 
   public:
@@ -110,7 +112,9 @@ concept EnableHolderType = requires(P p) {
 };
 
 template <EnableHolderType Pip>
-class ACTIVITY_FRAMEWORK_EXPORT TA_PipelineHolder : public TA_MainPipelineHolder<TA_PipelineHolder<Pip>> {
+class ACTIVITY_FRAMEWORK_EXPORT TA_PipelineHolder
+    : public TA_MainPipelineHolder<TA_PipelineHolder<Pip>>,
+      public TA_MetaObjectStorage<TA_PipelineHolder<Pip>> {
   public:
     TA_PipelineHolder()
         : TA_MainPipelineHolder<TA_PipelineHolder<Pip>>(new std::decay_t<Pip>()),

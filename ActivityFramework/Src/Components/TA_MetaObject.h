@@ -17,11 +17,14 @@
 #ifndef TA_METAOBJECT_H
 #define TA_METAOBJECT_H
 
-#include <string_view>
 #include <thread>
-#include <unordered_map>
+#include <algorithm>
 #include <any>
 #include <functional>
+#include <limits>
+#include <optional>
+#include <utility>
+#include <vector>
 
 #include "TA_ThreadPool.h"
 #include "TA_MetaReflex.h"
@@ -33,6 +36,7 @@ namespace CoreAsync {
 #define TA_Signals public
 
 class TA_MetaObject;
+template <typename Owner> class TA_MetaObjectStorage;
 
 template <typename T>
 concept EnableConnectObjectType = requires(T *t) {
@@ -53,6 +57,29 @@ enum class TA_ConnectionType { Auto, Direct, Queued };
 
 class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     class TA_ConnectionObject;
+    using SharedConnection = std::shared_ptr<TA_ConnectionObject>;
+
+    struct TA_ConnectionBucket {
+        std::vector<SharedConnection> connections{};
+        std::size_t emissionDepth{0};
+        bool needsCompaction{false};
+    };
+
+    class TA_ConnectionStorageAccess {
+      public:
+        virtual ~TA_ConnectionStorageAccess() = default;
+        virtual TA_ConnectionBucket &outputBucket(std::size_t index) = 0;
+        virtual TA_ConnectionBucket &inputBucket(std::size_t index) = 0;
+        virtual void eraseOutput(std::size_t index, const TA_ConnectionObject *connection) = 0;
+        virtual void eraseInput(std::size_t index, const TA_ConnectionObject *connection) = 0;
+    };
+
+    struct TA_ResolvedMember {
+        TA_ConnectionStorageAccess *storage{nullptr};
+        std::size_t index{};
+    };
+
+    template <typename> friend class TA_MetaObjectStorage;
     using AsyncTaskRes = TA_ManualCoroutineTask<std::shared_ptr<TA_DefaultVariant>, CorotuineBehavior::Eager>;
   public:
     class TA_ConnectionObjectHolder {
@@ -80,21 +107,16 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     TA_MetaObject() : m_sourceThread(std::this_thread::get_id()),
                       m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
 
-    virtual ~TA_MetaObject() { destroyConnections(); }
+    virtual ~TA_MetaObject() = default;
 
     TA_MetaObject(const TA_MetaObject &object)
-        : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()),
-          m_outputConnections(object.m_outputConnections), m_inputConnections(object.m_inputConnections) {}
+        : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
 
     TA_MetaObject(TA_MetaObject &&object) noexcept
-        : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()),
-          m_outputConnections(std::move(object.m_outputConnections)),
-          m_inputConnections(std::move(object.m_inputConnections)) {}
+        : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
 
     TA_MetaObject &operator=(const TA_MetaObject &object) {
         if (this != &object) {
-            m_outputConnections = object.m_outputConnections;
-            m_inputConnections = object.m_inputConnections;
             m_affinityThreadIdx.store(object.affinityThread(), std::memory_order_release);
         }
         return *this;
@@ -102,8 +124,6 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
 
     TA_MetaObject &operator=(TA_MetaObject &&object) noexcept {
         if (this != &object) {
-            m_outputConnections = std::move(object.m_outputConnections);
-            m_inputConnections = std::move(object.m_inputConnections);
             m_affinityThreadIdx.store(std::move(object.affinityThread()), std::memory_order_release);
         }
         return *this;
@@ -317,222 +337,305 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
-    static constexpr bool registerConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot,
-                                             TA_ConnectionType type) {
-        if constexpr (!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag ||
-                      !Reflex::TA_MemberTypeTrait<Slot>::instanceMethodFlag ||
-                      !IsReturnTypeEqual<void, Signal, std::is_same>::value ||
-                      !IsReturnTypeEqual<void, Slot, std::is_same>::value) {
+    static bool registerConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot,
+                                   TA_ConnectionType type) {
+        if (!connectionTypesCompatible<Signal, Slot>() || !pSender || !pReceiver) {
             return false;
         }
-        if constexpr (MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize) {
+        auto signalMember = resolveMember(pSender, signal);
+        auto slotMember = resolveMember(pReceiver, slot);
+        if (!signalMember || !slotMember) {
             return false;
         }
-        if constexpr (MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0) {
-            if constexpr (!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup,
-                                    typename MethodTypeInfo<Slot>::ArgGroup>::value) {
-                return false;
-            }
-        }
+        return registerResolvedConnection(sharedRef(pSender), *signalMember, sharedRef(pReceiver),
+                                          std::decay_t<Slot>(slot), *slotMember, type);
+    }
+
+    template <auto Signal, auto Slot, EnableConnectObjectType Sender, EnableConnectObjectType Receiver>
+    static bool registerConnection(Sender *pSender, Receiver *pReceiver, TA_ConnectionType type) {
+        using SignalType = decltype(Signal);
+        using SlotType = decltype(Slot);
+        static_assert(connectionTypesCompatible<SignalType, SlotType>(), "Signal and slot signatures are incompatible.");
         if (!pSender || !pReceiver) {
             return false;
         }
-        auto sharedSender = sharedRef(pSender);
-        auto sharedReceiver = sharedRef(pReceiver);
-        return m_registerConnectionImpl<std::shared_ptr<Sender>, Signal, std::shared_ptr<Receiver>, Slot>(
-            sharedSender, std::forward<Signal>(signal),
-            sharedReceiver, std::forward<Slot>(slot), type);
+        constexpr auto signalIndex = staticMemberIndex<Signal>();
+        constexpr auto slotIndex = staticMemberIndex<Slot>();
+        return registerResolvedConnection(sharedRef(pSender), bindMember<Signal>(pSender, signalIndex),
+                                          sharedRef(pReceiver), Slot, bindMember<Slot>(pReceiver, slotIndex), type);
     }
 
     template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
-#if defined(__ANDROID__)
     static TA_ConnectionObjectHolder registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp,
-                                                        TA_ConnectionType type, bool autoDestroy = false) {
-#else
-    static constexpr TA_ConnectionObjectHolder registerConnection(Sender *pSender, Signal &&signal, LambdaExp &&exp,
-                                                                  TA_ConnectionType type, bool autoDestroy = false) {
-#endif
-        if constexpr (!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag ||
-                      !IsReturnTypeEqual<void, Signal, std::is_same>::value ||
-                      !std::is_same_v<typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType, void>) {
+                                                         TA_ConnectionType type, bool autoDestroy = false) {
+        if (!lambdaConnectionTypesCompatible<Signal, LambdaExp>() || !pSender) {
             return {nullptr};
         }
+        auto signalMember = resolveMember(pSender, signal);
+        if (!signalMember) {
+            return {nullptr};
+        }
+        return registerResolvedLambda(sharedRef(pSender), *signalMember, std::forward<LambdaExp>(exp), type,
+                                      autoDestroy);
+    }
+
+    template <auto Signal, EnableConnectObjectType Sender, LambdaExpType LambdaExp>
+    static TA_ConnectionObjectHolder registerConnection(Sender *pSender, LambdaExp &&exp,
+                                                         TA_ConnectionType type, bool autoDestroy = false) {
+        using SignalType = decltype(Signal);
+        static_assert(lambdaConnectionTypesCompatible<SignalType, LambdaExp>(),
+                      "Signal and lambda signatures are incompatible.");
         if (!pSender) {
             return {nullptr};
         }
-        if constexpr (MethodTypeInfo<Signal>::argSize != LambdaExpTraits<std::decay_t<LambdaExp>>::argSize) {
-            return {nullptr};
-        }
-
-        auto sharedSender = sharedRef(pSender);
-        if(isOnCurrentThread(pSender)) {
-            return m_registerLambdaConnectionImpl<std::shared_ptr<Sender>, Signal, LambdaExp>(
-                sharedSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
-        }
-        using ExpType = decltype(m_registerLambdaConnectionImpl<std::shared_ptr<Sender>, Signal, LambdaExp>);
-        auto registerActivity = TA_ActivityCreator::create(
-            std::forward<ExpType>(m_registerLambdaConnectionImpl<std::shared_ptr<Sender>, Signal, LambdaExp>),
-            sharedSender, std::forward<Signal>(signal), std::forward<LambdaExp>(exp), type, autoDestroy);
-        registerActivity->moveToThread(pSender->affinityThread());
-        registerActivity->setStolenEnabled(false);
-        AsyncTaskRes res = invokeActivity(registerActivity, pSender);
-        auto taskResult = res.get();
-        return taskResult->template get<TA_ConnectionObjectHolder>();
+        constexpr auto signalIndex = staticMemberIndex<Signal>();
+        return registerResolvedLambda(sharedRef(pSender), bindMember<Signal>(pSender, signalIndex),
+                                      std::forward<LambdaExp>(exp), type, autoDestroy);
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
-    static constexpr bool unregisterConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot) {
-        if constexpr (!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag ||
-                      !Reflex::TA_MemberTypeTrait<Slot>::instanceMethodFlag ||
-                      !IsReturnTypeEqual<void, Signal, std::is_same>::value) {
+    static bool unregisterConnection(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot) {
+        if (!connectionTypesCompatible<Signal, Slot>() || !pSender || !pReceiver) {
             return false;
         }
-        if constexpr (MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize) {
+        auto signalMember = resolveMember(pSender, signal);
+        auto slotMember = resolveMember(pReceiver, slot);
+        if (!signalMember || !slotMember) {
             return false;
         }
-        if constexpr (MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0) {
-            if constexpr (!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup,
-                                    typename MethodTypeInfo<Slot>::ArgGroup>::value) {
-                return false;
-            }
-        }
+        return unregisterResolvedConnection(sharedRef(pSender), *signalMember,
+                                            sharedRef(pReceiver), *slotMember);
+    }
+
+    template <auto Signal, auto Slot, EnableConnectObjectType Sender, EnableConnectObjectType Receiver>
+    static bool unregisterConnection(Sender *pSender, Receiver *pReceiver) {
+        using SignalType = decltype(Signal);
+        using SlotType = decltype(Slot);
+        static_assert(connectionTypesCompatible<SignalType, SlotType>(), "Signal and slot signatures are incompatible.");
         if (!pSender || !pReceiver) {
             return false;
         }
-        auto sharedSender = sharedRef(pSender);
-        auto sharedReceiver = sharedRef(pReceiver);
-        TA_ConnectionObject::FuncMark signalMark{
-            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
-        TA_ConnectionObject::FuncMark slotMark{
-            Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
-        if (signalMark.empty() || slotMark.empty()) {
-            return false;
-        }
-        return m_unregisterConnectionImpl<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
-            sharedSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
-            sharedReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
+        constexpr auto signalIndex = staticMemberIndex<Signal>();
+        constexpr auto slotIndex = staticMemberIndex<Slot>();
+        return unregisterResolvedConnection(sharedRef(pSender), bindMember<Signal>(pSender, signalIndex),
+                                            sharedRef(pReceiver), bindMember<Slot>(pReceiver, slotIndex));
     }
 
     static bool unregisterConnection(TA_ConnectionObjectHolder &holder) {
         if (!holder.valid() || !holder.m_pConnection) {
             return false;
         }
-        auto *pSender = holder.m_pConnection->sender();
-        if(isOnCurrentThread(pSender)) {
-            return m_unregisterConnectionHolderImpl<TA_MetaObject>(holder);
+        auto connection = holder.m_pConnection;
+        auto *pSender = connection->sender();
+        if (!pSender) {
+            holder.reset();
+            return false;
         }
-        using ExpType = decltype(m_unregisterConnectionHolderImpl<TA_MetaObject>);
-        auto activity = TA_ActivityCreator::create(
-            std::forward<ExpType>(m_unregisterConnectionHolderImpl<TA_MetaObject>), std::ref(holder));
-        activity->setStolenEnabled(false);
-        AsyncTaskRes res = invokeActivity(activity, pSender);
-        auto taskResult = res.get();
-        return taskResult->template get<bool>();
+        auto remove = [connection]() -> bool {
+            connection->removeConnectionReferences();
+            return true;
+        };
+        bool result = true;
+        if (isOnCurrentThread(pSender)) {
+            result = remove();
+        } else {
+            auto activity = TA_ActivityCreator::create(std::move(remove));
+            activity->setStolenEnabled(false);
+            result = invokeActivity(activity, pSender).get()->template get<bool>();
+        }
+        holder.reset();
+        return result;
     }
 
     template <EnableConnectObjectType Sender, typename Signal, typename... ConnectionParameter>
-    static constexpr bool emitSignal(Sender *pSender, Signal &&signal, ConnectionParameter &&...args) {
-        if constexpr (!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag ||
-                      !IsReturnTypeEqual<void, Signal, std::is_same>::value) {
-            static_assert(false, "The signal must be an instance method and return void.");
-        }
-        if constexpr (!std::is_convertible_v<std::decay_t<Sender *>, typename MethodTypeInfo<Signal>::ParentClass *>) {
-            static_assert(false, "The signal must belong to the sender class.");
-        }
+    static bool emitSignal(Sender *pSender, Signal &&signal, ConnectionParameter &&...args) {
+        using SignalType = std::decay_t<Signal>;
+        static_assert(validSignalType<SignalType, Sender>(), "The signal must be a registered void instance method of Sender.");
         static_assert((std::is_copy_constructible_v<std::remove_cvref_t<ConnectionParameter>> && ...),
                       "Signal arguments must be copy-constructible.");
         if (!pSender) {
             return false;
         }
-        if (Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(signal).empty()) {
+        auto signalMember = resolveMember(pSender, signal);
+        if (!signalMember) {
             return false;
         }
-        if(isOnCurrentThread(pSender)) {
-            m_emitSignalImpl<Sender *, Signal, std::remove_cvref_t<ConnectionParameter>...>(pSender, std::forward<Signal>(signal), std::forward<ConnectionParameter>(args)...);
-        } else {
-            if(!pSender->hasSharedRef()) {
-                using RawPtrExpType = decltype(m_emitSignalImpl<Sender *, Signal, std::remove_cvref_t<ConnectionParameter>...>);
-                auto activity = TA_ActivityCreator::create(
-                    std::forward<RawPtrExpType>(m_emitSignalImpl<Sender *, Signal, std::remove_cvref_t<ConnectionParameter>...>),
-                    pSender, std::forward<Signal>(signal), std::forward<ConnectionParameter>(args)...);
-                activity->setStolenEnabled(false);
-                invokeActivityNoAwait(activity, pSender);
-            } else {
-                auto sharedSender = sharedRef(pSender);
-                using SharedExpType = decltype(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, std::remove_cvref_t<ConnectionParameter>...>);
-                auto activity = TA_ActivityCreator::create(
-                    std::forward<SharedExpType>(m_emitSignalImpl<std::shared_ptr<Sender>, Signal, std::remove_cvref_t<ConnectionParameter>...>),
-                    std::move(sharedSender), std::forward<Signal>(signal), std::forward<ConnectionParameter>(args)...);
-                activity->setStolenEnabled(false);
-                invokeActivityNoAwait(activity, pSender);
-            }
+        emitResolved(pSender, *signalMember, std::forward<ConnectionParameter>(args)...);
+        return true;
+    }
+
+    template <auto Signal, EnableConnectObjectType Sender, typename... ConnectionParameter>
+    static bool emitSignal(Sender *pSender, ConnectionParameter &&...args) {
+        using SignalType = decltype(Signal);
+        static_assert(validSignalType<SignalType, Sender>(), "The signal must be a registered void instance method of Sender.");
+        static_assert((std::is_copy_constructible_v<std::remove_cvref_t<ConnectionParameter>> && ...),
+                      "Signal arguments must be copy-constructible.");
+        if (!pSender) {
+            return false;
         }
+        constexpr auto signalIndex = staticMemberIndex<Signal>();
+        emitResolved(pSender, bindMember<Signal>(pSender, signalIndex), std::forward<ConnectionParameter>(args)...);
         return true;
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
-    static constexpr bool isConnectionExisted(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot) {
-        if constexpr (!Reflex::TA_MemberTypeTrait<Signal>::instanceMethodFlag ||
-                      !Reflex::TA_MemberTypeTrait<Slot>::instanceMethodFlag ||
-                      !IsReturnTypeEqual<void, Signal, std::is_same>::value) {
+    static bool isConnectionExisted(Sender *pSender, Signal &&signal, Receiver *pReceiver, Slot &&slot) {
+        if (!connectionTypesCompatible<Signal, Slot>() || !pSender || !pReceiver) {
             return false;
         }
-        if constexpr (MethodTypeInfo<Signal>::argSize != MethodTypeInfo<Slot>::argSize) {
+        auto signalMember = resolveMember(pSender, signal);
+        auto slotMember = resolveMember(pReceiver, slot);
+        if (!signalMember || !slotMember) {
             return false;
         }
-        if constexpr (MethodTypeInfo<Signal>::argSize != 0 && MethodTypeInfo<Slot>::argSize != 0) {
-            if constexpr (!MetaSame<typename MethodTypeInfo<Signal>::ArgGroup,
-                                    typename MethodTypeInfo<Slot>::ArgGroup>::value) {
-                return false;
-            }
-        }
+        return isResolvedConnectionExisted(sharedRef(pSender), *signalMember,
+                                           sharedRef(pReceiver), *slotMember);
+    }
+
+    template <auto Signal, auto Slot, EnableConnectObjectType Sender, EnableConnectObjectType Receiver>
+    static bool isConnectionExisted(Sender *pSender, Receiver *pReceiver) {
+        static_assert(connectionTypesCompatible<decltype(Signal), decltype(Slot)>(),
+                      "Signal and slot signatures are incompatible.");
         if (!pSender || !pReceiver) {
             return false;
         }
-
-        TA_ConnectionObject::FuncMark signalMark{
-            Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))};
-        TA_ConnectionObject::FuncMark slotMark{
-            Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot))};
-        if (signalMark.empty() || slotMark.empty()) {
-            return false;
-        }
-        auto sharedSender = sharedRef(pSender);
-        auto sharedReceiver = sharedRef(pReceiver);
-        if(isOnCurrentThread(pSender)) {
-            return m_isConnectionExistedImpl<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
-                sharedSender, std::forward<TA_ConnectionObject::FuncMark>(signalMark),
-                sharedReceiver, std::forward<TA_ConnectionObject::FuncMark>(slotMark));
-        }
-        auto activity = TA_ActivityCreator::create(
-            m_isConnectionExistedImpl<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>,
-            sharedSender, signalMark, sharedReceiver, slotMark);
-        activity->setStolenEnabled(false);
-        AsyncTaskRes res = invokeActivity(activity, pSender);
-        auto taskResult = res.get();
-        return taskResult->template get<bool>();
+        constexpr auto signalIndex = staticMemberIndex<Signal>();
+        constexpr auto slotIndex = staticMemberIndex<Slot>();
+        return isResolvedConnectionExisted(sharedRef(pSender), bindMember<Signal>(pSender, signalIndex),
+                                           sharedRef(pReceiver), bindMember<Slot>(pReceiver, slotIndex));
     }
 
   private:
+    template <typename Signal, typename Sender>
+    static consteval bool validSignalType() {
+        using SignalType = std::decay_t<Signal>;
+        if constexpr (!std::is_member_function_pointer_v<SignalType>) {
+            return false;
+        } else {
+            using Owner = typename MethodTypeInfo<SignalType>::ParentClass;
+            return std::is_same_v<typename MethodTypeInfo<SignalType>::RetType, void> &&
+                   std::is_convertible_v<std::remove_cvref_t<Sender> *, Owner *>;
+        }
+    }
+
+    template <typename Signal, typename Slot>
+    static consteval bool connectionTypesCompatible() {
+        using SignalType = std::decay_t<Signal>;
+        using SlotType = std::decay_t<Slot>;
+        if constexpr (!std::is_member_function_pointer_v<SignalType> ||
+                      !std::is_member_function_pointer_v<SlotType>) {
+            return false;
+        } else if constexpr (!std::is_same_v<typename MethodTypeInfo<SignalType>::RetType, void> ||
+                             !std::is_same_v<typename MethodTypeInfo<SlotType>::RetType, void>) {
+            return false;
+        } else {
+            return MetaSame<typename MethodTypeInfo<SignalType>::ArgGroup,
+                            typename MethodTypeInfo<SlotType>::ArgGroup>::value;
+        }
+    }
+
+    template <typename Signal, typename LambdaExp>
+    static consteval bool lambdaConnectionTypesCompatible() {
+        using SignalType = std::decay_t<Signal>;
+        using ExpType = std::decay_t<LambdaExp>;
+        if constexpr (!std::is_member_function_pointer_v<SignalType>) {
+            return false;
+        } else if constexpr (!std::is_same_v<typename MethodTypeInfo<SignalType>::RetType, void> ||
+                             !std::is_same_v<typename LambdaExpTraits<ExpType>::RetType, void>) {
+            return false;
+        } else {
+            return MetaSame<typename MethodTypeInfo<SignalType>::ArgGroup,
+                            typename LambdaExpTraits<ExpType>::ArgGroup>::value;
+        }
+    }
+
+    template <auto Member>
+    static consteval std::size_t staticMemberIndex() {
+        using MemberType = std::decay_t<decltype(Member)>;
+        static_assert(std::is_member_function_pointer_v<MemberType>,
+                      "Connection members must be instance methods.");
+        using Owner = typename MethodTypeInfo<MemberType>::ParentClass;
+        static_assert(std::is_base_of_v<TA_MetaObjectStorage<Owner>, Owner>,
+                      "The member owner must inherit TA_MetaObjectStorage<Owner>.");
+        constexpr auto index = Reflex::TA_TypeInfo<Owner>::fields.template valueIndex<Member>();
+        static_assert(index < Reflex::TA_TypeInfo<Owner>::fields.size(), "The member is not locally registered.");
+        return index;
+    }
+
+    template <auto Member, EnableConnectObjectType Object>
+    static TA_ResolvedMember bindMember(Object *pObject, std::size_t index) {
+        using Owner = typename MethodTypeInfo<std::decay_t<decltype(Member)>>::ParentClass;
+        static_assert(std::is_convertible_v<Object *, Owner *>, "The member does not belong to this object.");
+        auto *pOwner = static_cast<Owner *>(pObject);
+        return {static_cast<TA_MetaObjectStorage<Owner> *>(pOwner), index};
+    }
+
+    template <EnableConnectObjectType Object, typename Member>
+    static std::optional<TA_ResolvedMember> resolveMember(Object *pObject, Member &&member) {
+        using MemberType = std::decay_t<Member>;
+        if constexpr (!std::is_member_function_pointer_v<MemberType>) {
+            return std::nullopt;
+        } else {
+            using Owner = typename MethodTypeInfo<MemberType>::ParentClass;
+            static_assert(std::is_base_of_v<TA_MetaObjectStorage<Owner>, Owner>,
+                          "The member owner must inherit TA_MetaObjectStorage<Owner>.");
+            static_assert(std::is_convertible_v<Object *, Owner *>, "The member does not belong to this object.");
+            const auto index = Reflex::TA_TypeInfo<Owner>::fields.findValueIndex(member);
+            if (index >= Reflex::TA_TypeInfo<Owner>::fields.size()) {
+                return std::nullopt;
+            }
+            auto *pOwner = static_cast<Owner *>(pObject);
+            return TA_ResolvedMember{static_cast<TA_MetaObjectStorage<Owner> *>(pOwner), index};
+        }
+    }
+
+    static void compactBucket(TA_ConnectionBucket &bucket) {
+        if (bucket.emissionDepth != 0 || !bucket.needsCompaction) {
+            return;
+        }
+        std::erase(bucket.connections, SharedConnection{});
+        bucket.needsCompaction = false;
+    }
+
+    static void eraseFromBucket(TA_ConnectionBucket &bucket, const TA_ConnectionObject *connection) {
+        auto found = std::ranges::find_if(bucket.connections, [connection](const auto &candidate) {
+            return candidate.get() == connection;
+        });
+        if (found == bucket.connections.end()) {
+            return;
+        }
+        if (bucket.emissionDepth != 0) {
+            found->reset();
+            bucket.needsCompaction = true;
+        } else {
+            *found = std::move(bucket.connections.back());
+            bucket.connections.pop_back();
+        }
+    }
+
+    template <typename Operation>
+    static void runOnAffinityThread(TA_MetaObject *pObject, Operation &&operation) {
+        if (!pObject || isOnCurrentThread(pObject)) {
+            std::invoke(std::forward<Operation>(operation));
+            return;
+        }
+        auto activity = TA_ActivityCreator::create(std::forward<Operation>(operation));
+        activity->moveToThread(pObject->affinityThread());
+        activity->setStolenEnabled(false);
+        auto fetcher = TA_ThreadHolder::get().postActivity(activity, true);
+        fetcher();
+    }
+
     class TA_ConnectionObject : public std::enable_shared_from_this<TA_ConnectionObject> {
         using SlotExpType = std::function<void()>;
       public:
         TA_ConnectionObject() = default;
-        template <EnableConnectObjectType Sender, typename Signal>
-        TA_ConnectionObject(Sender *pSender, Signal &&signal, TA_ConnectionType type)
-            : m_pSender(pSender),
-              m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))),
-              m_type(type), m_autoDestroy(false) {
-            if (pSender->hasSharedRef()) {
-                m_wpSender = pSender->weak_from_this();
-            }
-        }
-
-        template <EnableConnectObjectType Sender, typename Signal>
-        TA_ConnectionObject(Sender *pSender, Signal &&signal, TA_ConnectionType type, bool autoDestroy)
+        template <EnableConnectObjectType Sender>
+        TA_ConnectionObject(Sender *pSender, TA_ResolvedMember signal, TA_ConnectionType type,
+                            bool autoDestroy = false)
             : m_pSender(pSender), m_pReceiver(pSender),
-              m_senderFunc(Reflex::TA_TypeInfo<std::decay_t<Sender>>::findName(std::forward<Signal>(signal))),
-              m_type(type), m_autoDestroy(autoDestroy) {
+              m_senderStorage(signal.storage), m_signalIndex(signal.index), m_type(type),
+              m_autoDestroy(autoDestroy) {
             if (pSender->hasSharedRef()) {
                 m_wpSender = pSender->weak_from_this();
                 m_wpReceiver = pSender->weak_from_this();
@@ -548,17 +651,21 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         ~TA_ConnectionObject() = default;
 
         template <EnableConnectObjectType Receiver, typename Slot>
-        void initSlotObject(Receiver *pReceiver, Slot &&slot) {
+        void initSlotObject(Receiver *pReceiver, Slot &&slot, TA_ResolvedMember member) {
             m_pReceiver = pReceiver;
+            m_receiverStorage = member.storage;
+            m_slotIndex = member.index;
             if (pReceiver->hasSharedRef()) {
                 m_wpReceiver = pReceiver->weak_from_this();
             }
-            m_receiverFunc = Reflex::TA_TypeInfo<std::decay_t<Receiver>>::findName(std::forward<Slot>(slot));
             using SlotParaTuple = typename MethodTypeInfo<Slot>::ArgGroup::Tuple;
-            using Ret = typename MethodTypeInfo<Slot>::RetType;
             m_para = SlotParaTuple{};
-            auto sharedRef = getSharedPtr();
-            m_slotExp = [sharedRef, slot]() -> void {
+            auto weakRef = getWeakPtr();
+            m_slotExp = [weakRef, slot]() -> void {
+                auto sharedRef = weakRef.lock();
+                if (!sharedRef) {
+                    return;
+                }
                 auto *pRawReceiver = sharedRef->resolveReceiver();
                 if(!pRawReceiver) {
                     return;
@@ -572,12 +679,14 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
 
         template <LambdaExpType LambdaExp>
         void initSlotObject(LambdaExp &&exp) {
-            m_receiverFunc = typeid(LambdaExp).name();
             using SlotParaTuple = typename LambdaExpTraits<std::decay_t<LambdaExp>>::ArgGroup::Tuple;
-            using Ret = typename LambdaExpTraits<std::decay_t<LambdaExp>>::RetType;
             m_para = SlotParaTuple{};
-            auto sharedRef = getSharedPtr();
-            m_slotExp = [sharedRef, exp]() -> void {
+            auto weakRef = getWeakPtr();
+            m_slotExp = [weakRef, exp = std::forward<LambdaExp>(exp)]() mutable -> void {
+                auto sharedRef = weakRef.lock();
+                if (!sharedRef) {
+                    return;
+                }
                 std::apply(exp, std::any_cast<SlotParaTuple>(sharedRef->m_para));
             };
         }
@@ -612,24 +721,43 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
 
         void removeConnectionReferences() {
+            auto keepAlive = getSharedPtr();
             auto *pRealSender = resolveSender();
             auto *pRealReceiver = resolveReceiver();
-            if(!pRealSender || !pRealReceiver) {
-                throw std::runtime_error("Sender or receiver is null, cannot remove connection references.");
-                return;
+            auto *senderStorage = std::exchange(m_senderStorage, nullptr);
+            auto *receiverStorage = std::exchange(m_receiverStorage, nullptr);
+            if (senderStorage) {
+                runOnAffinityThread(pRealSender, [senderStorage, index = m_signalIndex, connection = this]() {
+                    senderStorage->eraseOutput(index, connection);
+                });
             }
-            m_removeConnectionReferenceImpl<TA_MetaObject, TA_MetaObject>(
-                pRealSender, pRealReceiver,
-                std::forward<FuncMark>(m_senderFunc), std::forward<FuncMark>(m_receiverFunc));
+            if (receiverStorage) {
+                runOnAffinityThread(pRealReceiver, [receiverStorage, index = m_slotIndex, connection = this]() {
+                    receiverStorage->eraseInput(index, connection);
+                });
+            }
+        }
+
+        // Forget only endpoints owned by this storage; this does not erase bucket entries.
+        // The caller drains its local buckets, leaving removeConnectionReferences()
+        // responsible for any endpoint in a different storage segment.
+        void detachStorage(TA_ConnectionStorageAccess *storage) {
+            if (m_senderStorage == storage) {
+                m_senderStorage = nullptr;
+            }
+            if (m_receiverStorage == storage) {
+                m_receiverStorage = nullptr;
+            }
+        }
+
+        bool matches(TA_MetaObject *receiver, const TA_ResolvedMember &slot) const {
+            return resolveReceiver() == receiver && m_receiverStorage == slot.storage && m_slotIndex == slot.index;
         }
 
         TA_MetaObject *sender() const { return resolveSender(); }
-        TA_MetaObject *receiver() const { return resolveReceiver(); }
 
-        using FuncMark = std::string_view;
-
-        const FuncMark &signalMark() const { return m_senderFunc; }
-        const FuncMark &slotMark() const { return m_receiverFunc; }
+        TA_ConnectionStorageAccess *senderStorage() const { return m_senderStorage; }
+        TA_ConnectionStorageAccess *receiverStorage() const { return m_receiverStorage; }
 
         bool isSync() const {
             auto *pRealSender = resolveSender();
@@ -662,350 +790,260 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
       private:
         TA_MetaObject *m_pSender{nullptr}, *m_pReceiver{nullptr};
         std::weak_ptr<TA_MetaObject> m_wpSender{}, m_wpReceiver{};
-        FuncMark m_senderFunc{}, m_receiverFunc{};
+        TA_ConnectionStorageAccess *m_senderStorage{nullptr}, *m_receiverStorage{nullptr};
+        std::size_t m_signalIndex{std::numeric_limits<std::size_t>::max()};
+        std::size_t m_slotIndex{std::numeric_limits<std::size_t>::max()};
         TA_ConnectionType m_type;
         std::any m_para;
         SlotExpType m_slotExp {};
         const bool m_autoDestroy{false};
     };
 
-  private:
-    void destroyConnections() {
-        for (auto &&[signal, obj] : m_outputConnections) {
-            auto receiver = obj->receiver();
-            if(!receiver) {
-                continue;
-            }
-            auto &&[start, end] = receiver->m_inputConnections.equal_range(obj->slotMark());
-            auto subRange = std::ranges::subrange(start, end);
-            auto foundIter = std::ranges::find_if(subRange, [&obj](const auto &pair) {
-                return pair.second == obj;
-            });
-            if (foundIter != subRange.end()) {
-                receiver->m_inputConnections.erase(foundIter);
-            }
+    template <typename Sender, typename Receiver, typename Slot>
+    static SharedConnection createConnection(Sender pSender, TA_ResolvedMember signalMember, Receiver pReceiver,
+                                             Slot slot, TA_ResolvedMember slotMember,
+                                             TA_ConnectionType type) {
+        auto &bucket = signalMember.storage->outputBucket(signalMember.index);
+        if (std::ranges::any_of(bucket.connections, [&](const auto &connection) {
+                return connection && connection->matches(pReceiver.get(), slotMember);
+            })) {
+            return nullptr;
         }
-        m_outputConnections.clear();
+        auto connection = std::make_shared<TA_ConnectionObject>(pSender.get(), signalMember, type);
+        connection->initSlotObject(pReceiver.get(), std::move(slot), slotMember);
+        bucket.connections.push_back(connection);
+        return connection;
+    }
 
-        for (auto &&[slot, obj] : m_inputConnections) {
-            auto sender = obj->sender();
-            if(!sender) {
+    template <typename Sender, typename Receiver, typename Slot>
+    static bool registerResolvedConnection(Sender pSender, TA_ResolvedMember signalMember, Receiver pReceiver,
+                                           Slot slot, TA_ResolvedMember slotMember,
+                                           TA_ConnectionType type) {
+        auto registerSender = [pSender, signalMember, pReceiver, slot, slotMember, type]() mutable {
+            return createConnection(pSender, signalMember, pReceiver, slot, slotMember, type);
+        };
+        SharedConnection connection;
+        if (isOnCurrentThread(pSender)) {
+            connection = registerSender();
+        } else {
+            auto activity = TA_ActivityCreator::create(std::move(registerSender));
+            activity->setStolenEnabled(false);
+            connection = invokeActivity(activity, pSender.get()).get()->template get<SharedConnection>();
+        }
+        if (!connection) {
+            return false;
+        }
+        auto registerReceiver = [connection, slotMember]() {
+            slotMember.storage->inputBucket(slotMember.index).connections.push_back(connection);
+        };
+        if (isOnCurrentThread(pReceiver)) {
+            registerReceiver();
+        } else {
+            auto activity = TA_ActivityCreator::create(std::move(registerReceiver));
+            activity->setStolenEnabled(false);
+            invokeActivity(activity, pReceiver.get()).get();
+        }
+        return true;
+    }
+
+    template <typename Sender, typename LambdaExp>
+    static TA_ConnectionObjectHolder registerResolvedLambda(Sender pSender, TA_ResolvedMember signalMember,
+                                                             LambdaExp &&exp,
+                                                             TA_ConnectionType type, bool autoDestroy) {
+        using ExpType = std::decay_t<LambdaExp>;
+        auto registerLambda = [pSender, signalMember, exp = ExpType(std::forward<LambdaExp>(exp)),
+                               type, autoDestroy]() mutable -> TA_ConnectionObjectHolder {
+            auto &bucket = signalMember.storage->outputBucket(signalMember.index);
+            auto connection = std::make_shared<TA_ConnectionObject>(pSender.get(), signalMember, type, autoDestroy);
+            connection->initSlotObject(std::move(exp));
+            bucket.connections.push_back(connection);
+            return autoDestroy ? TA_ConnectionObjectHolder{nullptr} : TA_ConnectionObjectHolder{connection};
+        };
+        if (isOnCurrentThread(pSender)) {
+            return registerLambda();
+        }
+        auto activity = TA_ActivityCreator::create(std::move(registerLambda));
+        activity->setStolenEnabled(false);
+        return invokeActivity(activity, pSender.get()).get()->template get<TA_ConnectionObjectHolder>();
+    }
+
+    template <typename Sender, typename Receiver>
+    static bool isResolvedConnectionExisted(Sender pSender, TA_ResolvedMember signalMember,
+                                            Receiver pReceiver, TA_ResolvedMember slotMember) {
+        auto find = [pReceiver, signalMember, slotMember]() {
+            auto &bucket = signalMember.storage->outputBucket(signalMember.index);
+            return std::ranges::any_of(bucket.connections, [&](const auto &connection) {
+                return connection && connection->matches(pReceiver.get(), slotMember);
+            });
+        };
+        if (isOnCurrentThread(pSender)) {
+            return find();
+        }
+        auto activity = TA_ActivityCreator::create(std::move(find));
+        activity->setStolenEnabled(false);
+        return invokeActivity(activity, pSender.get()).get()->template get<bool>();
+    }
+
+    template <typename Sender, typename Receiver>
+    static bool unregisterResolvedConnection(Sender pSender, TA_ResolvedMember signalMember,
+                                             Receiver pReceiver, TA_ResolvedMember slotMember) {
+        auto findConnection = [pReceiver, signalMember, slotMember]() -> SharedConnection {
+            auto &bucket = signalMember.storage->outputBucket(signalMember.index);
+            auto found = std::ranges::find_if(bucket.connections, [&](const auto &connection) {
+                return connection && connection->matches(pReceiver.get(), slotMember);
+            });
+            return found == bucket.connections.end() ? nullptr : *found;
+        };
+        SharedConnection connection;
+        if (isOnCurrentThread(pSender)) {
+            connection = findConnection();
+        } else {
+            auto activity = TA_ActivityCreator::create(std::move(findConnection));
+            activity->setStolenEnabled(false);
+            connection = invokeActivity(activity, pSender.get()).get()->template get<SharedConnection>();
+        }
+        if (!connection) {
+            return false;
+        }
+        connection->removeConnectionReferences();
+        return true;
+    }
+
+    template <typename... Args>
+    static void emitBucket(TA_ResolvedMember signalMember, Args &&...args) {
+        auto &bucket = signalMember.storage->outputBucket(signalMember.index);
+        ++bucket.emissionDepth;
+        const auto count = bucket.connections.size();
+        for (std::size_t index = 0; index < count; ++index) {
+            auto connection = bucket.connections[index];
+            if (!connection) {
                 continue;
             }
-            auto &&[start, end] = sender->m_outputConnections.equal_range(obj->signalMark());
-            auto subRange = std::ranges::subrange(start, end);
-            auto foundIter = std::ranges::find_if(subRange, [&obj](const auto &pair) {
-                return pair.second == obj;
-            });
-            if (foundIter != subRange.end()) {
-                sender->m_outputConnections.erase(foundIter);
+            if (index + 1 < count) {
+                connection->setPara(args...);
+            } else {
+                connection->setPara(std::forward<Args>(args)...);
             }
+            connection->callSlot();
         }
-        m_inputConnections.clear();
+        --bucket.emissionDepth;
+        compactBucket(bucket);
+    }
+
+    template <EnableConnectObjectType Sender, typename... Args>
+    static void emitResolved(Sender *pSender, TA_ResolvedMember signalMember, Args &&...args) {
+        if (isOnCurrentThread(pSender)) {
+            emitBucket(signalMember, std::forward<Args>(args)...);
+            return;
+        }
+        auto protectedSender = sharedRef(pSender);
+        auto parameters = std::make_tuple(std::forward<Args>(args)...);
+        auto emit = [protectedSender, signalMember, parameters = std::move(parameters)]() mutable {
+            std::apply([&](auto &&...values) {
+                emitBucket(signalMember, std::forward<decltype(values)>(values)...);
+            }, std::move(parameters));
+        };
+        auto activity = TA_ActivityCreator::create(std::move(emit));
+        activity->setStolenEnabled(false);
+        invokeActivityNoAwait(activity, pSender);
     }
 
     void updateAffinityThread() {
         m_affinityThreadIdx.store(TA_ThreadHolder::get().topPriorityThread(), std::memory_order_release);
     }
 
-  private:
     const std::thread::id m_sourceThread;
     std::atomic_size_t m_affinityThreadIdx;
-    PendingCounter m_pendingCounter {};
+    PendingCounter m_pendingCounter{};
     std::atomic_bool m_isBeingDestroyed{false};
 
-    std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject>> m_outputConnections{};
-    std::unordered_multimap<TA_ConnectionObject::FuncMark, std::shared_ptr<TA_ConnectionObject>> m_inputConnections{};
+    bool(*m_moveToThreadImpl)(std::size_t idx, std::atomic_size_t &affinityThread) =
+        [](std::size_t idx, std::atomic_size_t &affinityThread) -> bool {
+            if (idx >= TA_ThreadHolder::get().size()) {
+                return false;
+            }
+            affinityThread.store(idx, std::memory_order_release);
+            return true;
+        };
+
+};
+
+template <typename Owner>
+class TA_MetaObjectStorage : public virtual TA_MetaObject, public TA_MetaObject::TA_ConnectionStorageAccess {
+    using ConnectionBucket = TA_MetaObject::TA_ConnectionBucket;
+
+  public:
+    TA_MetaObjectStorage() = default;
+    TA_MetaObjectStorage(const TA_MetaObjectStorage &) {}
+    TA_MetaObjectStorage(TA_MetaObjectStorage &&) noexcept {}
+
+    TA_MetaObjectStorage &operator=(const TA_MetaObjectStorage &) {
+        disconnectAll();
+        return *this;
+    }
+
+    TA_MetaObjectStorage &operator=(TA_MetaObjectStorage &&) noexcept {
+        disconnectAll();
+        return *this;
+    }
+
+    ~TA_MetaObjectStorage() override { disconnectAll(); }
 
   private:
-    template <SmartPtrType Sender, SmartPtrType Receiver>
-    inline static auto m_isConnectionExistedImpl =
-        [](Sender pSender, TA_ConnectionObject::FuncMark &&signal,
-           Receiver pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
-        auto &&[startSendIter, endSendIter] = pSender->m_outputConnections.equal_range(signal);
-        while (startSendIter != endSendIter) {
-            if (startSendIter->second->receiver() == pReceiver.get() &&
-                startSendIter->second->slotMark() == slot) {
-                return true;
-            }
-            startSendIter++;
+    void ensureBuckets() {
+        const auto fieldCount = Reflex::TA_TypeInfo<Owner>::fields.size();
+        if (m_outputBuckets.empty()) {
+            m_outputBuckets.resize(fieldCount);
+            m_inputBuckets.resize(fieldCount);
         }
-        return false;
-    };
+    }
 
-    template <PointerType Sender, typename Signal, typename... Args>
-    inline static auto m_emitSignalImpl = [](Sender pSender, Signal signal, Args... args) -> void {
-        if (!pSender) {
-            return;
-        }
-        using RawType = typename ExtractRawType<Sender>::type;
-        auto signalMark = Reflex::TA_TypeInfo<RawType>::findName(std::forward<Signal>(signal));
-        if (signalMark.empty()) {
-            return;
-        }
-        auto [startIter, endIter] = pSender->m_outputConnections.equal_range(signalMark);
-        while (startIter != endIter) {
-            auto obj = startIter++->second;
-            if(startIter != endIter) {
-                obj->setPara(args...);
-            } else {
-                obj->setPara(std::move(args)...);
-            }
-            obj->callSlot();
-        }
-    };
+    ConnectionBucket &outputBucket(std::size_t index) override {
+        ensureBuckets();
+        return m_outputBuckets.at(index);
+    }
 
-    template <typename Sender>
-    inline static auto m_unregisterConnectionHolderImpl = [](TA_ConnectionObjectHolder &holder) -> bool {
-        if (!holder.valid()) {
-            return false;
-        }
-        auto &&pConnection = holder.m_pConnection;
-        if (!pConnection) {
-            return false;
-        }
-        Sender *pSender = pConnection->sender();
-        if(pSender) {
-            auto &&signalMark = pConnection->signalMark();
-            auto &&slotMark = pConnection->slotMark();
-            auto [first, last] = pSender->m_outputConnections.equal_range(signalMark);
-            auto subRange = std::ranges::subrange(first, last);
-            while (subRange.begin() != subRange.end()) {
-                if (subRange.begin()->second->slotMark() == slotMark) {
-                    pSender->m_outputConnections.erase(subRange.begin());
-                    break;
-                }
-                subRange.advance(1);
-            }
-        }
-        holder.reset();
-        return true;
-    };
+    ConnectionBucket &inputBucket(std::size_t index) override {
+        ensureBuckets();
+        return m_inputBuckets.at(index);
+    }
 
-    template <SmartPtrType Sender, SmartPtrType Receiver>
-    inline static auto m_unregisterConnectionImpl = [](Sender pSender, TA_ConnectionObject::FuncMark &&signal,
-                                                        Receiver pReceiver, TA_ConnectionObject::FuncMark &&slot) -> bool {
-        std::shared_ptr<TA_ConnectionObject> pConnection{nullptr};
-        auto senderUnregisterExp = [&pConnection, pSender, signal, pReceiver, slot]() ->bool {
-            auto [first, last] = pSender->m_outputConnections.equal_range(signal);
-            auto subRange = std::ranges::subrange(first, last);
-            if (subRange.begin() == subRange.end())
-                return false;
-            auto foundIter = std::ranges::find_if(subRange, [&pReceiver, &slot](const auto &pair) {
-                return pair.second->receiver() == pReceiver.get() && pair.second->slotMark() == slot;
-            });
-            if (foundIter != subRange.end()) {
-                pConnection = foundIter->second;
-                pSender->m_outputConnections.erase(foundIter);
-                return true;
-            }
-            return false;
-        };
-        if(isOnCurrentThread(pSender)) {
-            senderUnregisterExp();
-        } else {
-            auto senderActivity = TA_ActivityCreator::create(std::move(senderUnregisterExp));
-            senderActivity->setStolenEnabled(false);
-            // Ensure the activity completes before proceeding to receiver side.
-            // Previously this used invokeActivity(...) and discarded the returned task,
-            // which could destroy the awaiting coroutine before resumption.
-            auto fetcher = TA_ThreadHolder::get().postActivity(senderActivity, true);
-            fetcher();
-            //AsyncTaskRes res = invokeActivity(senderActivity, pSender);
-            //res.get();
+    void eraseOutput(std::size_t index, const TA_MetaObject::TA_ConnectionObject *connection) override {
+        if (index < m_outputBuckets.size()) {
+            TA_MetaObject::eraseFromBucket(m_outputBuckets[index], connection);
         }
-        auto receiverUnregisterExp = [&pConnection, pReceiver, &slot]() -> bool {
-            if (!pConnection) {
-                return false;
-            }
-            auto [first, last] = pReceiver->m_inputConnections.equal_range(slot);
-            auto subRange = std::ranges::subrange(first, last);
-            if (subRange.begin() == subRange.end())
-                return false;
-            while (subRange.begin() != subRange.end()) {
-                if (subRange.begin()->second == pConnection) {
-                    pReceiver->m_inputConnections.erase(subRange.begin());
-                    break;
-                }
-                subRange.advance(1);
-            }
-            return true;
-        };
-        if(isOnCurrentThread(pReceiver)) {
-            return receiverUnregisterExp();
-        }
-        auto receiverActivity = TA_ActivityCreator::create(std::move(receiverUnregisterExp));
-        receiverActivity->setStolenEnabled(false);
-        AsyncTaskRes res = invokeActivity(receiverActivity, pReceiver.get());
-        auto taskResult = res.get();
-        return taskResult->template get<bool>();
-    };
+    }
 
-    template <SmartPtrType Sender, typename Signal, LambdaExpType Exp>
-    inline static auto m_registerLambdaConnectionImpl = [](Sender pSender, Signal signal,
-                                                           Exp exp, TA_ConnectionType type,
-                                                           bool autoDestroy) -> TA_ConnectionObjectHolder {
-        using RawSenderType = typename ExtractRawType<Sender>::type;
-        TA_ConnectionObject::FuncMark signalMark{
-            Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
-        TA_ConnectionObject::FuncMark slotMark{typeid(Exp).name()};
-        if (signalMark.empty()) {
-            return {nullptr};
+    void eraseInput(std::size_t index, const TA_MetaObject::TA_ConnectionObject *connection) override {
+        if (index < m_inputBuckets.size()) {
+            TA_MetaObject::eraseFromBucket(m_inputBuckets[index], connection);
         }
-        auto [first, last] = pSender->m_outputConnections.equal_range(signalMark);
-        auto subRange = std::ranges::subrange(first, last);
-        while (subRange.begin() != subRange.end()) {
-            if (subRange.begin()->second->receiver() == pSender.get() && subRange.begin()->second->slotMark() == slotMark) {
-                return {nullptr};
-            }
-            subRange.advance(1);
-        }
+    }
 
-        auto &&conn = std::make_shared<TA_ConnectionObject>(pSender.get(), std::move(signal), type, autoDestroy);
-        conn->initSlotObject(std::move(exp));
-        pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
-        if (autoDestroy)
-            return {nullptr};
-        return {conn};
-    };
-
-    template <SmartPtrType Sender, typename Signal, SmartPtrType Receiver, typename Slot>
-    inline static auto m_registerConnectionImpl = [](Sender pSender, Signal &&signal,
-                                                     Receiver pReceiver, Slot &&slot,
-                                                     TA_ConnectionType type) -> bool {
-        using SharedConnection = std::shared_ptr<TA_ConnectionObject>;
-        using RawSenderType = typename ExtractRawType<Sender>::type;
-        using RawReceiverType = typename ExtractRawType<Receiver>::type;
-        TA_ConnectionObject::FuncMark slotMark {
-            Reflex::TA_TypeInfo<std::decay_t<RawReceiverType>>::findName(std::forward<Slot>(slot))};
-        if (slotMark.empty()) {
-            return false;
-        }
-        if(pSender->affinityThread() == pReceiver->affinityThread()) {
-            auto syncRegisterExp = [pSender, &signal, pReceiver, &slot, type, slotMark]() -> bool {
-                TA_ConnectionObject::FuncMark signalMark{
-                    Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
-                if (signalMark.empty()) {
-                    return false;
-                }
-                auto [first, last] = pSender->m_outputConnections.equal_range(signalMark);
-                auto subRange = std::ranges::subrange(first, last);
-                while (subRange.begin() != subRange.end()) {
-                    if (subRange.begin()->second->receiver() == pReceiver.get() &&
-                        subRange.begin()->second->slotMark() == slotMark) {
-                        return false;
+    void disconnectAll() noexcept {
+        auto disconnectBuckets = [this](auto &buckets) {
+            for (auto &bucket : buckets) {
+                while (!bucket.connections.empty()) {
+                    auto connection = bucket.connections.back();
+                    // Remove the local entry first, retaining ownership during cleanup.
+                    bucket.connections.pop_back();
+                    if (connection) {
+                        // Skip callbacks into this storage, which we are already draining.
+                        // Pointers to other storage segments remain available for removal.
+                        connection->detachStorage(this);
+                        connection->removeConnectionReferences();
                     }
-                    subRange.advance(1);
-                }
-
-                auto &&conn = std::make_shared<TA_ConnectionObject>(pSender.get(), std::move(signal), type);
-                conn->initSlotObject(pReceiver.get(), std::forward<Slot>(slot));
-                pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
-                pReceiver->m_inputConnections.emplace(slotMark, conn->getSharedPtr());
-                return true;
-            };
-            if(isOnCurrentThread(pSender)) {
-                return syncRegisterExp();
-            } else {
-                auto syncActivity = TA_ActivityCreator::create(std::move(syncRegisterExp));
-                syncActivity->setStolenEnabled(false);
-                AsyncTaskRes res = invokeActivity(syncActivity, pSender.get());
-                auto taskResult = res.get();
-                return taskResult->template get<bool>();
-            }
-        } else {
-            auto senderRegisterExp = [pSender, &signal, pReceiver, &slot, type, &slotMark]() -> SharedConnection {
-                TA_ConnectionObject::FuncMark signalMark{
-                    Reflex::TA_TypeInfo<std::decay_t<RawSenderType>>::findName(std::forward<Signal>(signal))};
-                if (signalMark.empty()) {
-                    return nullptr;
-                }
-                auto [first, last] = pSender->m_outputConnections.equal_range(signalMark);
-                auto subRange = std::ranges::subrange(first, last);
-                while (subRange.begin() != subRange.end()) {
-                    if (subRange.begin()->second->receiver() == pReceiver.get() &&
-                        subRange.begin()->second->slotMark() == slotMark) {
-                        return nullptr;
-                    }
-                    subRange.advance(1);
-                }
-
-                auto &&conn = std::make_shared<TA_ConnectionObject>(pSender.get(), std::move(signal), type);
-                conn->initSlotObject(pReceiver.get(), std::forward<Slot>(slot));
-                pSender->m_outputConnections.emplace(signalMark, conn->getSharedPtr());
-                return conn;
-            };
-            SharedConnection connectionObj {nullptr};
-            if(isOnCurrentThread(pSender)) {
-                connectionObj = senderRegisterExp();
-            } else {
-                auto senderRegisterActivity = TA_ActivityCreator::create(std::move(senderRegisterExp));
-                senderRegisterActivity->setStolenEnabled(false);
-                AsyncTaskRes res = invokeActivity(senderRegisterActivity, pSender.get());
-                auto taskResult = res.get();
-                connectionObj = taskResult->template get<SharedConnection>();
-
-            }
-            if(!connectionObj) {
-                return false;
-            }
-            auto receiverRegisterExp = [pReceiver, &slotMark, &connectionObj]() -> void {
-                pReceiver->m_inputConnections.emplace(slotMark, connectionObj->getSharedPtr());
-            };
-            if(isOnCurrentThread(pReceiver)) {
-                receiverRegisterExp();
-            } else {
-                auto addIntoReceiverActivity = TA_ActivityCreator::create(std::move(receiverRegisterExp));
-                addIntoReceiverActivity->setStolenEnabled(false);
-                AsyncTaskRes res = invokeActivity(addIntoReceiverActivity, pReceiver.get());
-                auto taskResult = res.get();
-            }
-            return true;
-        }
-    };
-
-    bool(*m_moveToThreadImpl)(std::size_t idx, std::atomic_size_t &affintyThread) =
-        [](std::size_t idx, std::atomic_size_t &affintyThread) -> bool {
-        if (idx >= TA_ThreadHolder::get().size()) {
-            return false;
-        }
-        affintyThread.store(idx, std::memory_order_release);
-        return true;
-    };
-
-    template <typename Sender, typename Receiver>
-    inline static auto m_removeConnectionReferenceImpl = [](Sender *pSender, Receiver *pReceiver,
-                                                             TA_ConnectionObject::FuncMark &&signal,
-                                                             TA_ConnectionObject::FuncMark &&slot) -> void {
-       auto senderExp =
-            [](Sender *pSender, TA_ConnectionObject::FuncMark &&signal) -> void {
-            auto rangeSender = pSender->m_outputConnections.equal_range(signal);
-            for (auto iter = rangeSender.first; iter != rangeSender.second; ++iter) {
-                if (iter->second->sender() == pSender) {
-                    pSender->m_outputConnections.erase(iter);
-                    break;
                 }
             }
         };
-        senderExp(pSender, std::forward<TA_ConnectionObject::FuncMark>(signal));
-        if(pSender == pReceiver) {
-            return;
-        }
-        auto receiverExp = [pReceiver, &slot]() -> void {
-            auto rangeReceiver = pReceiver->m_inputConnections.equal_range(slot);
-            for (auto iter = rangeReceiver.first; iter != rangeReceiver.second; ++iter) {
-                if (iter->second->receiver() == pReceiver) {
-                    pReceiver->m_inputConnections.erase(iter);
-                    break;
-                }
-            }
-        };
-        auto receiverActivity = TA_ActivityCreator::create(std::move(receiverExp));
-        receiverActivity->moveToThread(pReceiver->affinityThread());
-        receiverActivity->setStolenEnabled(false);
-        auto fetcher = TA_ThreadHolder::get().postActivity(receiverActivity, true);
-        fetcher();
-    };
+        // If both endpoints share this storage, detachStorage() clears both pointers.
+        // Draining both bucket collections removes the remaining local entry as well.
+        disconnectBuckets(m_outputBuckets);
+        disconnectBuckets(m_inputBuckets);
+    }
+
+    std::vector<ConnectionBucket> m_outputBuckets{};
+    std::vector<ConnectionBucket> m_inputBuckets{};
 };
 
 template <EnableConnectObjectType Sender, typename... Args>

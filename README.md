@@ -115,11 +115,11 @@ Supported: STL containers/adaptors, arrays, enums, pointers (to serializable typ
 ### Meta-Object, Signals/Slots, and Dynamic Invoke
 `TA_MetaObject` provides thread-aware connections and an `invokeMethod` helper to run member functions or callables (optionally queued on the framework thread pool).
 ```cpp
-class Sender : public CoreAsync::TA_MetaObject {
+class Sender : public CoreAsync::TA_MetaObjectStorage<Sender> {
 public:
     TA_Signals: void fired(int) {}
 };
-class Receiver : public CoreAsync::TA_MetaObject {
+class Receiver : public CoreAsync::TA_MetaObjectStorage<Receiver> {
 public:
     void onFired(int v) { std::printf("%d\n", v); }
 };
@@ -128,9 +128,13 @@ DEFINE_TYPE_INFO(Receiver){AUTO_META_FIELDS(REGISTER_FIELD(onFired))};
 
 Sender s; Receiver r;
 CoreAsync::ITA_Connection::connect(&s, &Sender::fired, &r, &Receiver::onFired); // auto/queued based on threads
+CoreAsync::ITA_Connection::connect<&Sender::fired, &Receiver::onFired>(&s, &r); // compile-time checked
 CoreAsync::TA_MetaObject::invokeMethod(META_STRING("fired"), &s, 5)();            // returns an activity fetcher
 ```
-Connections can be direct, queued, or auto; lambdas are supported; `TA_SignalAwaitable` lets coroutines wait a signal emission.
+Connection-capable classes inherit `TA_MetaObjectStorage<Class>`. Registered signals and slots are stored in dense,
+per-member buckets; the compile-time overload resolves those bucket indices with no runtime metadata scan or hash lookup.
+The pointer-based overload remains available for dynamically selected member pointers. Connections can be direct,
+queued, or auto; lambdas are supported; `TA_SignalAwaitable` lets coroutines wait a signal emission.
 
 ### Activities, Thread Pool, and Variants
 Activities wrap callables or reflected method names. They carry thread affinity, an ID, and a `stolenEnabled` flag for work stealing. `TA_ThreadPool` (and the singleton `TA_ThreadHolder`) schedule them on a lock-free queue with platform-specific threads.

@@ -20,7 +20,8 @@
 #include "TA_BasicPipeline.h"
 
 namespace CoreAsync {
-class TA_ManualChainPipeline : public TA_BasicPipeline {
+class TA_ManualChainPipeline : public TA_BasicPipeline,
+                               public TA_MetaObjectStorage<TA_ManualChainPipeline> {
   public:
     ACTIVITY_FRAMEWORK_EXPORT TA_ManualChainPipeline();
     virtual ~TA_ManualChainPipeline() {}
