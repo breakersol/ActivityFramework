@@ -342,8 +342,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!connectionTypesCompatible<Signal, Slot>() || !pSender || !pReceiver) {
             return false;
         }
-        auto signalMember = resolveMember(pSender, signal);
-        auto slotMember = resolveMember(pReceiver, slot);
+        auto signalMember = resolveMemberDynamic(pSender, signal);
+        auto slotMember = resolveMemberDynamic(pReceiver, slot);
         if (!signalMember || !slotMember) {
             return false;
         }
@@ -359,10 +359,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender || !pReceiver) {
             return false;
         }
-        constexpr auto signalIndex = staticMemberIndex<Signal>();
-        constexpr auto slotIndex = staticMemberIndex<Slot>();
-        return registerResolvedConnection(sharedRef(pSender), bindMember<Signal>(pSender, signalIndex),
-                                          sharedRef(pReceiver), Slot, bindMember<Slot>(pReceiver, slotIndex), type);
+        return registerResolvedConnection(sharedRef(pSender), resolveMemberStatic<Signal>(pSender),
+                                          sharedRef(pReceiver), Slot, resolveMemberStatic<Slot>(pReceiver), type);
     }
 
     template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
@@ -371,7 +369,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!lambdaConnectionTypesCompatible<Signal, LambdaExp>() || !pSender) {
             return {nullptr};
         }
-        auto signalMember = resolveMember(pSender, signal);
+        auto signalMember = resolveMemberDynamic(pSender, signal);
         if (!signalMember) {
             return {nullptr};
         }
@@ -388,8 +386,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender) {
             return {nullptr};
         }
-        constexpr auto signalIndex = staticMemberIndex<Signal>();
-        return registerResolvedLambda(sharedRef(pSender), bindMember<Signal>(pSender, signalIndex),
+        return registerResolvedLambda(sharedRef(pSender), resolveMemberStatic<Signal>(pSender),
                                       std::forward<LambdaExp>(exp), type, autoDestroy);
     }
 
@@ -398,8 +395,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!connectionTypesCompatible<Signal, Slot>() || !pSender || !pReceiver) {
             return false;
         }
-        auto signalMember = resolveMember(pSender, signal);
-        auto slotMember = resolveMember(pReceiver, slot);
+        auto signalMember = resolveMemberDynamic(pSender, signal);
+        auto slotMember = resolveMemberDynamic(pReceiver, slot);
         if (!signalMember || !slotMember) {
             return false;
         }
@@ -415,10 +412,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender || !pReceiver) {
             return false;
         }
-        constexpr auto signalIndex = staticMemberIndex<Signal>();
-        constexpr auto slotIndex = staticMemberIndex<Slot>();
-        return unregisterResolvedConnection(sharedRef(pSender), bindMember<Signal>(pSender, signalIndex),
-                                            sharedRef(pReceiver), bindMember<Slot>(pReceiver, slotIndex));
+        return unregisterResolvedConnection(sharedRef(pSender), resolveMemberStatic<Signal>(pSender),
+                                            sharedRef(pReceiver), resolveMemberStatic<Slot>(pReceiver));
     }
 
     static bool unregisterConnection(TA_ConnectionObjectHolder &holder) {
@@ -456,7 +451,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender) {
             return false;
         }
-        auto signalMember = resolveMember(pSender, signal);
+        auto signalMember = resolveMemberDynamic(pSender, signal);
         if (!signalMember) {
             return false;
         }
@@ -473,8 +468,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender) {
             return false;
         }
-        constexpr auto signalIndex = staticMemberIndex<Signal>();
-        emitResolved(pSender, bindMember<Signal>(pSender, signalIndex), std::forward<ConnectionParameter>(args)...);
+        emitResolved(pSender, resolveMemberStatic<Signal>(pSender), std::forward<ConnectionParameter>(args)...);
         return true;
     }
 
@@ -483,8 +477,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!connectionTypesCompatible<Signal, Slot>() || !pSender || !pReceiver) {
             return false;
         }
-        auto signalMember = resolveMember(pSender, signal);
-        auto slotMember = resolveMember(pReceiver, slot);
+        auto signalMember = resolveMemberDynamic(pSender, signal);
+        auto slotMember = resolveMemberDynamic(pReceiver, slot);
         if (!signalMember || !slotMember) {
             return false;
         }
@@ -499,10 +493,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender || !pReceiver) {
             return false;
         }
-        constexpr auto signalIndex = staticMemberIndex<Signal>();
-        constexpr auto slotIndex = staticMemberIndex<Slot>();
-        return isResolvedConnectionExisted(sharedRef(pSender), bindMember<Signal>(pSender, signalIndex),
-                                           sharedRef(pReceiver), bindMember<Slot>(pReceiver, slotIndex));
+        return isResolvedConnectionExisted(sharedRef(pSender), resolveMemberStatic<Signal>(pSender),
+                                           sharedRef(pReceiver), resolveMemberStatic<Slot>(pReceiver));
     }
 
   private:
@@ -549,8 +541,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
     }
 
-    template <auto Member>
-    static consteval std::size_t staticMemberIndex() {
+    template <auto Member, EnableConnectObjectType Object>
+    static constexpr TA_ResolvedMember resolveMemberStatic(Object *pObject) {
         using MemberType = std::decay_t<decltype(Member)>;
         static_assert(std::is_member_function_pointer_v<MemberType>,
                       "Connection members must be instance methods.");
@@ -559,19 +551,14 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
                       "The member owner must inherit TA_MetaObjectStorage<Owner>.");
         constexpr auto index = Reflex::TA_TypeInfo<Owner>::fields.template valueIndex<Member>();
         static_assert(index < Reflex::TA_TypeInfo<Owner>::fields.size(), "The member is not locally registered.");
-        return index;
-    }
 
-    template <auto Member, EnableConnectObjectType Object>
-    static TA_ResolvedMember bindMember(Object *pObject, std::size_t index) {
-        using Owner = typename MethodTypeInfo<std::decay_t<decltype(Member)>>::ParentClass;
         static_assert(std::is_convertible_v<Object *, Owner *>, "The member does not belong to this object.");
         auto *pOwner = static_cast<Owner *>(pObject);
         return {static_cast<TA_MetaObjectStorage<Owner> *>(pOwner), index};
     }
 
     template <EnableConnectObjectType Object, typename Member>
-    static std::optional<TA_ResolvedMember> resolveMember(Object *pObject, Member &&member) {
+    static std::optional<TA_ResolvedMember> resolveMemberDynamic(Object *pObject, Member &&member) {
         using MemberType = std::decay_t<Member>;
         if constexpr (!std::is_member_function_pointer_v<MemberType>) {
             return std::nullopt;
