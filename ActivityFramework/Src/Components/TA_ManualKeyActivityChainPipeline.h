@@ -20,7 +20,8 @@
 #include "TA_ManualChainPipeline.h"
 
 namespace CoreAsync {
-class TA_ManualKeyActivityChainPipeline : public TA_ManualChainPipeline {
+class TA_ManualKeyActivityChainPipeline : public TA_ManualChainPipeline,
+                                          public TA_MetaObjectStorage<TA_ManualKeyActivityChainPipeline> {
   public:
     ACTIVITY_FRAMEWORK_EXPORT TA_ManualKeyActivityChainPipeline();
     virtual ~TA_ManualKeyActivityChainPipeline() {}
