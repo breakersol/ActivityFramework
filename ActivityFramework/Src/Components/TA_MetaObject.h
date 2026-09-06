@@ -373,8 +373,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!signalMember) {
             return {nullptr};
         }
-        return registerResolvedLambda(sharedRef(pSender), *signalMember, std::forward<LambdaExp>(exp), type,
-                                      autoDestroy);
+        return m_registerResolvedLambda<std::shared_ptr<Sender>, LambdaExp>(
+            sharedRef(pSender), *signalMember, std::forward<LambdaExp>(exp), type, autoDestroy);
     }
 
     template <auto Signal, EnableConnectObjectType Sender, LambdaExpType LambdaExp>
@@ -386,8 +386,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender) {
             return {nullptr};
         }
-        return registerResolvedLambda(sharedRef(pSender), resolveMemberStatic<Signal>(pSender),
-                                      std::forward<LambdaExp>(exp), type, autoDestroy);
+        return m_registerResolvedLambda<std::shared_ptr<Sender>, LambdaExp>(
+            sharedRef(pSender), resolveMemberStatic<Signal>(pSender), std::forward<LambdaExp>(exp), type, autoDestroy);
     }
 
     template <EnableConnectObjectType Sender, typename Signal, EnableConnectObjectType Receiver, typename Slot>
@@ -833,9 +833,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     };
 
     template <typename Sender, typename LambdaExp>
-    static TA_ConnectionObjectHolder registerResolvedLambda(Sender pSender, TA_ResolvedMember signalMember,
-                                                             LambdaExp &&exp,
-                                                             TA_ConnectionType type, bool autoDestroy) {
+    inline static auto m_registerResolvedLambda = [](Sender pSender, TA_ResolvedMember signalMember,
+                                                     LambdaExp &&exp,
+                                                     TA_ConnectionType type, bool autoDestroy) {
         using ExpType = std::decay_t<LambdaExp>;
         auto registerLambda = [pSender, signalMember, exp = ExpType(std::forward<LambdaExp>(exp)),
                                type, autoDestroy]() mutable -> TA_ConnectionObjectHolder {
@@ -851,7 +851,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         auto activity = TA_ActivityCreator::create(std::move(registerLambda));
         activity->setStolenEnabled(false);
         return invokeActivity(activity, pSender.get()).get()->template get<TA_ConnectionObjectHolder>();
-    }
+    };
 
     template <typename Sender, typename Receiver>
     static bool isResolvedConnectionExisted(Sender pSender, TA_ResolvedMember signalMember,
