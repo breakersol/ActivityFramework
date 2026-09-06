@@ -347,8 +347,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!signalMember || !slotMember) {
             return false;
         }
-        return registerResolvedConnection(sharedRef(pSender), *signalMember, sharedRef(pReceiver),
-                                          std::decay_t<Slot>(slot), *slotMember, type);
+        return m_registerResolvedConnection<std::shared_ptr<Sender>, std::shared_ptr<Receiver>, std::decay_t<Slot>>(
+            sharedRef(pSender), *signalMember, sharedRef(pReceiver), std::decay_t<Slot>(slot), *slotMember, type);
     }
 
     template <auto Signal, auto Slot, EnableConnectObjectType Sender, EnableConnectObjectType Receiver>
@@ -359,8 +359,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender || !pReceiver) {
             return false;
         }
-        return registerResolvedConnection(sharedRef(pSender), resolveMemberStatic<Signal>(pSender),
-                                          sharedRef(pReceiver), Slot, resolveMemberStatic<Slot>(pReceiver), type);
+        return m_registerResolvedConnection<std::shared_ptr<Sender>, std::shared_ptr<Receiver>, SlotType>(
+            sharedRef(pSender), resolveMemberStatic<Signal>(pSender), sharedRef(pReceiver), Slot, resolveMemberStatic<Slot>(pReceiver), type);
     }
 
     template <EnableConnectObjectType Sender, typename Signal, LambdaExpType LambdaExp>
@@ -803,11 +803,10 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     }
 
     template <typename Sender, typename Receiver, typename Slot>
-    static bool registerResolvedConnection(Sender pSender, TA_ResolvedMember signalMember, Receiver pReceiver,
-                                           Slot slot, TA_ResolvedMember slotMember,
-                                           TA_ConnectionType type) {
+    inline static auto m_registerResolvedConnection = [](Sender pSender, TA_ResolvedMember signalMember, Receiver pReceiver, Slot slot,
+                                                TA_ResolvedMember slotMember, TA_ConnectionType type) mutable {
         auto registerSender = [pSender, signalMember, pReceiver, slot, slotMember, type]() mutable {
-            return createConnection(pSender, signalMember, pReceiver, slot, slotMember, type);
+            return TA_MetaObject::createConnection(pSender, signalMember, pReceiver, slot, slotMember, type);
         };
         SharedConnection connection;
         if (isOnCurrentThread(pSender)) {
@@ -831,7 +830,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             invokeActivity(activity, pReceiver.get()).get();
         }
         return true;
-    }
+    };
 
     template <typename Sender, typename LambdaExp>
     static TA_ConnectionObjectHolder registerResolvedLambda(Sender pSender, TA_ResolvedMember signalMember,
