@@ -17,14 +17,17 @@
 #ifndef TA_METASTRINGVIEW_H
 #define TA_METASTRINGVIEW_H
 
+#include <concepts>
+#include <stdexcept>
 #include <type_traits>
 #include <string_view>
 
 #define META_STRING(s)                                                                                                 \
     ([] {                                                                                                              \
-        constexpr std::basic_string_view str{s};                                                                       \
-        return CoreAsync::TA_StringView<CoreAsync::TA_RawString<typename decltype(str)::value_type, str.size()>{       \
-            str}>{};                                                                                                   \
+        constexpr std::basic_string_view ta_meta_string_view_input{s};                                                 \
+        return CoreAsync::TA_StringView<CoreAsync::TA_RawString<                                                        \
+            typename decltype(ta_meta_string_view_input)::value_type, ta_meta_string_view_input.size()>{               \
+            ta_meta_string_view_input}>{};                                                                             \
     }())
 
 namespace CoreAsync {
@@ -36,6 +39,9 @@ template <typename C, std::size_t N> struct TA_RawString {
     static constexpr std::size_t size{N};
 
     constexpr TA_RawString(std::basic_string_view<StrType> str) {
+        if (str.size() < size) {
+            throw std::invalid_argument("TA_RawString input is shorter than its declared size");
+        }
         for (std::size_t i{0}; i < size; ++i) {
             data[i] = str[i];
         }
@@ -51,7 +57,7 @@ template <TA_RawString str> struct TA_StringView {
 
     static constexpr std::size_t size() { return str.size; }
 
-    static constexpr std::basic_string_view<RawType> data() { return str.data; }
+    static constexpr std::basic_string_view<RawType> data() { return {str.data, str.size}; }
 };
 
 template <typename T>
