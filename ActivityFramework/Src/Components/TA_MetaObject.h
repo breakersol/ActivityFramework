@@ -400,8 +400,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!signalMember || !slotMember) {
             return false;
         }
-        return unregisterResolvedConnection(sharedRef(pSender), *signalMember,
-                                            sharedRef(pReceiver), *slotMember);
+        return m_unregisterResolvedConnection<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
+            sharedRef(pSender), *signalMember, sharedRef(pReceiver), *slotMember);
     }
 
     template <auto Signal, auto Slot, EnableConnectObjectType Sender, EnableConnectObjectType Receiver>
@@ -412,8 +412,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender || !pReceiver) {
             return false;
         }
-        return unregisterResolvedConnection(sharedRef(pSender), resolveMemberStatic<Signal>(pSender),
-                                            sharedRef(pReceiver), resolveMemberStatic<Slot>(pReceiver));
+        return m_unregisterResolvedConnection<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
+            sharedRef(pSender), resolveMemberStatic<Signal>(pSender), sharedRef(pReceiver),
+            resolveMemberStatic<Slot>(pReceiver));
     }
 
     static bool unregisterConnection(TA_ConnectionObjectHolder &holder) {
@@ -455,7 +456,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!signalMember) {
             return false;
         }
-        emitResolved(pSender, *signalMember, std::forward<ConnectionParameter>(args)...);
+        m_emitResolved<Sender, ConnectionParameter...>(pSender, *signalMember, std::forward<ConnectionParameter>(args)...);
         return true;
     }
 
@@ -468,7 +469,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender) {
             return false;
         }
-        emitResolved(pSender, resolveMemberStatic<Signal>(pSender), std::forward<ConnectionParameter>(args)...);
+        m_emitResolved<Sender, ConnectionParameter...>(pSender, resolveMemberStatic<Signal>(pSender), std::forward<ConnectionParameter>(args)...);
         return true;
     }
 
@@ -482,8 +483,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!signalMember || !slotMember) {
             return false;
         }
-        return isResolvedConnectionExisted(sharedRef(pSender), *signalMember,
-                                           sharedRef(pReceiver), *slotMember);
+        return m_isResolvedConnectionExisted<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
+            sharedRef(pSender), *signalMember, sharedRef(pReceiver), *slotMember);
     }
 
     template <auto Signal, auto Slot, EnableConnectObjectType Sender, EnableConnectObjectType Receiver>
@@ -493,8 +494,9 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pSender || !pReceiver) {
             return false;
         }
-        return isResolvedConnectionExisted(sharedRef(pSender), resolveMemberStatic<Signal>(pSender),
-                                           sharedRef(pReceiver), resolveMemberStatic<Slot>(pReceiver));
+        return m_isResolvedConnectionExisted<std::shared_ptr<Sender>, std::shared_ptr<Receiver>>(
+            sharedRef(pSender), resolveMemberStatic<Signal>(pSender), sharedRef(pReceiver),
+            resolveMemberStatic<Slot>(pReceiver));
     }
 
   private:
@@ -854,8 +856,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     };
 
     template <typename Sender, typename Receiver>
-    static bool isResolvedConnectionExisted(Sender pSender, TA_ResolvedMember signalMember,
-                                            Receiver pReceiver, TA_ResolvedMember slotMember) {
+    inline static auto m_isResolvedConnectionExisted = [](Sender pSender, TA_ResolvedMember signalMember,
+                                                          Receiver pReceiver, TA_ResolvedMember slotMember) {
         auto find = [pReceiver, signalMember, slotMember]() {
             auto &bucket = signalMember.storage->outputBucket(signalMember.index);
             return std::ranges::any_of(bucket.connections, [&](const auto &connection) {
@@ -868,11 +870,11 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         auto activity = TA_ActivityCreator::create(std::move(find));
         activity->setStolenEnabled(false);
         return invokeActivity(activity, pSender.get()).get()->template get<bool>();
-    }
+    };
 
     template <typename Sender, typename Receiver>
-    static bool unregisterResolvedConnection(Sender pSender, TA_ResolvedMember signalMember,
-                                             Receiver pReceiver, TA_ResolvedMember slotMember) {
+    inline static auto m_unregisterResolvedConnection = [](Sender pSender, TA_ResolvedMember signalMember,
+                                                           Receiver pReceiver, TA_ResolvedMember slotMember) {
         auto findConnection = [pReceiver, signalMember, slotMember]() -> SharedConnection {
             auto &bucket = signalMember.storage->outputBucket(signalMember.index);
             auto found = std::ranges::find_if(bucket.connections, [&](const auto &connection) {
@@ -893,7 +895,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         }
         connection->removeConnectionReferences();
         return true;
-    }
+    };
 
     template <typename... Args>
     static void emitBucket(TA_ResolvedMember signalMember, Args &&...args) {
@@ -917,7 +919,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     }
 
     template <EnableConnectObjectType Sender, typename... Args>
-    static void emitResolved(Sender *pSender, TA_ResolvedMember signalMember, Args &&...args) {
+    inline static auto m_emitResolved = [](Sender *pSender, TA_ResolvedMember signalMember, Args &&...args) {
         if (isOnCurrentThread(pSender)) {
             emitBucket(signalMember, std::forward<Args>(args)...);
             return;
@@ -932,7 +934,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         auto activity = TA_ActivityCreator::create(std::move(emit));
         activity->setStolenEnabled(false);
         invokeActivityNoAwait(activity, pSender);
-    }
+    };
 
     void updateAffinityThread() {
         m_affinityThreadIdx.store(TA_ThreadHolder::get().topPriorityThread(), std::memory_order_release);
