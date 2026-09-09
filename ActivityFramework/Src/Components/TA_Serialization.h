@@ -163,21 +163,14 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
                 *this >> val;
                 beginIter = t.emplace_after(beginIter, std::move(val));
             }
-        } else if constexpr (std::is_same_v<std::map<typename T::key_type, typename T::mapped_type>, T> ||
-                             std::is_same_v<std::unordered_map<typename T::key_type, typename T::mapped_type>, T> ||
-                             std::is_same_v<std::multimap<typename T::key_type, typename T::mapped_type>, T> ||
-                             std::is_same_v<std::unordered_multimap<typename T::key_type, typename T::mapped_type>,
-                                            T>) {
+        } else if constexpr (requires { typename T::key_type; typename T::mapped_type; }) {
             for (auto i = 0; i < size; ++i) {
                 typename T::key_type key{};
                 typename T::mapped_type val{};
                 *this >> key >> val;
                 t.emplace_hint(t.end(), std::move(key), std::move(val));
             }
-        } else if constexpr (std::is_same_v<std::set<typename T::key_type>, T> ||
-                             std::is_same_v<std::unordered_set<typename T::key_type>, T> ||
-                             std::is_same_v<std::multiset<typename T::key_type>, T> ||
-                             std::is_same_v<std::unordered_multiset<typename T::key_type>, T>) {
+        } else if constexpr (requires { typename T::key_type; }) {
             for (auto i = 0; i < size; ++i) {
                 typename T::key_type val;
                 *this >> val;
