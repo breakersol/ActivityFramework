@@ -63,8 +63,6 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     void flush() { m_pDataOperator->flush(); }
 
-    void close() { m_pDataOperator->close(); }
-
     template <CustomType T> TA_Serializer &operator<<(const T &t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
         extractProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size>{});

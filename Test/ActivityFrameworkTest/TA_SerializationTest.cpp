@@ -122,7 +122,6 @@ TEST_F(TA_SerializationTest, VersionTest) {
 //         output << t;
 //     }
 //     output.flush();
-//     output.close();
 //     std::vector<M3Test> vec(1000);
 //     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2, 10);
 //     for(std::size_t i = 0;i < 1000;++i)

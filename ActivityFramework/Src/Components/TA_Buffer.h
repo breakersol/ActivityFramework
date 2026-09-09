@@ -42,11 +42,6 @@ template <typename Opt> class TA_BasicBufferOperator {
 
     bool isValid() const { return m_fileStream.is_open(); }
 
-    void close() {
-        if (m_fileStream.is_open())
-            m_fileStream.close();
-    }
-
     template <typename T> bool read(T &t) {
         static_assert(std::is_same_v<Opt, TA_BufferReader>, "Read is not the member of current type");
         return static_cast<Opt *>(this)->read(t);
@@ -64,6 +59,12 @@ template <typename Opt> class TA_BasicBufferOperator {
 
   protected:
     TA_BasicBufferOperator(const std::string &file, std::size_t size) : m_buffer(size) {}
+
+  private:
+    void close() {
+        if (m_fileStream.is_open())
+            m_fileStream.close();
+    }
 
   protected:
     std::fstream m_fileStream;
