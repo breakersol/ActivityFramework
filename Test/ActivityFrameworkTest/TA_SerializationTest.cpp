@@ -17,6 +17,10 @@
 #include "TA_SerializationTest.h"
 #include "Components/TA_Serialization.h"
 
+#include <cstdint>
+#include <fstream>
+#include <ios>
+
 #ifdef __ANDROID__
 const std::string TEST_FILE_PATH = "/data/local/tmp/test.afw";
 #else
@@ -30,6 +34,58 @@ TA_SerializationTest::~TA_SerializationTest() {}
 void TA_SerializationTest::SetUp() {}
 
 void TA_SerializationTest::TearDown() {}
+
+TEST_F(TA_SerializationTest, TruncatedScalarStopsChainedExtraction) {
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << std::uint32_t{42} << std::uint8_t{1};
+    }
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    std::uint32_t first = 0;
+    std::uint32_t truncated = 0x12345678;
+    std::uint32_t following = 99;
+
+    EXPECT_THROW(input >> first >> truncated >> following, std::ios_base::failure);
+    EXPECT_EQ(first, 42u);
+    EXPECT_EQ(truncated, 0x12345678u);
+    EXPECT_EQ(following, 99u);
+}
+
+TEST_F(TA_SerializationTest, TruncatedListDoesNotInsertUnreadElement) {
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << std::size_t{2} << std::uint32_t{42};
+    }
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    std::list<std::uint32_t> values;
+
+    EXPECT_THROW(input >> values, std::ios_base::failure);
+    ASSERT_EQ(values.size(), 1u);
+    EXPECT_EQ(values.front(), 42u);
+}
+
+TEST_F(TA_SerializationTest, MissingContainerCountPreservesDestination) {
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+    }
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    std::vector<int> values = {7, 8};
+    const auto original = values;
+
+    EXPECT_THROW(input >> values, std::ios_base::failure);
+    EXPECT_EQ(values, original);
+}
+
+TEST_F(TA_SerializationTest, TruncatedVersionHeaderThrows) {
+    {
+        std::ofstream output(TEST_FILE_PATH, std::ios::binary | std::ios::trunc);
+        ASSERT_TRUE(output.is_open());
+        output.put('\0');
+    }
+
+    EXPECT_THROW((CoreAsync::TA_Serializer<CoreAsync::BufferReader>(TEST_FILE_PATH)),
+                 std::ios_base::failure);
+}
 
 TEST_F(TA_SerializationTest, CustomTypeTest) {
     float *ptr = new float(5.3);

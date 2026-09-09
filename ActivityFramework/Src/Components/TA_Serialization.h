@@ -28,6 +28,7 @@
 #include <utility>
 #include <vector>
 #include <algorithm>
+#include <ios>
 
 #include "TA_CommonTools.h"
 #include "TA_EndianConversion.h"
@@ -48,7 +49,13 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
   public:
     explicit TA_Serializer(const std::string &path, std::size_t version = 1, std::size_t bufferSize = 1024 * 1024 * 2)
         : m_version(version), m_pDataOperator(new OType::OperatorType(path, bufferSize)) {
-        init();
+        const bool initialized = init();
+        if constexpr (std::is_same_v<BufferReader, OType>) {
+            if (!initialized) {
+                destroy();
+                throw std::ios_base::failure("Cannot read the serialization version header");
+            }
+        }
     }
 
     ~TA_Serializer() { destroy(); }
@@ -85,7 +92,9 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     template <SerializableType T> TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
-        m_pDataOperator->read(t);
+        // Stop nested and chained extraction before using an unread value.
+        if (!m_pDataOperator->read(t))
+            throw std::ios_base::failure("Cannot read the serialized value");
         if (TA_EndianConversion::isSystemLittleEndian())
             TA_EndianConversion::swapEndian(&t);
         return *this;
