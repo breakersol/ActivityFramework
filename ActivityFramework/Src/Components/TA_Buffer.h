@@ -144,7 +144,10 @@ class TA_BufferWriter : public TA_BasicBufferOperator<TA_BufferWriter> {
     template <EndianConvertedType T> bool write(T &t) {
         if (!isValid())
             return false;
-        if (m_offset + sizeof(t) > m_buffer.size()) {
+        // A single value must fit even when the requested buffer size is zero.
+        if (sizeof(t) > m_buffer.size())
+            m_buffer.resize(sizeof(t));
+        if (sizeof(t) > m_buffer.size() - m_offset) {
             flush();
         }
         memcpy(m_buffer.data() + m_offset, &t, sizeof(std::remove_cvref_t<T>));

@@ -35,6 +35,52 @@ void TA_SerializationTest::SetUp() {}
 
 void TA_SerializationTest::TearDown() {}
 
+TEST_F(TA_SerializationTest, SmallWriterBuffersPreserveSerializedValues) {
+    for (const std::size_t bufferSize : {0u, 1u, 7u, 8u, 9u, 10u}) {
+        SCOPED_TRACE(bufferSize);
+        {
+            CoreAsync::TA_Serializer output(TEST_FILE_PATH, 3, bufferSize);
+            for (int i = 0; i < 3; ++i)
+                output << std::uint8_t{0x12} << std::uint64_t{0x123456789abcdef0ULL}
+                       << std::uint16_t{0x3456};
+        }
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        EXPECT_EQ(input.version(), 3u);
+        for (int i = 0; i < 3; ++i) {
+            std::uint8_t first = 0;
+            std::uint64_t second = 0;
+            std::uint16_t third = 0;
+            input >> first >> second >> third;
+            EXPECT_EQ(first, 0x12u);
+            EXPECT_EQ(second, 0x123456789abcdef0ULL);
+            EXPECT_EQ(third, 0x3456u);
+        }
+    }
+}
+
+TEST_F(TA_SerializationTest, WriterBufferGrowthPreservesPendingBytes) {
+    std::uint8_t prefix = 0x12;
+    std::uint64_t value = 0x123456789abcdef0ULL;
+    std::uint8_t suffix = 0x34;
+    {
+        CoreAsync::TA_BufferWriter output(TEST_FILE_PATH, 1);
+        ASSERT_TRUE(output.write(prefix));
+        ASSERT_TRUE(output.write(value));
+        ASSERT_TRUE(output.write(suffix));
+    }
+    CoreAsync::TA_BufferReader input(TEST_FILE_PATH, 32);
+    std::uint8_t actualPrefix = 0;
+    std::uint64_t actualValue = 0;
+    std::uint8_t actualSuffix = 0;
+    ASSERT_TRUE(input.read(actualPrefix));
+    ASSERT_TRUE(input.read(actualValue));
+    ASSERT_TRUE(input.read(actualSuffix));
+    EXPECT_EQ(actualPrefix, prefix);
+    EXPECT_EQ(actualValue, value);
+    EXPECT_EQ(actualSuffix, suffix);
+    EXPECT_FALSE(input.read(actualSuffix));
+}
+
 TEST_F(TA_SerializationTest, TruncatedScalarStopsChainedExtraction) {
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH);
