@@ -259,13 +259,13 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     template <EnumType T> TA_Serializer &operator<<(T t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
-        *this << static_cast<uint8_t>(t);
+        *this << static_cast<std::underlying_type_t<T>>(t);
         return *this;
     }
 
     template <EnumType T> TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
-        uint8_t val{};
+        std::underlying_type_t<T> val{};
         *this >> val;
         t = static_cast<T>(val);
         return *this;

@@ -35,6 +35,54 @@ void TA_SerializationTest::SetUp() {}
 
 void TA_SerializationTest::TearDown() {}
 
+TEST_F(TA_SerializationTest, EnumUnderlyingTypesRoundTrip) {
+    enum class Byte : std::uint8_t { Value = 255 };
+    enum class SignedByte : std::int8_t { Value = -128 };
+    enum class Wide : std::uint16_t { Value = 256 };
+    enum class Signed : std::int32_t { Value = -123456 };
+    enum class Large : std::uint64_t { Value = 0xfedcba9876543210ULL };
+    enum class SignedLarge : std::int64_t { Value = -0x123456789abcdefLL };
+    enum Unscoped { UnscopedValue = 65536 };
+
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << Byte::Value << SignedByte::Value << Wide::Value << Signed::Value
+               << Large::Value << SignedLarge::Value << UnscopedValue << std::uint32_t{42};
+    }
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    Byte byte{};
+    SignedByte signedByte{};
+    Wide wide{};
+    Signed signedValue{};
+    Large large{};
+    SignedLarge signedLarge{};
+    Unscoped unscoped{};
+    std::uint32_t following = 0;
+    input >> byte >> signedByte >> wide >> signedValue >> large >> signedLarge >> unscoped >> following;
+
+    EXPECT_EQ(byte, Byte::Value);
+    EXPECT_EQ(signedByte, SignedByte::Value);
+    EXPECT_EQ(wide, Wide::Value);
+    EXPECT_EQ(signedValue, Signed::Value);
+    EXPECT_EQ(large, Large::Value);
+    EXPECT_EQ(signedLarge, SignedLarge::Value);
+    EXPECT_EQ(unscoped, UnscopedValue);
+    EXPECT_EQ(following, 42u);
+}
+
+TEST_F(TA_SerializationTest, TruncatedEnumPreservesDestination) {
+    enum class Wide : std::uint32_t { Value = 0x12345678 };
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << std::uint8_t{1};
+    }
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    Wide value = Wide::Value;
+
+    EXPECT_THROW(input >> value, std::ios_base::failure);
+    EXPECT_EQ(value, Wide::Value);
+}
+
 TEST_F(TA_SerializationTest, SmallWriterBuffersPreserveSerializedValues) {
     for (const std::size_t bufferSize : {0u, 1u, 7u, 8u, 9u, 10u}) {
         SCOPED_TRACE(bufferSize);
