@@ -29,6 +29,10 @@
 #include <vector>
 #include <algorithm>
 #include <ios>
+#include <array>
+#include <list>
+#include <memory>
+#include <unordered_map>
 
 #include "TA_CommonTools.h"
 #include "TA_EndianConversion.h"
@@ -45,20 +49,56 @@ concept SerializableType = requires(T t) {
     { t } -> IsSerializable;
 };
 
+namespace SerializationDetail {
+// Keep this list aligned with the decoding branches. The general container
+// concepts also accept strings, views and user-defined containers.
+template <typename T> struct SupportedContainer : std::false_type {};
+template <typename T> struct SupportedContainer<std::vector<T>> : std::bool_constant<!std::is_same_v<T, bool>> {};
+template <typename T> struct SupportedContainer<std::deque<T>> : std::true_type {};
+template <typename T> struct SupportedContainer<std::list<T>> : std::true_type {};
+template <typename T> struct SupportedContainer<std::forward_list<T>> : std::true_type {};
+template <typename T, std::size_t N> struct SupportedContainer<std::array<T, N>> : std::true_type {};
+template <typename K, typename V, typename C, typename A>
+struct SupportedContainer<std::map<K, V, C, A>> : std::true_type {};
+template <typename K, typename V, typename C, typename A>
+struct SupportedContainer<std::multimap<K, V, C, A>> : std::true_type {};
+template <typename K, typename C, typename A>
+struct SupportedContainer<std::set<K, C, A>> : std::true_type {};
+template <typename K, typename C, typename A>
+struct SupportedContainer<std::multiset<K, C, A>> : std::true_type {};
+template <typename K, typename V, typename H, typename E, typename A>
+struct SupportedContainer<std::unordered_map<K, V, H, E, A>> : std::true_type {};
+template <typename K, typename V, typename H, typename E, typename A>
+struct SupportedContainer<std::unordered_multimap<K, V, H, E, A>> : std::true_type {};
+template <typename K, typename H, typename E, typename A>
+struct SupportedContainer<std::unordered_set<K, H, E, A>> : std::true_type {};
+template <typename K, typename H, typename E, typename A>
+struct SupportedContainer<std::unordered_multiset<K, H, E, A>> : std::true_type {};
+
+template <typename T> struct SupportedAdaptor : std::false_type {};
+template <typename T, typename C> struct SupportedAdaptor<std::stack<T, C>> : std::true_type {};
+template <typename T, typename C> struct SupportedAdaptor<std::queue<T, C>> : std::true_type {};
+template <typename T, typename C, typename Compare>
+struct SupportedAdaptor<std::priority_queue<T, C, Compare>> : std::true_type {};
+
+template <typename T>
+concept ReflectedType = CustomType<T> && requires { typename Reflex::TA_TypeInfo<T>::TA_PropertyInfos; };
+} // namespace SerializationDetail
+
 template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
   public:
     explicit TA_Serializer(const std::string &path, std::size_t version = 1, std::size_t bufferSize = 1024 * 1024 * 2)
-        : m_version(version), m_pDataOperator(new OType::OperatorType(path, bufferSize)) {
+        : m_pDataOperator(std::make_unique<typename OType::OperatorType>(path, bufferSize)), m_version(version) {
         const bool initialized = init();
-        if constexpr (std::is_same_v<BufferReader, OType>) {
-            if (!initialized) {
-                destroy();
+        if (!initialized) {
+            if constexpr (std::is_same_v<BufferReader, OType>)
                 throw std::ios_base::failure("Cannot read the serialization version header");
-            }
+            else
+                throw std::ios_base::failure("Cannot write the serialization version header");
         }
     }
 
-    ~TA_Serializer() { destroy(); }
+    ~TA_Serializer() = default;
 
     TA_Serializer(const TA_Serializer &serialzation) = delete;
     TA_Serializer(TA_Serializer &&serialzation) = delete;
@@ -68,15 +108,25 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     std::size_t version() const { return m_version; }
 
-    void flush() { m_pDataOperator->flush(); }
+    // Call close() before reporting a successful save. Destruction cannot report
+    // failures, and flush() alone does not check the final file close operation.
+    void flush() requires std::is_same_v<BufferWriter, OType> {
+        if (!m_pDataOperator->flush())
+            throw std::ios_base::failure("Cannot flush the serialized data");
+    }
 
-    template <CustomType T> TA_Serializer &operator<<(const T &t) {
+    void close() requires std::is_same_v<BufferWriter, OType> {
+        if (!m_pDataOperator->finish())
+            throw std::ios_base::failure("Cannot close the serialized file");
+    }
+
+    template <SerializationDetail::ReflectedType T> TA_Serializer &operator<<(const T &t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
         extractProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size>{});
         return *this;
     }
 
-    template <CustomType T> TA_Serializer &operator>>(T &t) {
+    template <SerializationDetail::ReflectedType T> TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
         extractProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size>{});
         return *this;
@@ -86,7 +136,8 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
         if (TA_EndianConversion::isSystemLittleEndian())
             TA_EndianConversion::swapEndian(&t);
-        m_pDataOperator->write(t);
+        if (!m_pDataOperator->write(t))
+            throw std::ios_base::failure("Cannot write the serialized value");
         return *this;
     }
 
@@ -100,14 +151,16 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
         return *this;
     }
 
-    template <StdContainerType T> TA_Serializer &operator<<(const T &t) {
+    template <StdContainerType T> requires SerializationDetail::SupportedContainer<T>::value
+    TA_Serializer &operator<<(const T &t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
         *this << std::ranges::distance(t);
         std::ranges::for_each(std::as_const(t), [this](const T::value_type &val) { *this << val; });
         return *this;
     }
 
-    template <StdAdaptorType T> TA_Serializer &operator<<(const T &t) {
+    template <StdAdaptorType T> requires SerializationDetail::SupportedAdaptor<T>::value
+    TA_Serializer &operator<<(const T &t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
         *this << std::ranges::size(t);
         T copyAdaptor = t;
@@ -140,7 +193,8 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
         return *this;
     }
 
-    template <StdContainerType T> TA_Serializer &operator>>(T &t) {
+    template <StdContainerType T> requires SerializationDetail::SupportedContainer<T>::value
+    TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
         std::size_t size{};
         *this >> size;
@@ -180,7 +234,8 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
         return *this;
     }
 
-    template <StdAdaptorType T> TA_Serializer &operator>>(T &t) {
+    template <StdAdaptorType T> requires SerializationDetail::SupportedAdaptor<T>::value
+    TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
         std::size_t size{};
         *this >> size;
@@ -314,13 +369,6 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
         extractProperty(t, std::index_sequence<IDXS...>{});
     }
 
-    void destroy() {
-        if (m_pDataOperator) {
-            delete m_pDataOperator;
-            m_pDataOperator = nullptr;
-        }
-    }
-
     bool init() {
         if (!m_pDataOperator->isValid()) {
             CoreAsync::TA_CommonTools::debugInfo(META_STRING("Cannot open the file.\n"));
@@ -333,7 +381,7 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
     }
 
   private:
-    OType *m_pDataOperator;
+    std::unique_ptr<OType> m_pDataOperator;
     std::size_t m_version;
 };
 } // namespace CoreAsync

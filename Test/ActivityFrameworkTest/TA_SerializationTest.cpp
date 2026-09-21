@@ -20,6 +20,41 @@
 #include <cstdint>
 #include <fstream>
 #include <ios>
+#include <memory_resource>
+#include <string>
+
+namespace {
+template <typename T>
+concept CanSerialize = requires(CoreAsync::TA_Serializer<> &writer, const T &value) { writer << value; };
+template <typename T>
+concept CanDeserialize = requires(CoreAsync::TA_Serializer<CoreAsync::BufferReader> &reader, T &value) { reader >> value; };
+
+struct Unregistered {};
+struct UnsupportedAdaptor {
+    using size_type = std::size_t;
+    using container_type = std::vector<int>;
+};
+
+static_assert(!CanSerialize<std::string> && !CanDeserialize<std::string>);
+static_assert(!CanSerialize<std::vector<bool>> && !CanDeserialize<std::vector<bool>>);
+static_assert(!CanSerialize<std::pmr::vector<int>> && !CanDeserialize<std::pmr::vector<int>>);
+static_assert(!CanSerialize<UnsupportedAdaptor> && !CanDeserialize<UnsupportedAdaptor>);
+static_assert(!CanSerialize<Unregistered> && !CanDeserialize<Unregistered>);
+static_assert(CanSerialize<std::vector<int>> && CanDeserialize<std::vector<int>>);
+static_assert(CanSerialize<std::array<int, 3>> && CanDeserialize<std::array<int, 3>>);
+static_assert(CanSerialize<std::map<int, int>> && CanDeserialize<std::map<int, int>>);
+static_assert(CanSerialize<M3Test> && CanDeserialize<M3Test>);
+
+// An open, read-only stream deterministically fails when buffered bytes are
+// written, without relying on a full disk or platform-specific device paths.
+class ReadOnlyBufferWriter : public CoreAsync::TA_BufferWriter {
+  public:
+    ReadOnlyBufferWriter(const std::string &path, std::size_t size) : TA_BufferWriter(path, size) {
+        m_fileStream.close();
+        m_fileStream.open(path, std::ios::binary | std::ios::in);
+    }
+};
+} // namespace
 
 #ifdef __ANDROID__
 const std::string TEST_FILE_PATH = "/data/local/tmp/test.afw";
@@ -35,6 +70,61 @@ void TA_SerializationTest::SetUp() {}
 
 void TA_SerializationTest::TearDown() {}
 
+TEST_F(TA_SerializationTest, WriterOpenFailureThrows) {
+    // A regular file cannot be used as a parent directory.
+    {
+        std::ofstream file(TEST_FILE_PATH);
+        ASSERT_TRUE(file.is_open());
+        file.close();
+        ASSERT_FALSE(file.fail());
+    }
+    EXPECT_THROW((CoreAsync::TA_Serializer<>(TEST_FILE_PATH + "/child.afw")), std::ios_base::failure);
+}
+
+TEST_F(TA_SerializationTest, ExplicitCloseReportsCompletionAndRejectsFurtherWrites) {
+    CoreAsync::TA_Serializer<> output(TEST_FILE_PATH);
+    output << std::uint32_t{42};
+    ASSERT_NO_THROW(output.close());
+    EXPECT_NO_THROW(output.close());
+    EXPECT_THROW(output << std::uint32_t{99}, std::ios_base::failure);
+    EXPECT_THROW(output.flush(), std::ios_base::failure);
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    std::uint32_t value{};
+    input >> value;
+    EXPECT_EQ(value, 42u);
+    EXPECT_THROW(input >> value, std::ios_base::failure);
+}
+
+TEST_F(TA_SerializationTest, FlushMakesDataVisibleBeforeClose) {
+    CoreAsync::TA_Serializer<> output(TEST_FILE_PATH);
+    output << std::uint32_t{42};
+    ASSERT_NO_THROW(output.flush());
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    std::uint32_t value{};
+    input >> value;
+    EXPECT_EQ(value, 42u);
+    ASSERT_NO_THROW(output.close());
+}
+
+TEST_F(TA_SerializationTest, BufferFlushAndFinishReportWriteFailure) {
+    ReadOnlyBufferWriter output(TEST_FILE_PATH, 8);
+    ASSERT_TRUE(output.isValid());
+    std::uint64_t value = 42;
+    ASSERT_TRUE(output.write(value));
+    EXPECT_FALSE(output.flush());
+    EXPECT_FALSE(output.write(value));
+    EXPECT_FALSE(output.finish());
+    EXPECT_FALSE(output.finish());
+}
+
+TEST_F(TA_SerializationTest, AutomaticBufferFlushStopsOnFailure) {
+    ReadOnlyBufferWriter output(TEST_FILE_PATH, 8);
+    std::uint64_t value = 42;
+    ASSERT_TRUE(output.write(value));
+    EXPECT_FALSE(output.write(value));
+    EXPECT_FALSE(output.finish());
+}
+
 TEST_F(TA_SerializationTest, EnumUnderlyingTypesRoundTrip) {
     enum class Byte : std::uint8_t { Value = 255 };
     enum class SignedByte : std::int8_t { Value = -128 };
@@ -48,6 +138,7 @@ TEST_F(TA_SerializationTest, EnumUnderlyingTypesRoundTrip) {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH);
         output << Byte::Value << SignedByte::Value << Wide::Value << Signed::Value
                << Large::Value << SignedLarge::Value << UnscopedValue << std::uint32_t{42};
+        ASSERT_NO_THROW(output.close());
     }
     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
     Byte byte{};
@@ -75,6 +166,7 @@ TEST_F(TA_SerializationTest, TruncatedEnumPreservesDestination) {
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH);
         output << std::uint8_t{1};
+        ASSERT_NO_THROW(output.close());
     }
     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
     Wide value = Wide::Value;
@@ -91,6 +183,7 @@ TEST_F(TA_SerializationTest, SmallWriterBuffersPreserveSerializedValues) {
             for (int i = 0; i < 3; ++i)
                 output << std::uint8_t{0x12} << std::uint64_t{0x123456789abcdef0ULL}
                        << std::uint16_t{0x3456};
+            ASSERT_NO_THROW(output.close());
         }
         CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
         EXPECT_EQ(input.version(), 3u);
@@ -115,6 +208,7 @@ TEST_F(TA_SerializationTest, WriterBufferGrowthPreservesPendingBytes) {
         ASSERT_TRUE(output.write(prefix));
         ASSERT_TRUE(output.write(value));
         ASSERT_TRUE(output.write(suffix));
+        ASSERT_TRUE(output.finish());
     }
     CoreAsync::TA_BufferReader input(TEST_FILE_PATH, 32);
     std::uint8_t actualPrefix = 0;
@@ -133,6 +227,7 @@ TEST_F(TA_SerializationTest, TruncatedScalarStopsChainedExtraction) {
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH);
         output << std::uint32_t{42} << std::uint8_t{1};
+        ASSERT_NO_THROW(output.close());
     }
     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
     std::uint32_t first = 0;
@@ -149,6 +244,7 @@ TEST_F(TA_SerializationTest, TruncatedListDoesNotInsertUnreadElement) {
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH);
         output << std::size_t{2} << std::uint32_t{42};
+        ASSERT_NO_THROW(output.close());
     }
     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
     std::list<std::uint32_t> values;
@@ -161,6 +257,7 @@ TEST_F(TA_SerializationTest, TruncatedListDoesNotInsertUnreadElement) {
 TEST_F(TA_SerializationTest, MissingContainerCountPreservesDestination) {
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        ASSERT_NO_THROW(output.close());
     }
     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
     std::vector<int> values = {7, 8};
@@ -175,6 +272,8 @@ TEST_F(TA_SerializationTest, TruncatedVersionHeaderThrows) {
         std::ofstream output(TEST_FILE_PATH, std::ios::binary | std::ios::trunc);
         ASSERT_TRUE(output.is_open());
         output.put('\0');
+        output.close();
+        ASSERT_FALSE(output.fail());
     }
 
     EXPECT_THROW((CoreAsync::TA_Serializer<CoreAsync::BufferReader>(TEST_FILE_PATH)),
@@ -198,6 +297,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest) {
         t.setQueue({t.getDeque().begin(), t.getDeque().end()});
         t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
         output << t << t;
+        EXPECT_NO_THROW(output.close());
     }
     {
         CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 1, 1024);
@@ -239,6 +339,7 @@ TEST_F(TA_SerializationTest, VersionTest) {
         t.setQueue({t.getDeque().begin(), t.getDeque().end()});
         t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
         output << t << t;
+        EXPECT_NO_THROW(output.close());
     }
     {
         CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 2);
@@ -271,7 +372,7 @@ TEST_F(TA_SerializationTest, VersionTest) {
 //     {
 //         output << t;
 //     }
-//     output.flush();
+//     ASSERT_NO_THROW(output.close());
 //     std::vector<M3Test> vec(1000);
 //     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input("./test.afw", 2, 10);
 //     for(std::size_t i = 0;i < 1000;++i)

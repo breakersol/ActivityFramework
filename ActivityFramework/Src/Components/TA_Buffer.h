@@ -52,9 +52,14 @@ template <typename Opt> class TA_BasicBufferOperator {
         return static_cast<Opt *>(this)->write(t);
     }
 
-    void flush() {
+    bool flush() {
         static_assert(std::is_same_v<Opt, TA_BufferWriter>, "Flush is not the member of current type");
         return static_cast<Opt *>(this)->flush();
+    }
+
+    bool finish() {
+        static_assert(std::is_same_v<Opt, TA_BufferWriter>, "Finish is not the member of current type");
+        return static_cast<Opt *>(this)->finish();
     }
 
   protected:
@@ -133,7 +138,8 @@ class TA_BufferWriter : public TA_BasicBufferOperator<TA_BufferWriter> {
         init(file);
     }
 
-    ~TA_BufferWriter() { flush(); }
+    // Explicit finish() reports errors; destruction is best-effort and never throws.
+    ~TA_BufferWriter() noexcept { finish(); }
 
     TA_BufferWriter(const TA_BufferWriter &writer) = delete;
     TA_BufferWriter(TA_BufferWriter &&writer) = delete;
@@ -142,13 +148,14 @@ class TA_BufferWriter : public TA_BasicBufferOperator<TA_BufferWriter> {
     TA_BufferWriter &operator=(TA_BufferWriter &&writer) = delete;
 
     template <EndianConvertedType T> bool write(T &t) {
-        if (!isValid())
+        if (!isValid() || !m_fileStream.good())
             return false;
         // A single value must fit even when the requested buffer size is zero.
         if (sizeof(t) > m_buffer.size())
             m_buffer.resize(sizeof(t));
         if (sizeof(t) > m_buffer.size() - m_offset) {
-            flush();
+            if (!flush())
+                return false;
         }
         memcpy(m_buffer.data() + m_offset, &t, sizeof(std::remove_cvref_t<T>));
         m_offset += sizeof(std::remove_cvref_t<T>);
@@ -156,13 +163,33 @@ class TA_BufferWriter : public TA_BasicBufferOperator<TA_BufferWriter> {
         return true;
     }
 
-    void flush() {
-        m_fileStream.write(m_buffer.data(), m_validSize);
+    bool flush() {
+        if (!isValid() || !m_fileStream.good())
+            return false;
+        if (m_validSize != 0)
+            m_fileStream.write(m_buffer.data(), static_cast<std::streamsize>(m_validSize));
+        if (!m_fileStream.good())
+            return false;
         m_offset = 0;
         m_validSize = 0;
+        m_fileStream.flush();
+        return m_fileStream.good();
+    }
+
+    bool finish() {
+        if (m_finished)
+            return m_finishSucceeded;
+        const bool flushed = flush();
+        if (m_fileStream.is_open())
+            m_fileStream.close();
+        m_finished = true;
+        m_finishSucceeded = flushed && !m_fileStream.fail();
+        return m_finishSucceeded;
     }
 
   private:
+    bool m_finished{false};
+    bool m_finishSucceeded{false};
     void init(const std::string &file) { m_fileStream.open(file, std::ios::binary | std::ios::out); }
 };
 
