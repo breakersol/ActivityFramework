@@ -107,10 +107,16 @@ DEFINE_TYPE_INFO(Data){
 Data in, out;
 CoreAsync::TA_Serializer writer("data.afw", 2);
 writer << in;
+writer.close(); // report flush/close errors before opening the reader
 CoreAsync::TA_Serializer<CoreAsync::BufferReader> reader("data.afw", 2);
 reader >> out;
 ```
 Supported: STL containers/adaptors, arrays, enums, pointers (to serializable types), inheritance hierarchies, and custom types with metadata.
+
+The [binary format specification](docs/serialization-format.md) defines the AFWS
+header, big-endian fields, 64-bit counts, and schema compatibility rules. The
+reader's version argument is its maximum supported schema version. Legacy files
+with the old native-size header require migration.
 
 ### Meta-Object, Signals/Slots, and Dynamic Invoke
 `TA_MetaObject` provides thread-aware connections and an `invokeMethod` helper to run member functions or callables (optionally queued on the framework thread pool).

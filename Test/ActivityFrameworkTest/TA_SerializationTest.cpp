@@ -185,7 +185,7 @@ TEST_F(TA_SerializationTest, SmallWriterBuffersPreserveSerializedValues) {
                        << std::uint16_t{0x3456};
             ASSERT_NO_THROW(output.close());
         }
-        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 3);
         EXPECT_EQ(input.version(), 3u);
         for (int i = 0; i < 3; ++i) {
             std::uint8_t first = 0;
@@ -243,7 +243,7 @@ TEST_F(TA_SerializationTest, TruncatedScalarStopsChainedExtraction) {
 TEST_F(TA_SerializationTest, TruncatedListDoesNotInsertUnreadElement) {
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH);
-        output << std::size_t{2} << std::uint32_t{42};
+        output << std::uint64_t{2} << std::uint32_t{42};
         ASSERT_NO_THROW(output.close());
     }
     CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
@@ -278,6 +278,116 @@ TEST_F(TA_SerializationTest, TruncatedVersionHeaderThrows) {
 
     EXPECT_THROW((CoreAsync::TA_Serializer<CoreAsync::BufferReader>(TEST_FILE_PATH)),
                  std::ios_base::failure);
+}
+
+TEST_F(TA_SerializationTest, WireBytesUseFixedWidthBigEndianFields) {
+    CoreAsync::TA_Serializer output(TEST_FILE_PATH, 0x0102030405060708ULL);
+    output << std::vector<std::uint16_t>{0x1234, 0xabcd} << true << false << 1.0f;
+    ASSERT_NO_THROW(output.close());
+    std::ifstream file(TEST_FILE_PATH, std::ios::binary);
+    const std::vector<unsigned char> actual((std::istreambuf_iterator<char>(file)), {});
+    const std::vector<unsigned char> expected{
+        0x41, 0x46, 0x57, 0x53, 0x00, 0x01, 0x00, 0x00, // magic, revision, flags
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // schema
+        0, 0, 0, 0, 0, 0, 0, 2,                       // uint64 count
+        0x12, 0x34, 0xab, 0xcd, 1, 0, 0x3f, 0x80, 0, 0};
+    EXPECT_EQ(actual, expected);
+}
+
+TEST_F(TA_SerializationTest, ReadsIndependentWireFixture) {
+    const unsigned char bytes[]{
+        0x41, 0x46, 0x57, 0x53, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 1,
+        0, 0, 0, 0, 0, 0, 0, 2,
+        0x12, 0x34, 0xab, 0xcd, 1, 0, 0x3f, 0x80, 0, 0};
+    std::ofstream output(TEST_FILE_PATH, std::ios::binary);
+    output.write(reinterpret_cast<const char *>(bytes), sizeof(bytes));
+    output.close();
+    ASSERT_FALSE(output.fail());
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 2, 9);
+    std::vector<std::uint16_t> values;
+    bool yes = false, no = true;
+    float value{};
+    input >> values >> yes >> no >> value;
+    EXPECT_EQ(input.version(), 1u);
+    EXPECT_EQ(values, (std::vector<std::uint16_t>{0x1234, 0xabcd}));
+    EXPECT_TRUE(yes);
+    EXPECT_FALSE(no);
+    EXPECT_EQ(value, 1.0f);
+}
+
+TEST_F(TA_SerializationTest, RejectsInvalidAndTruncatedHeaders) {
+    const std::vector<unsigned char> valid{
+        0x41, 0x46, 0x57, 0x53, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+    auto rejects = [&](const std::vector<unsigned char> &bytes) {
+        std::ofstream output(TEST_FILE_PATH, std::ios::binary);
+        output.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        output.close();
+        ASSERT_FALSE(output.fail());
+        EXPECT_THROW((CoreAsync::TA_Serializer<CoreAsync::BufferReader>(TEST_FILE_PATH)), std::ios_base::failure);
+    };
+    for (std::size_t size = 0; size < valid.size(); ++size) {
+        SCOPED_TRACE(size);
+        rejects(std::vector<unsigned char>(valid.begin(), valid.begin() + size));
+    }
+    for (const std::size_t index : {0u, 5u, 7u, 15u}) {
+        SCOPED_TRACE(index);
+        auto invalid = valid;
+        invalid[index] = 2; // bad magic, revision, flags, or unsupported schema
+        rejects(invalid);
+    }
+    auto zeroSchema = valid;
+    zeroSchema[15] = 0;
+    rejects(zeroSchema);
+    // Legacy header followed by arbitrary payload must not be interpreted as AFWS.
+    std::vector<unsigned char> legacy(24, 0);
+    legacy[0] = 1;
+    rejects(legacy);
+    EXPECT_THROW((CoreAsync::TA_Serializer<>(TEST_FILE_PATH, 0)), std::ios_base::failure);
+}
+
+TEST_F(TA_SerializationTest, CountsAreFixedWidthForArraysAndAdaptors) {
+    CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+    output << std::array<std::uint8_t, 1>{7};
+    std::queue<std::uint8_t> queue;
+    queue.push(9);
+    output << queue;
+    ASSERT_NO_THROW(output.close());
+    std::ifstream file(TEST_FILE_PATH, std::ios::binary);
+    file.seekg(16);
+    const std::vector<unsigned char> actual((std::istreambuf_iterator<char>(file)), {});
+    EXPECT_EQ(actual, (std::vector<unsigned char>{0, 0, 0, 0, 0, 0, 0, 1, 7,
+                                                 0, 0, 0, 0, 0, 0, 0, 1, 9}));
+}
+
+TEST_F(TA_SerializationTest, InvalidCountsAndBooleansPreserveDestination) {
+    for (const std::uint64_t count : {std::uint64_t{1}, std::uint64_t{3}}) {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << count;
+        ASSERT_NO_THROW(output.close());
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        std::array<int, 2> values{7, 8};
+        EXPECT_THROW(input >> values, std::ios_base::failure);
+        EXPECT_EQ(values, (std::array<int, 2>{7, 8}));
+    }
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << std::numeric_limits<std::uint64_t>::max();
+        ASSERT_NO_THROW(output.close());
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        std::vector<std::uint64_t> values{7};
+        EXPECT_THROW(input >> values, std::ios_base::failure);
+        EXPECT_EQ(values, (std::vector<std::uint64_t>{7}));
+    }
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << std::uint8_t{2};
+        ASSERT_NO_THROW(output.close());
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        bool value = true;
+        EXPECT_THROW(input >> value, std::ios_base::failure);
+        EXPECT_TRUE(value);
+    }
 }
 
 TEST_F(TA_SerializationTest, CustomTypeTest) {
