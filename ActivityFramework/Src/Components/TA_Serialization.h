@@ -36,6 +36,7 @@
 #include <cstdint>
 #include <climits>
 #include <limits>
+#include <string>
 
 #include "TA_CommonTools.h"
 #include "TA_EndianConversion.h"
@@ -56,6 +57,7 @@ namespace SerializationDetail {
 // Keep this list aligned with the decoding branches. The general container
 // concepts also accept strings, views and user-defined containers.
 template <typename T> struct SupportedContainer : std::false_type {};
+template <> struct SupportedContainer<std::string> : std::true_type {};
 template <typename T> struct SupportedContainer<std::vector<T>> : std::bool_constant<!std::is_same_v<T, bool>> {};
 template <typename T> struct SupportedContainer<std::deque<T>> : std::true_type {};
 template <typename T> struct SupportedContainer<std::list<T>> : std::true_type {};
@@ -225,7 +227,8 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
         const auto size = readCount(t.max_size());
         if constexpr (std::is_same_v<std::vector<typename T::value_type>, T> ||
-                      std::is_same_v<std::deque<typename T::value_type>, T>) {
+                      std::is_same_v<std::deque<typename T::value_type>, T> ||
+                      std::is_same_v<std::string, T>) {
             t.resize(size);
             for (auto &v : t) {
                 *this >> v;

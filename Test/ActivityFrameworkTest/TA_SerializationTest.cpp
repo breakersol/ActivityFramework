@@ -35,7 +35,7 @@ struct UnsupportedAdaptor {
     using container_type = std::vector<int>;
 };
 
-static_assert(!CanSerialize<std::string> && !CanDeserialize<std::string>);
+static_assert(CanSerialize<std::string> && CanDeserialize<std::string>);
 static_assert(!CanSerialize<std::vector<bool>> && !CanDeserialize<std::vector<bool>>);
 static_assert(!CanSerialize<std::pmr::vector<int>> && !CanDeserialize<std::pmr::vector<int>>);
 static_assert(!CanSerialize<UnsupportedAdaptor> && !CanDeserialize<UnsupportedAdaptor>);
@@ -69,6 +69,57 @@ TA_SerializationTest::~TA_SerializationTest() {}
 void TA_SerializationTest::SetUp() {}
 
 void TA_SerializationTest::TearDown() {}
+
+TEST_F(TA_SerializationTest, StringsRoundTripAndReplaceContents) {
+    const std::vector<std::string> values{
+        "hello", "", std::string("a\0b", 3), std::string("\xc3\xa9\xff", 3), std::string(4096, 'x')};
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH, 1, 9);
+        for (const auto &value : values)
+            output << value;
+        output << values << std::map<std::string, std::string>{{"key", "value"}};
+        ASSERT_NO_THROW(output.close());
+    }
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 1, 9);
+    std::string decoded = "previous contents";
+    for (const auto &value : values) {
+        input >> decoded;
+        EXPECT_EQ(decoded, value);
+    }
+    std::vector<std::string> decodedValues;
+    std::map<std::string, std::string> decodedMap;
+    input >> decodedValues >> decodedMap;
+    EXPECT_EQ(decodedValues, values);
+    EXPECT_EQ(decodedMap, (std::map<std::string, std::string>{{"key", "value"}}));
+}
+
+TEST_F(TA_SerializationTest, StringWireBytesUseByteCountWithoutTerminator) {
+    CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+    output << std::string("A\0\xff", 3) << std::string{};
+    ASSERT_NO_THROW(output.close());
+    std::ifstream file(TEST_FILE_PATH, std::ios::binary);
+    file.seekg(16);
+    const std::vector<unsigned char> actual((std::istreambuf_iterator<char>(file)), {});
+    EXPECT_EQ(actual, (std::vector<unsigned char>{0, 0, 0, 0, 0, 0, 0, 3, 0x41, 0, 0xff,
+                                                 0, 0, 0, 0, 0, 0, 0, 0}));
+}
+
+TEST_F(TA_SerializationTest, StringsRejectMissingOrExcessiveCountsAndTruncatedPayloads) {
+    for (const int scenario : {0, 1, 2}) {
+        SCOPED_TRACE(scenario);
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        if (scenario == 1)
+            output << std::numeric_limits<std::uint64_t>::max();
+        else if (scenario == 2)
+            output << std::uint64_t{3} << 'a';
+        ASSERT_NO_THROW(output.close());
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        std::string decoded = "previous contents";
+        EXPECT_THROW(input >> decoded, std::ios_base::failure);
+        if (scenario != 2)
+            EXPECT_EQ(decoded, "previous contents");
+    }
+}
 
 TEST_F(TA_SerializationTest, WriterOpenFailureThrows) {
     // A regular file cannot be used as a parent directory.

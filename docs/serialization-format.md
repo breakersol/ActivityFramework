@@ -29,6 +29,7 @@ of values and their types.
 | `float`, `double` | IEEE 754 binary32/binary64 bit patterns, respectively |
 | Enum | Encoding of its underlying integer type; enumerator validity is not checked |
 | Supported STL container or adaptor | Unsigned 64-bit element count, then encoded elements |
+| `std::string` | Unsigned 64-bit byte count, then exactly those bytes, without a terminating null |
 | `std::array<T, N>` | Unsigned 64-bit count equal to `N`, then elements |
 | C array `T[N]` | Exactly `N` elements, without a count |
 | Pair | First, then second, without extra framing |
@@ -39,6 +40,10 @@ of values and their types.
 Containers use iteration order. Queues use front-to-back order; stacks use
 top-to-bottom order (reversed during reconstruction); priority queues use pop
 order. Unordered containers do not promise deterministic byte sequences.
+
+Strings preserve embedded null bytes and perform no character encoding conversion.
+Reading a string replaces its previous contents; a zero count clears it. Strings
+use the same count checks and partial-read behavior as resizable sequence containers.
 
 Counts are checked against the local `size_t` range and the destination's
 `max_size()` before allocation or insertion. Array extents must match exactly.
