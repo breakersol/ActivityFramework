@@ -19,6 +19,12 @@
 #include "Components/TA_MetaObject.h"
 #include "gtest/gtest.h"
 
+#include <algorithm>
+#include <cstdint>
+#include <thread>
+#include <utility>
+#include <vector>
+
 TA_MetaObjectTest::TA_MetaObjectTest() {}
 
 TA_MetaObjectTest::~TA_MetaObjectTest() {}
@@ -36,4 +42,38 @@ TEST_F(TA_MetaObjectTest, InvokeMethodTest) {
     fetcher_3();
     auto fetcher_4 = CoreAsync::TA_MetaObject::invokeMethod(&MetaTest::printStr, m_str);
     fetcher_4();
+}
+
+TEST_F(TA_MetaObjectTest, UniqueIdsBelongToInstances) {
+    CoreAsync::TA_MetaObject first;
+    CoreAsync::TA_MetaObject second(first);
+    CoreAsync::TA_MetaObject third(std::move(first));
+    EXPECT_NE(first.id(), 0u);
+    EXPECT_NE(first.id(), CoreAsync::TA_UniqueId{}.id());
+    EXPECT_NE(first.id(), second.id());
+    EXPECT_NE(first.id(), third.id());
+    EXPECT_NE(second.id(), third.id());
+
+    const auto secondId = second.id();
+    second = third;
+    EXPECT_EQ(second.id(), secondId);
+    second = std::move(third);
+    EXPECT_EQ(second.id(), secondId);
+}
+
+TEST_F(TA_MetaObjectTest, UniqueIdsAreDistinctAcrossThreads) {
+    constexpr std::size_t count = 256;
+    std::vector<std::uint64_t> ids(count);
+    std::vector<std::thread> threads;
+    for (std::size_t worker = 0; worker < 4; ++worker) {
+        threads.emplace_back([&, worker] {
+            for (std::size_t i = worker; i < count; i += 4)
+                ids[i] = CoreAsync::TA_UniqueId{}.id();
+        });
+    }
+    for (auto &thread : threads)
+        thread.join();
+    std::sort(ids.begin(), ids.end());
+    EXPECT_NE(ids.front(), 0u);
+    EXPECT_EQ(std::adjacent_find(ids.begin(), ids.end()), ids.end());
 }
