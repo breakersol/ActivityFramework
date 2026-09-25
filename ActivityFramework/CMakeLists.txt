@@ -69,7 +69,6 @@ add_library(ActivityFramework SHARED
     Src/Components/TA_ActivityAffinity.h
     Src/Components/TA_UniqueId.h
     Src/Components/TA_UniqueId.cpp
-    Src/Components/TA_ActivityId.h
     Src/Components/TA_ActivityState.h
     Src/Components/TA_ActivityProxy.h
     Src/Components/TA_Coroutine.h

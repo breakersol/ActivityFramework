@@ -19,7 +19,7 @@
 
 #include "TA_MetaReflex.h"
 #include "TA_ActivityAffinity.h"
-#include "TA_ActivityId.h"
+#include "TA_UniqueId.h"
 #include "TA_ActivityState.h"
 
 #include <coroutine>
@@ -186,7 +186,7 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
         return configurable && moved;
     }
 
-    std::int64_t id() const { return m_id.id(); }
+    std::uint64_t id() const noexcept { return m_id.id(); }
 
     bool setParas(Paras &&...paras) {
         return m_lifecycle.updateConfiguration(
@@ -221,7 +221,7 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
   private:
     std::tuple<StorageType<Paras>...> m_paras;
     TA_ActivityAffinityThread m_affinityThread{};
-    TA_ActivityId m_id{};
+    TA_UniqueId m_id{};
     const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
     std::atomic_bool m_stolenEnabled {true};
     Detail::TA_ActivityLifecycle m_lifecycle{};
@@ -276,7 +276,7 @@ template <typename Method, typename... Args> class TA_MethodActivity {
         return configurable && moved;
     }
 
-    std::int64_t id() const { return m_id.id(); }
+    std::uint64_t id() const noexcept { return m_id.id(); }
 
     template <typename... NewArgs> bool setPara(NewArgs &&...args) {
         return m_lifecycle.updateConfiguration([this, &args...]() {
@@ -313,7 +313,7 @@ template <typename Method, typename... Args> class TA_MethodActivity {
     std::tuple<StorageType<Args>...> m_args;
     TA_ActivityAffinityThread m_affinityThread{};
     const std::thread::id m_dependencyThreadId{std::this_thread::get_id()};
-    TA_ActivityId m_id{};
+    TA_UniqueId m_id{};
     std::atomic_bool m_stolenEnabled {true};
     Detail::TA_ActivityLifecycle m_lifecycle{};
 };
