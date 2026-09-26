@@ -43,6 +43,7 @@
 #include "TA_TypeFilter.h"
 #include "TA_MetaReflex.h"
 #include "TA_Buffer.h"
+#include "TA_MetaObject.h"
 
 namespace CoreAsync {
 template <typename T>
@@ -88,12 +89,97 @@ struct SupportedAdaptor<std::priority_queue<T, C, Compare>> : std::true_type {};
 
 template <typename T>
 concept ReflectedType = CustomType<T> && requires { typename Reflex::TA_TypeInfo<T>::TA_PropertyInfos; };
+
+template <typename T>
+concept GraphType = ReflectedType<T> && std::derived_from<T, TA_MetaObject>;
+
+// Values containing graph nodes must not pass through temporary/movable storage.
+// Pointers are edges: moving the pointer does not move its registered node.
+template <typename T> consteval bool containsGraphValue() {
+    using Value = std::remove_cv_t<T>;
+    if constexpr (std::is_pointer_v<Value>)
+        return false;
+    else if constexpr (GraphType<Value>)
+        return true;
+    else if constexpr (std::is_array_v<Value>)
+        return containsGraphValue<std::remove_extent_t<Value>>();
+    else if constexpr (ReflectedType<Value>) {
+        return []<std::size_t... I>(std::index_sequence<I...>) {
+            using Properties = typename Reflex::TA_TypeInfo<Value>::TA_PropertyInfos::List;
+            return (containsGraphValue<typename VariableTypeInfo<std::remove_cvref_t<decltype(
+                        Reflex::TA_TypeInfo<Value>::findType(
+                            std::tuple_element_t<0, typename MetaTypeAt<Properties, I>::type>{}))>>::RetType>() || ...);
+        }(std::make_index_sequence<Reflex::TA_TypeInfo<Value>::TA_PropertyInfos::size>{});
+    } else if constexpr (requires { typename Value::first_type; typename Value::second_type; })
+        return containsGraphValue<typename Value::first_type>() || containsGraphValue<typename Value::second_type>();
+    else if constexpr (SupportedContainer<Value>::value || SupportedAdaptor<Value>::value)
+        return containsGraphValue<typename Value::value_type>();
+    else
+        return false;
+}
 } // namespace SerializationDetail
+
+template <BufferOperatorType OType = BufferWriter>
+class TA_ObjectMappingCache {
+    using OperatorType = OType;
+  public:
+    TA_ObjectMappingCache() = default;
+    ~TA_ObjectMappingCache() {
+            mappedObjects.clear();
+    }
+
+    void clear() {
+        mappedObjects.clear();
+    }
+
+    bool contains(std::uint64_t objectId) {
+        return mappedObjects.contains(objectId);
+    }
+
+    bool insert(std::uint64_t objectId) {
+        return mappedObjects.insert(objectId).second;
+    }
+
+  private:
+    std::unordered_set<std::uint64_t> mappedObjects {};
+
+};
+
+template <>
+class TA_ObjectMappingCache<BufferReader> {
+    using OperatorType = BufferReader;
+  public:
+    TA_ObjectMappingCache() = default;
+    ~TA_ObjectMappingCache() {
+            mappedObjects.clear();
+    }
+
+    void clear() {
+        mappedObjects.clear();
+    }
+
+    bool contains(std::uint64_t sourceObjectId) {
+        return mappedObjects.contains(sourceObjectId);
+    }
+
+    bool insert(std::uint64_t sourceObjectId, TA_MetaObject *targetObject) {
+        return mappedObjects.insert({sourceObjectId, targetObject}).second;
+    }
+
+    TA_MetaObject *get(std::uint64_t sourceObjectId) const {
+        const auto it = mappedObjects.find(sourceObjectId);
+        return it == mappedObjects.end() ? nullptr : it->second;
+    }
+
+  private:
+    std::unordered_map<std::uint64_t, TA_MetaObject *> mappedObjects {};
+
+};
 
 template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
   public:
     static constexpr std::uint32_t formatMagic = 0x41465753; // AFWS
-    static constexpr std::uint16_t formatRevision = 1;
+    static constexpr std::uint16_t formatRevision = 2;
     static constexpr std::size_t headerSize = 16;
     static_assert(CHAR_BIT == 8);
     static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big);
@@ -137,12 +223,30 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     template <SerializationDetail::ReflectedType T> TA_Serializer &operator<<(const T &t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
+        if constexpr (SerializationDetail::GraphType<T>) {
+            *this << t.id();
+            if (!m_objectMappingCache.insert(t.id()))
+                return *this;
+        }
         extractProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size>{});
         return *this;
     }
 
     template <SerializationDetail::ReflectedType T> TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
+        if constexpr (SerializationDetail::GraphType<T>) {
+            std::uint64_t sourceObjectId{};
+            *this >> sourceObjectId;
+            if (auto *cached = m_objectMappingCache.get(sourceObjectId)) {
+                auto *target = dynamic_cast<T *>(cached);
+                if (!target)
+                    throw std::ios_base::failure("Serialized object reference type mismatch");
+                if (target != &t)
+                    throw std::ios_base::failure("Object reference requires a pointer destination");
+                return *this;
+            }
+            m_objectMappingCache.insert(sourceObjectId, &t);
+        }
         extractProperty(t, std::make_index_sequence<Reflex::TA_TypeInfo<T>::TA_PropertyInfos::size>{});
         return *this;
     }
@@ -182,6 +286,7 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
     template <StdContainerType T> requires SerializationDetail::SupportedContainer<T>::value
     TA_Serializer &operator<<(const T &t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
+        validateContainerStorage<T>();
         writeCount(std::ranges::distance(t));
         std::ranges::for_each(std::as_const(t), [this](const T::value_type &val) { *this << val; });
         return *this;
@@ -190,6 +295,7 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
     template <StdAdaptorType T> requires SerializationDetail::SupportedAdaptor<T>::value
     TA_Serializer &operator<<(const T &t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
+        validateAdaptorStorage<T>();
         writeCount(std::ranges::size(t));
         T copyAdaptor = t;
         if constexpr (std::is_same_v<std::stack<typename T::value_type, typename T::container_type>, T>) {
@@ -225,6 +331,7 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
     template <StdContainerType T> requires SerializationDetail::SupportedContainer<T>::value
     TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
+        validateContainerStorage<T>();
         const auto size = readCount(t.max_size());
         if constexpr (std::is_same_v<std::vector<typename T::value_type>, T> ||
                       std::is_same_v<std::deque<typename T::value_type>, T> ||
@@ -235,27 +342,54 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
             }
         } else if constexpr (std::is_same_v<std::list<typename T::value_type>, T>) {
             for (std::size_t i = 0; i < size; ++i) {
-                typename T::value_type val;
-                *this >> val;
-                t.emplace_back(std::move(val));
+                if constexpr (SerializationDetail::containsGraphValue<typename T::value_type>()) {
+                    *this >> t.emplace_back();
+                } else {
+                    typename T::value_type val{};
+                    *this >> val;
+                    t.emplace_back(std::move(val));
+                }
             }
         } else if constexpr (std::is_same_v<std::forward_list<typename T::value_type>, T>) {
             typename std::forward_list<typename T::value_type>::iterator beginIter = t.before_begin();
             for (std::size_t i = 0; i < size; ++i) {
-                typename T::value_type val;
-                *this >> val;
-                beginIter = t.emplace_after(beginIter, std::move(val));
+                if constexpr (SerializationDetail::containsGraphValue<typename T::value_type>()) {
+                    beginIter = t.emplace_after(beginIter);
+                    *this >> *beginIter;
+                } else {
+                    typename T::value_type val{};
+                    *this >> val;
+                    beginIter = t.emplace_after(beginIter, std::move(val));
+                }
             }
         } else if constexpr (requires { typename T::key_type; typename T::mapped_type; }) {
             for (std::size_t i = 0; i < size; ++i) {
                 typename T::key_type key{};
-                typename T::mapped_type val{};
-                *this >> key >> val;
-                t.emplace_hint(t.end(), std::move(key), std::move(val));
+                *this >> key;
+                if constexpr (SerializationDetail::containsGraphValue<typename T::mapped_type>()) {
+                    // Duplicate keys cannot discard a node whose address has been registered.
+                    // try_emplace() applies to unique-key maps.
+                    if constexpr (requires { t.try_emplace(std::move(key)); }) {
+                        auto [it, inserted] = t.try_emplace(std::move(key));
+                        if (!inserted)
+                            throw std::ios_base::failure("Duplicate graph value map key");
+                        *this >> it->second;
+                    } else {
+                        //This avoids constructing a temporary mapped value and moving it into the map.
+                        auto it = t.emplace_hint(t.end(), std::piecewise_construct,
+                                                 std::forward_as_tuple(std::move(key)), std::tuple<>{});
+                        // auto it = t.emplace_hint(t.end(), std::move(key), typename T::mapped_type {});
+                        *this >> it->second;
+                    }
+                } else {
+                    typename T::mapped_type val{};
+                    *this >> val;
+                    t.emplace_hint(t.end(), std::move(key), std::move(val));
+                }
             }
         } else if constexpr (requires { typename T::key_type; }) {
             for (std::size_t i = 0; i < size; ++i) {
-                typename T::key_type val;
+                typename T::key_type val{};
                 *this >> val;
                 t.emplace_hint(t.end(), std::move(val));
             }
@@ -266,17 +400,18 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
     template <StdAdaptorType T> requires SerializationDetail::SupportedAdaptor<T>::value
     TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
+        validateAdaptorStorage<T>();
         const auto size = readCount(typename T::container_type{}.max_size());
         if constexpr (std::is_same_v<std::queue<typename T::value_type, typename T::container_type>, T>) {
             for (std::size_t i = 0; i < size; ++i) {
-                typename T::value_type val;
+                typename T::value_type val{};
                 *this >> val;
                 t.emplace(std::move(val));
             }
         } else if constexpr (std::is_same_v<std::stack<typename T::value_type, typename T::container_type>, T>) {
             std::deque<typename T::value_type> temp;
             for (std::size_t i = 0; i < size; ++i) {
-                typename T::value_type val;
+                typename T::value_type val{};
                 *this >> val;
                 temp.emplace_front(std::move(val));
             }
@@ -285,7 +420,7 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
                                                                 typename T::value_compare>,
                                             T>) {
             for (std::size_t i = 0; i < size; ++i) {
-                typename T::value_type val;
+                typename T::value_type val{};
                 *this >> val;
                 t.emplace(std::move(val));
             }
@@ -319,9 +454,31 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     template <RawPtr T> TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
-        if (!t)
+        using Pointee = std::remove_pointer_t<T>;
+        if constexpr (SerializationDetail::GraphType<Pointee>) {
+            std::uint64_t sourceObjectId{};
+            *this >> sourceObjectId;
+            if (auto *cached = m_objectMappingCache.get(sourceObjectId)) {
+                auto *target = dynamic_cast<Pointee *>(cached);
+                if (!target)
+                    throw std::ios_base::failure("Serialized object reference type mismatch");
+                t = target;
+                return *this;
+            }
+            if (!t) {
+                if constexpr (std::is_default_constructible_v<Pointee>)
+                    t = new Pointee{};
+                else
+                    throw std::ios_base::failure("Serialized object requires destination storage");
+            }
+            m_objectMappingCache.insert(sourceObjectId, t);
+            extractProperty(*t, std::make_index_sequence<Reflex::TA_TypeInfo<Pointee>::TA_PropertyInfos::size>{});
             return *this;
-        return *this >> *t;
+        } else {
+            if (!t)
+                t = new Pointee{};
+            return *this >> *t;
+        }
     }
 
     template <typename T, int N> TA_Serializer &operator<<(const T (&a)[N]) {
@@ -365,6 +522,18 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
     }
 
   private:
+    template <typename T> static void validateContainerStorage() {
+        if constexpr (requires { typename T::key_type; }) {
+            if constexpr (SerializationDetail::containsGraphValue<typename T::key_type>())
+                throw std::ios_base::failure("Graph nodes in associative keys require pointer storage");
+        }
+    }
+
+    template <typename T> static void validateAdaptorStorage() {
+        if constexpr (SerializationDetail::containsGraphValue<typename T::value_type>())
+            throw std::ios_base::failure("Graph nodes in adaptors require pointer storage");
+    }
+
     template <typename Size> void writeCount(Size size) {
         if (!std::in_range<std::uint64_t>(size))
             throw std::ios_base::failure("Container count exceeds the wire format limit");
@@ -392,20 +561,24 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
                       "Invalid name retrieved during serialization.");
         if constexpr (std::is_same_v<BufferWriter, OType>) {
             if (m_version >= std::tuple_element_t<1, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>::m_value) {
-                *this << Reflex::TA_TypeInfo<Rt>::invoke(
-                    std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>{}, t);
+                constexpr auto member = Reflex::TA_TypeInfo<Rt>::findType(
+                    std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>{});
+                *this << (t.*member);
             }
         } else {
             if (std::tuple_element_t<1, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>::m_value <= m_version) {
-                using ValType = std::remove_pointer_t<
-                    typename VariableTypeInfo<std::remove_cvref_t<decltype(CoreAsync::Reflex::TA_TypeInfo<Rt>::findType(
-                        std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>{}))>>::RetType>;
-                ValType val{};
-                // std::cout << typeid(ValType).name() << std::endl;
-                *this >> val;
-                Reflex::TA_TypeInfo<Rt>::update(
-                    t, std::move(val),
-                    std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>{});
+                using Name = std::tuple_element_t<0, typename CoreAsync::MetaTypeAt<Properties, IDX0>::type>;
+                constexpr auto member = Reflex::TA_TypeInfo<Rt>::findType(Name{});
+                using PropertyType = typename VariableTypeInfo<std::remove_cvref_t<decltype(member)>>::RetType;
+                if constexpr (std::is_pointer_v<PropertyType> || SerializationDetail::containsGraphValue<PropertyType>()) {
+                    // Both embedded nodes and pointer edges must use their final storage.
+                    *this >> (t.*member);
+                } else {
+                    // Preserve replacement semantics for ordinary value properties.
+                    PropertyType value{};
+                    *this >> value;
+                    Reflex::TA_TypeInfo<Rt>::update(t, std::move(value), Name{});
+                }
             }
         }
         extractProperty(t, std::index_sequence<IDXS...>{});
@@ -439,6 +612,7 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
   private:
     std::unique_ptr<OType> m_pDataOperator;
     std::uint64_t m_version;
+    TA_ObjectMappingCache<OType> m_objectMappingCache;
 };
 } // namespace CoreAsync
 

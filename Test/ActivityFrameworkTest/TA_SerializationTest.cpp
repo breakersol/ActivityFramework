@@ -14,14 +14,55 @@
  * limitations under the License.
  */
 
-#include "TA_SerializationTest.h"
 #include "Components/TA_Serialization.h"
+#include "TA_SerializationTest.h"
 
 #include <cstdint>
 #include <fstream>
 #include <ios>
 #include <memory_resource>
 #include <string>
+
+struct SerializationGraphNode : CoreAsync::TA_MetaObject {
+    std::uint64_t value{};
+    SerializationGraphNode *next{};
+};
+
+DEFINE_TYPE_INFO(SerializationGraphNode) {
+    AUTO_META_FIELDS(REGISTER_FIELD(value, TA_DEFAULT_PROPERTY), REGISTER_FIELD(next, TA_DEFAULT_PROPERTY))
+};
+
+struct SerializationPlainValue {
+    std::uint64_t value{};
+};
+DEFINE_TYPE_INFO(SerializationPlainValue) {
+    AUTO_META_FIELDS(REGISTER_FIELD(value, TA_DEFAULT_PROPERTY))
+};
+
+struct SerializationEmbeddedGraph {
+    SerializationGraphNode node;
+    SerializationGraphNode *alias{};
+};
+DEFINE_TYPE_INFO(SerializationEmbeddedGraph) {
+    AUTO_META_FIELDS(REGISTER_FIELD(node, TA_DEFAULT_PROPERTY), REGISTER_FIELD(alias, TA_DEFAULT_PROPERTY))
+};
+
+struct SerializationOtherNode : CoreAsync::TA_MetaObject {
+    std::uint64_t value{};
+};
+DEFINE_TYPE_INFO(SerializationOtherNode) {
+    AUTO_META_FIELDS(REGISTER_FIELD(value, TA_DEFAULT_PROPERTY))
+};
+
+struct SerializationNoncopyableNode : CoreAsync::TA_MetaObject {
+    SerializationNoncopyableNode() = default;
+    SerializationNoncopyableNode(const SerializationNoncopyableNode &) = delete;
+    SerializationNoncopyableNode &operator=(const SerializationNoncopyableNode &) = delete;
+    std::uint64_t value{};
+};
+DEFINE_TYPE_INFO(SerializationNoncopyableNode) {
+    AUTO_META_FIELDS(REGISTER_FIELD(value, TA_DEFAULT_PROPERTY))
+};
 
 namespace {
 template <typename T>
@@ -69,6 +110,288 @@ TA_SerializationTest::~TA_SerializationTest() {}
 void TA_SerializationTest::SetUp() {}
 
 void TA_SerializationTest::TearDown() {}
+
+TEST_F(TA_SerializationTest, SelfCyclePreservesIdentityAndStreamPosition) {
+    SerializationGraphNode source;
+    source.value = 42;
+    source.next = &source;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << source << std::uint32_t{123};
+        output.close();
+    }
+    SerializationGraphNode decoded;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    std::uint32_t sentinel{};
+    input >> decoded >> sentinel;
+    EXPECT_EQ(decoded.value, 42u);
+    EXPECT_EQ(decoded.next, &decoded);
+    EXPECT_EQ(sentinel, 123u);
+}
+
+TEST_F(TA_SerializationTest, TwoNodeCycleUsesExistingStorage) {
+    SerializationGraphNode first, second;
+    first.value = 1;
+    second.value = 2;
+    first.next = &second;
+    second.next = &first;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << &first;
+        output.close();
+    }
+    SerializationGraphNode decodedFirst, decodedSecond;
+    decodedFirst.next = &decodedSecond;
+    auto *root = &decodedFirst;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> root;
+    EXPECT_EQ(root, &decodedFirst);
+    EXPECT_EQ(root->next, &decodedSecond);
+    EXPECT_EQ(root->next->next, root);
+    EXPECT_EQ(root->value, 1u);
+    EXPECT_EQ(root->next->value, 2u);
+}
+
+TEST_F(TA_SerializationTest, RepeatedPointersRebindInsteadOfCopying) {
+    SerializationGraphNode source;
+    source.next = &source;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << &source << &source << &source;
+        output.close();
+    }
+    SerializationGraphNode decoded, other;
+    other.value = 99;
+    auto *first = &decoded;
+    auto *second = &other;
+    SerializationGraphNode *third = nullptr;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> first >> second >> third;
+    EXPECT_EQ(second, first);
+    EXPECT_EQ(third, first);
+    EXPECT_EQ(first->next, first);
+    EXPECT_EQ(other.value, 99u);
+}
+
+TEST_F(TA_SerializationTest, AllocatedGraphPointerSurvivesRepeatedReference) {
+    SerializationGraphNode source;
+    source.value = 42;
+    source.next = &source;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << &source << &source;
+        output.close();
+    }
+    SerializationGraphNode *decoded = nullptr;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> decoded;
+    std::unique_ptr<SerializationGraphNode> owner(decoded);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->next, decoded);
+    input >> decoded;
+    EXPECT_EQ(decoded, owner.get());
+    EXPECT_EQ(decoded->value, 42u);
+    EXPECT_EQ(decoded->next, decoded);
+}
+
+TEST_F(TA_SerializationTest, RepeatedObjectReferenceCannotCopyIntoAnotherObject) {
+    SerializationGraphNode source;
+    source.value = 42;
+    source.next = &source;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << source << source << source;
+        output.close();
+    }
+    SerializationGraphNode decoded, other;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    EXPECT_NO_THROW(input >> decoded >> decoded);
+    EXPECT_THROW(input >> other, std::ios_base::failure);
+    EXPECT_EQ(other.value, 0u);
+    EXPECT_EQ(other.next, nullptr);
+}
+
+TEST_F(TA_SerializationTest, WrongGraphReferenceTypePreservesDestination) {
+    SerializationGraphNode source;
+    source.next = &source;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << &source << &source << &source;
+        output.close();
+    }
+    SerializationGraphNode *decoded = nullptr;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> decoded;
+    std::unique_ptr<SerializationGraphNode> owner(decoded);
+    SerializationOtherNode other;
+    auto *otherPointer = &other;
+    EXPECT_THROW(input >> other, std::ios_base::failure);
+    EXPECT_THROW(input >> otherPointer, std::ios_base::failure);
+    EXPECT_EQ(otherPointer, &other);
+    EXPECT_EQ(other.value, 0u);
+}
+
+TEST_F(TA_SerializationTest, OrdinaryReflectedValuesAndPointersRoundTrip) {
+    SerializationPlainValue source{42};
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << source << source << &source;
+        output.close();
+    }
+    SerializationPlainValue first, second;
+    SerializationPlainValue *third = nullptr;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> first >> second >> third;
+    std::unique_ptr<SerializationPlainValue> owner(third);
+    EXPECT_EQ(first.value, 42u);
+    EXPECT_EQ(second.value, 42u);
+    ASSERT_NE(third, nullptr);
+    EXPECT_EQ(third->value, 42u);
+}
+
+TEST_F(TA_SerializationTest, GraphNodesDoNotRequireCopyAssignment) {
+    SerializationNoncopyableNode source;
+    source.value = 42;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << source << &source;
+        output.close();
+    }
+    SerializationNoncopyableNode decoded;
+    SerializationNoncopyableNode *alias = nullptr;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> decoded >> alias;
+    EXPECT_EQ(decoded.value, 42u);
+    EXPECT_EQ(alias, &decoded);
+}
+
+TEST_F(TA_SerializationTest, AssociativeKeysRejectGraphValues) {
+    auto compare = [](const SerializationEmbeddedGraph &a, const SerializationEmbeddedGraph &b) {
+        return a.node.value < b.node.value;
+    };
+    using Set = std::set<SerializationEmbeddedGraph, decltype(compare)>;
+    Set values(compare);
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        EXPECT_THROW(output << values, std::ios_base::failure);
+        output << std::uint64_t{0};
+        output.close();
+    }
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    EXPECT_THROW(input >> values, std::ios_base::failure);
+}
+
+TEST_F(TA_SerializationTest, EmbeddedGraphNodesUseFinalPropertyStorage) {
+    SerializationEmbeddedGraph source;
+    source.node.value = 42;
+    source.node.next = &source.node;
+    source.alias = &source.node;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << source << &source.node;
+        output.close();
+    }
+    SerializationEmbeddedGraph decoded;
+    SerializationGraphNode *alias = nullptr;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> decoded >> alias;
+    EXPECT_EQ(decoded.node.value, 42u);
+    EXPECT_EQ(decoded.node.next, &decoded.node);
+    EXPECT_EQ(decoded.alias, &decoded.node);
+    EXPECT_EQ(alias, &decoded.node);
+}
+
+TEST_F(TA_SerializationTest, GraphValuesInSequencesKeepStableAddresses) {
+    auto roundTrip = [&]<typename Container>() {
+        Container source(2);
+        auto first = source.begin();
+        auto second = std::next(first);
+        first->node.value = 1;
+        first->node.next = &first->node;
+        first->alias = &first->node;
+        second->node.value = 2;
+        second->node.next = &first->node;
+        second->alias = &second->node;
+        {
+            CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+            output << source << &first->node << &second->node;
+            output.close();
+        }
+        Container decoded;
+        SerializationGraphNode *a = nullptr, *b = nullptr;
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        input >> decoded >> a >> b;
+        auto decodedFirst = decoded.begin();
+        auto decodedSecond = std::next(decodedFirst);
+        EXPECT_EQ(a, &decodedFirst->node);
+        EXPECT_EQ(b, &decodedSecond->node);
+        EXPECT_EQ(a->next, a);
+        EXPECT_EQ(b->next, a);
+        EXPECT_EQ(decodedSecond->alias, b);
+    };
+    roundTrip.template operator()<std::vector<SerializationEmbeddedGraph>>();
+    roundTrip.template operator()<std::deque<SerializationEmbeddedGraph>>();
+    roundTrip.template operator()<std::list<SerializationEmbeddedGraph>>();
+    roundTrip.template operator()<std::forward_list<SerializationEmbeddedGraph>>();
+}
+
+TEST_F(TA_SerializationTest, GraphMapValuesUseFinalStorage) {
+    auto roundTrip = [&]<typename Map>() {
+        Map source;
+        auto it = source.emplace_hint(source.end(), std::piecewise_construct,
+                                      std::forward_as_tuple(1), std::tuple<>{});
+        it->second.node.next = &it->second.node;
+        it->second.alias = &it->second.node;
+        {
+            CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+            output << source << &it->second.node;
+            output.close();
+        }
+        Map decoded;
+        SerializationGraphNode *alias = nullptr;
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        input >> decoded >> alias;
+        ASSERT_EQ(decoded.size(), 1u);
+        EXPECT_EQ(alias, &decoded.begin()->second.node);
+        EXPECT_EQ(alias->next, alias);
+        EXPECT_EQ(decoded.begin()->second.alias, alias);
+    };
+    roundTrip.template operator()<std::map<int, SerializationEmbeddedGraph>>();
+    roundTrip.template operator()<std::unordered_map<int, SerializationEmbeddedGraph>>();
+    roundTrip.template operator()<std::multimap<int, SerializationEmbeddedGraph>>();
+    roundTrip.template operator()<std::unordered_multimap<int, SerializationEmbeddedGraph>>();
+}
+
+TEST_F(TA_SerializationTest, AdaptorsRejectEmbeddedGraphValuesButAcceptPointers) {
+    {
+        std::queue<SerializationEmbeddedGraph> unsafe;
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        EXPECT_THROW(output << unsafe, std::ios_base::failure);
+        output << std::uint64_t{0};
+        output.close();
+    }
+    {
+        std::queue<SerializationEmbeddedGraph> unsafe;
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        EXPECT_THROW(input >> unsafe, std::ios_base::failure);
+    }
+    SerializationGraphNode source;
+    source.next = &source;
+    std::queue<SerializationGraphNode *> values;
+    values.push(&source);
+    values.push(&source);
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << values;
+        output.close();
+    }
+    std::queue<SerializationGraphNode *> decoded;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> decoded;
+    std::unique_ptr<SerializationGraphNode> owner(decoded.front());
+    EXPECT_EQ(decoded.front(), decoded.back());
+    EXPECT_EQ(decoded.front()->next, decoded.front());
+}
 
 TEST_F(TA_SerializationTest, StringsRoundTripAndReplaceContents) {
     const std::vector<std::string> values{
@@ -338,7 +661,7 @@ TEST_F(TA_SerializationTest, WireBytesUseFixedWidthBigEndianFields) {
     std::ifstream file(TEST_FILE_PATH, std::ios::binary);
     const std::vector<unsigned char> actual((std::istreambuf_iterator<char>(file)), {});
     const std::vector<unsigned char> expected{
-        0x41, 0x46, 0x57, 0x53, 0x00, 0x01, 0x00, 0x00, // magic, revision, flags
+        0x41, 0x46, 0x57, 0x53, 0x00, 0x02, 0x00, 0x00, // magic, revision, flags
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // schema
         0, 0, 0, 0, 0, 0, 0, 2,                       // uint64 count
         0x12, 0x34, 0xab, 0xcd, 1, 0, 0x3f, 0x80, 0, 0};
@@ -347,7 +670,7 @@ TEST_F(TA_SerializationTest, WireBytesUseFixedWidthBigEndianFields) {
 
 TEST_F(TA_SerializationTest, ReadsIndependentWireFixture) {
     const unsigned char bytes[]{
-        0x41, 0x46, 0x57, 0x53, 0, 1, 0, 0,
+        0x41, 0x46, 0x57, 0x53, 0, 2, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 1,
         0, 0, 0, 0, 0, 0, 0, 2,
         0x12, 0x34, 0xab, 0xcd, 1, 0, 0x3f, 0x80, 0, 0};
@@ -369,7 +692,7 @@ TEST_F(TA_SerializationTest, ReadsIndependentWireFixture) {
 
 TEST_F(TA_SerializationTest, RejectsInvalidAndTruncatedHeaders) {
     const std::vector<unsigned char> valid{
-        0x41, 0x46, 0x57, 0x53, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+        0x41, 0x46, 0x57, 0x53, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
     auto rejects = [&](const std::vector<unsigned char> &bytes) {
         std::ofstream output(TEST_FILE_PATH, std::ios::binary);
         output.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
@@ -384,12 +707,15 @@ TEST_F(TA_SerializationTest, RejectsInvalidAndTruncatedHeaders) {
     for (const std::size_t index : {0u, 5u, 7u, 15u}) {
         SCOPED_TRACE(index);
         auto invalid = valid;
-        invalid[index] = 2; // bad magic, revision, flags, or unsupported schema
+        invalid[index] = 3; // bad magic, revision, flags, or unsupported schema
         rejects(invalid);
     }
     auto zeroSchema = valid;
     zeroSchema[15] = 0;
     rejects(zeroSchema);
+    auto oldRevision = valid;
+    oldRevision[5] = 1;
+    rejects(oldRevision);
     // Legacy header followed by arbitrary payload must not be interpreted as AFWS.
     std::vector<unsigned char> legacy(24, 0);
     legacy[0] = 1;
@@ -443,7 +769,8 @@ TEST_F(TA_SerializationTest, InvalidCountsAndBooleansPreserveDestination) {
 
 TEST_F(TA_SerializationTest, CustomTypeTest) {
     float *ptr = new float(5.3);
-    M3Test t, p1, p2;
+    M3Test t, p1;
+    M3Test *alias = nullptr;
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH, 1, 1024);
         t.setVec({2, 3, 4, 5});
@@ -462,8 +789,10 @@ TEST_F(TA_SerializationTest, CustomTypeTest) {
     }
     {
         CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 1, 1024);
-        input >> p1 >> p2;
+        input >> p1 >> alias;
     }
+    ASSERT_EQ(alias, &p1);
+    const auto &p2 = *alias;
     EXPECT_EQ(t.getVec(), p2.getVec());
     EXPECT_EQ(*t.getRawPtr(), *p2.getRawPtr());
     EXPECT_EQ(t.getArray(), p2.getArray());
@@ -485,7 +814,8 @@ TEST_F(TA_SerializationTest, CustomTypeTest) {
 
 TEST_F(TA_SerializationTest, VersionTest) {
     float *ptr = new float(5.3);
-    M3Test t, p1, p2;
+    M3Test t, p1;
+    M3Test *alias = nullptr;
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH, 2);
         t.setVec({2, 3, 4, 5});
@@ -504,8 +834,10 @@ TEST_F(TA_SerializationTest, VersionTest) {
     }
     {
         CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH, 2);
-        input >> p1 >> p2;
+        input >> p1 >> alias;
     }
+    ASSERT_EQ(alias, &p1);
+    const auto &p2 = *alias;
     EXPECT_EQ(t.getVec(), p2.getVec());
     EXPECT_EQ(*t.getRawPtr(), *p2.getRawPtr());
     EXPECT_EQ(t.getArray(), p2.getArray());
