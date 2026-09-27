@@ -216,7 +216,7 @@ TEST_F(TA_SerializationTest, WrongGraphReferenceTypePreservesDestination) {
     source.next = &source;
     {
         CoreAsync::TA_Serializer output(TEST_FILE_PATH);
-        output << &source << &source << &source;
+        output << &source << source << &source;
         output.close();
     }
     SerializationGraphNode *decoded = nullptr;
@@ -229,6 +229,113 @@ TEST_F(TA_SerializationTest, WrongGraphReferenceTypePreservesDestination) {
     EXPECT_THROW(input >> otherPointer, std::ios_base::failure);
     EXPECT_EQ(otherPointer, &other);
     EXPECT_EQ(other.value, 0u);
+}
+
+TEST_F(TA_SerializationTest, NullPointerWireMarkersAndOverloads) {
+    std::uint16_t value = 0x1234;
+    std::uint16_t *empty = nullptr;
+    std::uint16_t *const constEmpty = nullptr;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << empty << constEmpty << static_cast<std::uint16_t *>(nullptr)
+               << nullptr << &value << std::uint8_t{0x7f};
+        output.close();
+    }
+    std::ifstream file(TEST_FILE_PATH, std::ios::binary);
+    file.seekg(CoreAsync::TA_Serializer<>::headerSize);
+    const std::vector<unsigned char> bytes((std::istreambuf_iterator<char>(file)), {});
+    EXPECT_EQ(bytes, (std::vector<unsigned char>{0, 0, 0, 0, 1, 0x12, 0x34, 0x7f}));
+    auto *decoded = &value;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> decoded;
+    EXPECT_EQ(decoded, nullptr);
+    EXPECT_EQ(value, 0x1234);
+    input >> decoded >> nullptr >> nullptr >> decoded;
+    std::unique_ptr<std::uint16_t> owner(decoded);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(*decoded, 0x1234);
+    std::uint8_t sentinel{};
+    input >> sentinel;
+    EXPECT_EQ(sentinel, 0x7f);
+}
+
+TEST_F(TA_SerializationTest, NullGraphEdgesAndAliasesRoundTrip) {
+    SerializationGraphNode first, second;
+    first.value = 1;
+    second.value = 2;
+    first.next = &first;
+    // second.next is a null leaf alongside the self-cycle.
+    std::vector<SerializationGraphNode *> source{nullptr, &first, &second, &first, nullptr};
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << source << std::uint32_t{123};
+        output.close();
+    }
+    std::vector<SerializationGraphNode *> decoded;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> decoded;
+    ASSERT_EQ(decoded.size(), 5u);
+    std::unique_ptr<SerializationGraphNode> firstOwner(decoded[1]), secondOwner(decoded[2]);
+    EXPECT_EQ(decoded[0], nullptr);
+    EXPECT_EQ(decoded[4], nullptr);
+    ASSERT_NE(decoded[1], nullptr);
+    ASSERT_NE(decoded[2], nullptr);
+    EXPECT_EQ(decoded[1]->next, decoded[1]);
+    EXPECT_EQ(decoded[2]->next, nullptr);
+    EXPECT_EQ(decoded[3], decoded[1]);
+    std::uint32_t sentinel{};
+    input >> sentinel;
+    EXPECT_EQ(sentinel, 123u);
+}
+
+TEST_F(TA_SerializationTest, NullPropertiesClearPointersWithoutDeletingStorage) {
+    SerializationEmbeddedGraph source;
+    SerializationPlainValue *emptyPlain = nullptr;
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << source << emptyPlain;
+        output.close();
+    }
+    SerializationEmbeddedGraph decoded;
+    SerializationGraphNode existing;
+    existing.value = 99;
+    decoded.node.next = &existing;
+    decoded.alias = &existing;
+    SerializationPlainValue plain{42};
+    auto *plainPointer = &plain;
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    input >> decoded >> plainPointer;
+    EXPECT_EQ(decoded.node.next, nullptr);
+    EXPECT_EQ(decoded.alias, nullptr);
+    EXPECT_EQ(plainPointer, nullptr);
+    EXPECT_EQ(existing.value, 99u);
+    EXPECT_EQ(plain.value, 42u);
+}
+
+TEST_F(TA_SerializationTest, InvalidAndTruncatedPointerMarkersPreserveDestination) {
+    for (int scenario : {0, 1, 2}) {
+        SCOPED_TRACE(scenario);
+        {
+            CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+            if (scenario == 1)
+                output << std::uint8_t{2}; // Invalid presence marker.
+            else if (scenario == 2)
+                output << true; // Present graph node, missing object ID.
+            output.close();
+        }
+        SerializationGraphNode storage;
+        auto *decoded = &storage;
+        CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+        EXPECT_THROW(input >> decoded, std::ios_base::failure);
+        EXPECT_EQ(decoded, &storage);
+    }
+    {
+        CoreAsync::TA_Serializer output(TEST_FILE_PATH);
+        output << true;
+        output.close();
+    }
+    CoreAsync::TA_Serializer<CoreAsync::BufferReader> input(TEST_FILE_PATH);
+    EXPECT_THROW(input >> nullptr, std::ios_base::failure);
 }
 
 TEST_F(TA_SerializationTest, OrdinaryReflectedValuesAndPointersRoundTrip) {
@@ -661,7 +768,7 @@ TEST_F(TA_SerializationTest, WireBytesUseFixedWidthBigEndianFields) {
     std::ifstream file(TEST_FILE_PATH, std::ios::binary);
     const std::vector<unsigned char> actual((std::istreambuf_iterator<char>(file)), {});
     const std::vector<unsigned char> expected{
-        0x41, 0x46, 0x57, 0x53, 0x00, 0x02, 0x00, 0x00, // magic, revision, flags
+        0x41, 0x46, 0x57, 0x53, 0x00, 0x03, 0x00, 0x00, // magic, revision, flags
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // schema
         0, 0, 0, 0, 0, 0, 0, 2,                       // uint64 count
         0x12, 0x34, 0xab, 0xcd, 1, 0, 0x3f, 0x80, 0, 0};
@@ -670,7 +777,7 @@ TEST_F(TA_SerializationTest, WireBytesUseFixedWidthBigEndianFields) {
 
 TEST_F(TA_SerializationTest, ReadsIndependentWireFixture) {
     const unsigned char bytes[]{
-        0x41, 0x46, 0x57, 0x53, 0, 2, 0, 0,
+        0x41, 0x46, 0x57, 0x53, 0, 3, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 1,
         0, 0, 0, 0, 0, 0, 0, 2,
         0x12, 0x34, 0xab, 0xcd, 1, 0, 0x3f, 0x80, 0, 0};
@@ -692,7 +799,7 @@ TEST_F(TA_SerializationTest, ReadsIndependentWireFixture) {
 
 TEST_F(TA_SerializationTest, RejectsInvalidAndTruncatedHeaders) {
     const std::vector<unsigned char> valid{
-        0x41, 0x46, 0x57, 0x53, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+        0x41, 0x46, 0x57, 0x53, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
     auto rejects = [&](const std::vector<unsigned char> &bytes) {
         std::ofstream output(TEST_FILE_PATH, std::ios::binary);
         output.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
@@ -707,7 +814,7 @@ TEST_F(TA_SerializationTest, RejectsInvalidAndTruncatedHeaders) {
     for (const std::size_t index : {0u, 5u, 7u, 15u}) {
         SCOPED_TRACE(index);
         auto invalid = valid;
-        invalid[index] = 3; // bad magic, revision, flags, or unsupported schema
+        invalid[index] = 4; // bad magic, revision, flags, or unsupported schema
         rejects(invalid);
     }
     auto zeroSchema = valid;
@@ -715,6 +822,8 @@ TEST_F(TA_SerializationTest, RejectsInvalidAndTruncatedHeaders) {
     rejects(zeroSchema);
     auto oldRevision = valid;
     oldRevision[5] = 1;
+    rejects(oldRevision);
+    oldRevision[5] = 2;
     rejects(oldRevision);
     // Legacy header followed by arbitrary payload must not be interpreted as AFWS.
     std::vector<unsigned char> legacy(24, 0);
@@ -784,7 +893,7 @@ TEST_F(TA_SerializationTest, CustomTypeTest) {
         t.m_vec = {1, 1, 1, 1};
         t.setQueue({t.getDeque().begin(), t.getDeque().end()});
         t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
-        output << t << t;
+        output << t << &t;
         EXPECT_NO_THROW(output.close());
     }
     {
@@ -829,7 +938,7 @@ TEST_F(TA_SerializationTest, VersionTest) {
         t.m_vec = {1, 1, 1, 1};
         t.setQueue({t.getDeque().begin(), t.getDeque().end()});
         t.setPrioritQueue({t.getDeque().begin(), t.getDeque().end()});
-        output << t << t;
+        output << t << &t;
         EXPECT_NO_THROW(output.close());
     }
     {

@@ -1,6 +1,6 @@
 # ActivityFramework binary serialization format
 
-This specification describes AFWS format revision 2. All offsets and lengths are
+This specification describes AFWS format revision 3. All offsets and lengths are
 in 8-bit bytes. All multibyte fields, including the header and counts, use
 big-endian byte order. Fields are consecutive, without alignment padding.
 
@@ -12,7 +12,7 @@ C++ structure.
 | Offset | Bytes | Field | Encoding |
 | --- | --- | --- | --- |
 | 0 | 4 | Magic | `41 46 57 53` (ASCII `AFWS`) |
-| 4 | 2 | Format revision | Unsigned 16-bit integer, currently `2` |
+| 4 | 2 | Format revision | Unsigned 16-bit integer, currently `3` |
 | 6 | 2 | Reserved flags | Unsigned 16-bit integer, must be `0` |
 | 8 | 8 | Application schema version | Unsigned 64-bit integer, at least `1` |
 
@@ -36,7 +36,8 @@ of values and their types.
 | Map | Count of entries, then key/value pairs |
 | Ordinary reflected value | Eligible properties in reflection metadata order, without names or framing |
 | Reflected `TA_MetaObject` | Unsigned 64-bit source object ID, then eligible properties on its first occurrence only |
-| Non-null raw pointer | Pointee encoding; pointers to reflected `TA_MetaObject` nodes preserve identity |
+| Raw pointer | One-byte presence marker: `00` for null; `01` followed by pointee encoding for non-null |
+| `nullptr` literal | One byte: `00` |
 
 Containers use iteration order. Queues use front-to-back order; stacks use
 top-to-bottom order (reversed during reconstruction); priority queues use pop
@@ -57,9 +58,17 @@ explicit enum underlying types. Directly serialized `size_t`, `long`, `wchar_t`,
 and other platform-dependent scalar types retain their native width; the format
 does not normalize them. Character encoding is an application responsibility.
 Implementations require 8-bit bytes, ordinary little/big-endian storage, and
-IEEE 754 32-bit float/64-bit double. Null source pointers have no wire representation
-and are not supported. Cycles and shared references are supported for raw pointers
+IEEE 754 32-bit float/64-bit double. Cycles and shared references are supported for raw pointers
 to reflected classes publicly derived from `TA_MetaObject`.
+
+Pointer presence markers must be `00` or `01`; other values and truncated markers
+throw before changing the destination pointer. A null record sets the destination
+pointer to null without deleting its previous pointee or changing the object cache.
+A non-null record continues with the usual pointee encoding, including the object
+ID for graph nodes. Typed null pointers and `nullptr` literals share the same null
+encoding. Extraction into `nullptr` consumes a null record and rejects a non-null marker.
+Pointer records and object-value records are distinct: reading a pointer requires
+that the matching value was written as a pointer.
 
 ## Graph identity and storage
 
@@ -104,7 +113,7 @@ version describes application properties and is independent of the revision.
   emitted. For readers, it is the **maximum schema version understood by the
   application**, defaulting to `1`. `version()` returns the actual file version
   after successful reader construction.
-- Readers accept only revision 2, zero flags, and schema versions from 1 through
+- Readers accept only revision 3, zero flags, and schema versions from 1 through
   the supplied maximum. Unknown magic, truncated headers, unsupported revisions,
   flags, and schemas throw `std::ios_base::failure` before payload extraction.
 - A property participates when its `TA_PROPERTY(n)` version is at most the file
@@ -118,7 +127,7 @@ version describes application properties and is independent of the revision.
 - An older reader cannot skip unknown fields. Removing, reordering, or changing
   the encoding of existing fields requires application migration or a separate
   schema/decoder; increasing a version number alone is insufficient.
-- AFWS revision 1 and older native-header files are incompatible. There is
+- AFWS revisions 1 and 2 and older native-header files are incompatible. There is
   no automatic legacy fallback: read them using the previous implementation on a
   compatible platform, then rewrite the decoded data using the new writer.
 

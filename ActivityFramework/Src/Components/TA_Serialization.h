@@ -179,7 +179,7 @@ class TA_ObjectMappingCache<BufferReader> {
 template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
   public:
     static constexpr std::uint32_t formatMagic = 0x41465753; // AFWS
-    static constexpr std::uint16_t formatRevision = 2;
+    static constexpr std::uint16_t formatRevision = 3;
     static constexpr std::size_t headerSize = 16;
     static_assert(CHAR_BIT == 8);
     static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big);
@@ -440,20 +440,20 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     template <RawPtr T> TA_Serializer &operator<<(const T &t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
-        return *this << *t;
-    }
-
-    template <RawPtr T> TA_Serializer &operator<<(T &&t) {
-        static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
-        if (t) {
-            return *this << *t;
-        }
+        *this << static_cast<bool>(t);
+        if (t)
+            *this << *t;
         return *this;
-        ;
     }
 
     template <RawPtr T> TA_Serializer &operator>>(T &t) {
         static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
+        bool present{};
+        *this >> present;
+        if (!present) {
+            t = nullptr;
+            return *this;
+        }
         using Pointee = std::remove_pointer_t<T>;
         if constexpr (SerializationDetail::GraphType<Pointee>) {
             std::uint64_t sourceObjectId{};
@@ -513,11 +513,15 @@ template <BufferOperatorType OType = BufferWriter> class TA_Serializer {
 
     TA_Serializer &operator<<(std::nullptr_t) {
         static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Serialization ");
-        return *this;
+        return *this << false;
     }
 
     TA_Serializer &operator>>(std::nullptr_t) {
-        static_assert(std::is_same_v<BufferWriter, OType>, "The operation type isn't Deserialization");
+        static_assert(std::is_same_v<BufferReader, OType>, "The operation type isn't Deserialization");
+        bool present{};
+        *this >> present;
+        if (present)
+            throw std::ios_base::failure("Expected a serialized null pointer");
         return *this;
     }
 
