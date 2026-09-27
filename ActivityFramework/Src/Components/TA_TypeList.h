@@ -154,8 +154,13 @@ struct MetaFilterMapper;
 
 template <typename Single, template <typename T> class FilterFunc, template <typename M> class MapFunc, typename Dest>
 struct MetaFilterMapper<TA_MetaTypelist<Single>, FilterFunc, MapFunc, Dest> {
-    using result = std::conditional_t<FilterFunc<Single>::value,
-                                      typename MetaPushBack<Dest, typename MapFunc<Single>::type>::type, Dest>;
+    using result = Dest;
+};
+
+template <typename Single, template <typename T> class FilterFunc, template <typename M> class MapFunc, typename Dest>
+    requires (static_cast<bool>(FilterFunc<Single>::value))
+struct MetaFilterMapper<TA_MetaTypelist<Single>, FilterFunc, MapFunc, Dest> {
+    using result = typename MetaPushBack<Dest, typename MapFunc<Single>::type>::type;
 };
 
 template <template <typename T> class FilterFunc, template <typename M> class MapFunc, typename Dest>
