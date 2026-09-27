@@ -79,18 +79,11 @@ template <typename Se> class MetaMerge<Se> {
 
 template <typename Source, typename Dest> class MetaSame;
 
-template <typename SPARA, typename... SPARAS, typename DPARA, typename... DPARAS>
-class MetaSame<TA_MetaTypelist<SPARA, SPARAS...>, TA_MetaTypelist<DPARA, DPARAS...>> {
+template <typename... SPARAS, typename... DPARAS>
+class MetaSame<TA_MetaTypelist<SPARAS...>, TA_MetaTypelist<DPARAS...>> {
   public:
-    static constexpr bool value = sizeof...(SPARAS) != sizeof...(DPARAS) ? false
-                                  : std::is_same_v<std::decay_t<SPARA>, std::decay_t<DPARA>>
-                                      ? MetaSame<TA_MetaTypelist<SPARAS...>, TA_MetaTypelist<DPARAS...>>::value
-                                      : false;
-};
-
-template <> class MetaSame<TA_MetaTypelist<>, TA_MetaTypelist<>> {
-  public:
-    static constexpr bool value{true};
+    static constexpr bool value =
+        std::is_same_v<TA_MetaTypelist<std::decay_t<SPARAS>...>, TA_MetaTypelist<std::decay_t<DPARAS>...>>;
 };
 
 template <typename Source, typename T> class MetaContains;
