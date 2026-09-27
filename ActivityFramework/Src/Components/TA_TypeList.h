@@ -226,15 +226,13 @@ template <typename... LT> struct MetaVariant<TA_MetaTypelist<LT...>> {
 
 template <typename T> void printType(T) { std::cout << typeid(T).name() << std::endl; }
 
+inline void printTypeList(TA_MetaTypelist<>) {}
+
 template <typename Head, typename... Tail> void printTypeList(TA_MetaTypelist<Head, Tail...>) {
     printType(Head());
     printTypeList(TA_MetaTypelist<Tail...>());
 }
 
-//    void printTypeList(TA_MetaTypelist<>)
-//    {
-//        std::cout << "At type list end." << std::endl;
-//    }
 } // namespace CoreAsync
 
 #endif // TA_METALIST_H
