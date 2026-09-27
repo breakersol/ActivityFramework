@@ -50,14 +50,14 @@ class TA_ActivitySubmission {
     friend class Detail::TA_ActivityLifecycle;
     friend struct Detail::TA_ActivitySubmissionAccess;
 
-    TA_ActivitySubmission(Detail::TA_ActivityLifecycle &lifecycle, std::int64_t activityId) noexcept;
+    TA_ActivitySubmission(Detail::TA_ActivityLifecycle &lifecycle, std::uint64_t activityId) noexcept;
 
-    bool matches(std::int64_t activityId) const noexcept;
+    bool matches(std::uint64_t activityId) const noexcept;
     bool commitQueued() noexcept;
     void reset() noexcept;
 
     Detail::TA_ActivityLifecycle *m_lifecycle = nullptr;
-    std::int64_t m_activityId = 0;
+    std::uint64_t m_activityId = 0;
 };
 
 namespace Detail {
@@ -108,7 +108,7 @@ class TA_ActivityLifecycle {
         return true;
     }
 
-    std::optional<TA_ActivitySubmission> prepareSubmission(std::int64_t activityId) noexcept {
+    std::optional<TA_ActivitySubmission> prepareSubmission(std::uint64_t activityId) noexcept {
         InternalState expected = InternalState::Configuring;
         if (!m_state.compare_exchange_strong(expected, InternalState::Submitting,
                                              std::memory_order_acq_rel, std::memory_order_relaxed)) {
@@ -195,7 +195,7 @@ class TA_ActivityCompletionGuard {
 };
 
 struct TA_ActivitySubmissionAccess {
-    static bool matches(const TA_ActivitySubmission &submission, std::int64_t activityId) noexcept {
+    static bool matches(const TA_ActivitySubmission &submission, std::uint64_t activityId) noexcept {
         return submission.matches(activityId);
     }
 
@@ -206,7 +206,7 @@ struct TA_ActivitySubmissionAccess {
 } // namespace Detail
 
 inline TA_ActivitySubmission::TA_ActivitySubmission(Detail::TA_ActivityLifecycle &lifecycle,
-                                                    std::int64_t activityId) noexcept
+                                                    std::uint64_t activityId) noexcept
     : m_lifecycle(&lifecycle), m_activityId(activityId) {}
 
 inline TA_ActivitySubmission::TA_ActivitySubmission(TA_ActivitySubmission &&other) noexcept
@@ -224,7 +224,7 @@ inline TA_ActivitySubmission &TA_ActivitySubmission::operator=(TA_ActivitySubmis
 
 inline TA_ActivitySubmission::~TA_ActivitySubmission() { reset(); }
 
-inline bool TA_ActivitySubmission::matches(std::int64_t activityId) const noexcept {
+inline bool TA_ActivitySubmission::matches(std::uint64_t activityId) const noexcept {
     return m_lifecycle && m_activityId == activityId;
 }
 

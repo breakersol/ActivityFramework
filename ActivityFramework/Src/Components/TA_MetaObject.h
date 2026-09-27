@@ -30,6 +30,7 @@
 #include "TA_MetaReflex.h"
 #include "TA_Activity.h"
 #include "TA_Coroutine.h"
+#include "TA_UniqueId.h"
 
 namespace CoreAsync {
 
@@ -112,7 +113,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     TA_MetaObject(const TA_MetaObject &object)
         : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
 
-    TA_MetaObject(TA_MetaObject &&object) noexcept
+    TA_MetaObject(TA_MetaObject &&object)
         : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
 
     TA_MetaObject &operator=(const TA_MetaObject &object) {
@@ -136,6 +137,8 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             return std::shared_ptr<std::remove_cvref_t<Object>>(pObject, [](TA_MetaObject *){});
         return std::dynamic_pointer_cast<std::remove_cvref_t<Object>>(weakRef.lock());
     }
+
+    std::uint64_t id() const noexcept { return m_id.id(); }
 
     bool hasSharedRef() {
         auto weakRef = this->weak_from_this();
@@ -940,6 +943,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         m_affinityThreadIdx.store(TA_ThreadHolder::get().topPriorityThread(), std::memory_order_release);
     }
 
+    TA_UniqueId m_id{};
     const std::thread::id m_sourceThread;
     std::atomic_size_t m_affinityThreadIdx;
     PendingCounter m_pendingCounter{};
@@ -963,7 +967,7 @@ class TA_MetaObjectStorage : public virtual TA_MetaObject, public TA_MetaObject:
   public:
     TA_MetaObjectStorage() = default;
     TA_MetaObjectStorage(const TA_MetaObjectStorage &) {}
-    TA_MetaObjectStorage(TA_MetaObjectStorage &&) noexcept {}
+    TA_MetaObjectStorage(TA_MetaObjectStorage &&) {}
 
     TA_MetaObjectStorage &operator=(const TA_MetaObjectStorage &) {
         disconnectAll();

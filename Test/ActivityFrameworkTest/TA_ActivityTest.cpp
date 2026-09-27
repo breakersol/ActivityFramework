@@ -16,12 +16,6 @@
 
 #include "TA_ActivityTest.h"
 #include "Components/TA_Activity.h"
-#include "Components/TA_ActivityId.h"
-
-#include <algorithm>
-#include <atomic>
-#include <thread>
-#include <vector>
 
 TA_ActivityTest::TA_ActivityTest() {}
 
@@ -35,40 +29,16 @@ void TA_ActivityTest::TearDown() {
     m_pTest = nullptr;
 }
 
-TEST(TA_ActivityIdTest, concurrentConstructionProducesUniqueIds) {
-    constexpr int threadCount = 8;
-    constexpr int idsPerThread = 10000;
-    constexpr int idCount = threadCount * idsPerThread;
-    std::vector<std::int64_t> ids(static_cast<std::size_t>(idCount));
-    std::vector<std::thread> workers;
-    workers.reserve(threadCount);
-    std::atomic_int ready{0};
-    std::atomic_bool start{false};
+TEST_F(TA_ActivityTest, activityIdsShareUniqueIdNamespace) {
+    auto task = [] {};
+    CoreAsync::TA_MethodActivity<decltype(task)> first(task);
+    CoreAsync::TA_MethodActivity<decltype(task)> second(task);
+    CoreAsync::TA_UniqueId other;
 
-    for (int threadIndex = 0; threadIndex < threadCount; ++threadIndex) {
-        workers.emplace_back([&, threadIndex]() {
-            ready.fetch_add(1, std::memory_order_release);
-            while (!start.load(std::memory_order_acquire)) {
-                std::this_thread::yield();
-            }
-            for (int offset = 0; offset < idsPerThread; ++offset) {
-                const CoreAsync::TA_ActivityId activityId;
-                const auto index = static_cast<std::size_t>(threadIndex * idsPerThread + offset);
-                ids[index] = activityId.id();
-            }
-        });
-    }
-
-    while (ready.load(std::memory_order_acquire) != threadCount) {
-        std::this_thread::yield();
-    }
-    start.store(true, std::memory_order_release);
-    for (auto &worker : workers) {
-        worker.join();
-    }
-
-    std::sort(ids.begin(), ids.end());
-    EXPECT_EQ(std::adjacent_find(ids.cbegin(), ids.cend()), ids.cend());
+    EXPECT_NE(first.id(), 0u);
+    EXPECT_NE(first.id(), second.id());
+    EXPECT_NE(first.id(), other.id());
+    EXPECT_NE(second.id(), other.id());
 }
 
 TEST_F(TA_ActivityTest, createMemberFunctionActivityWithPointer) {

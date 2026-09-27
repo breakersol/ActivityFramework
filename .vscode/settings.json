@@ -1,9 +1,22 @@
 {
-    "cmake.useCMakePresets": "always",
-    "cmake.useVsDeveloperEnvironment": "always",
-    "cmake.configureOnOpen": false,
-    "cmake.configurePreset": "windows-msvc-debug",
-    "cmake.buildPreset": "windows-msvc-debug",
+    "cmake.useCMakePresets": "never",
+    "cmake.useVsDeveloperEnvironment": "never",
+    "cmake.configureOnOpen": true,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/windows-msvc/debug/compile_commands.json"
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/android-arm64-v8a/debug/compile_commands.json",
+    "cmake.parallelJobs": 2,
+    "C_Cpp.default.cppStandard": "c++23",
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "cmake.generator": "Ninja",
+    "cmake.buildDirectory": "${workspaceFolder}/build/android-arm64-v8a/debug",
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "${env:ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "CMAKE_ANDROID_ARCH_ABI": "arm64-v8a",
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24",
+        "CMAKE_ANDROID_STL_TYPE": "c++_static",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "ACTIVITYFRAMEWORK_BUILD_TESTS": "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+    }
 }

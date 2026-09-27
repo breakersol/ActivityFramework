@@ -95,7 +95,7 @@ class TA_ActivityQueue final : private TA_CircularQueue<T, N> {
         }
     }
 
-    static std::int64_t activityId(const T &value) {
+    static std::uint64_t activityId(const T &value) {
         if constexpr (std::is_pointer_v<T> || IsSmartPtr_v<T>) {
             return value->id();
         } else {

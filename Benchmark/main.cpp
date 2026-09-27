@@ -26,7 +26,6 @@ static void BM_Serialization(benchmark::State &state)
             output << vectorData << listData << mapData;
             output.flush();   
         }
-        output.close();
     }
 }
 BENCHMARK(BM_Serialization)->Iterations(1);
@@ -49,7 +48,6 @@ static void BM_Deserialization(benchmark::State& state)
             benchmark::DoNotOptimize(lt);
             benchmark::DoNotOptimize(md);
         }
-        input.close();
     }
 }
 BENCHMARK(BM_Deserialization)->Iterations(1);
