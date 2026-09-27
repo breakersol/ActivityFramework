@@ -166,9 +166,9 @@ struct MetaFilterMapper<TA_MetaTypelist<>, FilterFunc, MapFunc, Dest> {
 template <typename Head, typename... Tails, template <typename T> class FilterFunc, template <typename M> class MapFunc,
           typename Dest>
 struct MetaFilterMapper<TA_MetaTypelist<Head, Tails...>, FilterFunc, MapFunc, Dest> {
-    using result = typename MetaAppend<
-        typename MetaFilterMapper<TA_MetaTypelist<Head>, FilterFunc, MapFunc, Dest>::result,
-        typename MetaFilterMapper<TA_MetaTypelist<Tails...>, FilterFunc, MapFunc, Dest>::result>::type;
+    using result = typename MetaFilterMapper<
+        TA_MetaTypelist<Tails...>, FilterFunc, MapFunc,
+        typename MetaFilterMapper<TA_MetaTypelist<Head>, FilterFunc, MapFunc, Dest>::result>::result;
 };
 
 template <typename Source, template <typename T> class FUNC> struct MetaFind {
