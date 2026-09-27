@@ -1,6 +1,27 @@
 {
     "configurations": [
         {
+            "name": "Debug ActivityFrameworkTest (Linux GDB)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-gcc/debug/Test/ActivityFrameworkTest",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/linux-gcc/debug/Test",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable GDB pretty printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "CMake Build: Linux GCC Debug"
+        },
+        {
             "name": "Debug ActivityFrameworkTest (MSVC)",
             "type": "cppvsdbg",
             "request": "launch",

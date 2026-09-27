@@ -2,6 +2,39 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "CMake Configure: Android arm64 Debug",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "android-arm64-debug",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake Build: Android arm64 Debug",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "--preset",
+                "android-arm64-debug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "CMake Configure: Android arm64 Debug",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
             "label": "CMake Configure: Windows MSVC Debug",
             "type": "shell",
             "command": "powershell",
@@ -31,7 +64,7 @@
             ],
             "group": {
                 "kind": "build",
-                "isDefault": true
+                "isDefault": false
             },
             "problemMatcher": "$msCompile",
             "dependsOn": "CMake Configure: Windows MSVC Debug"
@@ -99,6 +132,107 @@
             ],
             "problemMatcher": [],
             "dependsOn": "CMake Build: Windows MSVC Release"
+        },
+        {
+            "label": "CMake Configure: Linux GCC Debug",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "linux-gcc-debug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake Build: Linux GCC Debug",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "--preset",
+                "linux-gcc-debug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "CMake Configure: Linux GCC Debug",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Run ActivityFrameworkTest Linux Debug",
+            "type": "process",
+            "command": "ctest",
+            "args": [
+                "--preset",
+                "linux-gcc-debug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "CMake Build: Linux GCC Debug",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake Configure: Linux GCC Release",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "linux-gcc-release"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake Build: Linux GCC Release",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "--preset",
+                "linux-gcc-release"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "CMake Configure: Linux GCC Release",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Run ActivityFrameworkTest Linux Release",
+            "type": "process",
+            "command": "ctest",
+            "args": [
+                "--preset",
+                "linux-gcc-release"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "CMake Build: Linux GCC Release",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "type": "cmake",
+            "label": "CMake: clean",
+            "command": "clean",
+            "problemMatcher": [],
+            "detail": "CMake template clean task"
         }
     ]
 }

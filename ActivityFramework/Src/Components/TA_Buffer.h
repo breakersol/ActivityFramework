@@ -17,6 +17,7 @@
 #ifndef TA_BUFFER_H
 #define TA_BUFFER_H
 
+#include <cstring>
 #include <fstream>
 #include <vector>
 
