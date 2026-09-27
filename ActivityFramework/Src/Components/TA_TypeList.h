@@ -138,10 +138,10 @@ template <typename Source, template <typename T> class FUNC, typename Dest = TA_
         typename std::conditional<FUNC<Source>::value, typename MetaPushBack<Dest, Source>::type, Dest>::type;
 };
 
-template <typename Head, typename... Source, template <typename T> class FUNC>
-struct MetaFilter<TA_MetaTypelist<Head, Source...>, FUNC> {
-    using result = typename MetaAppend<typename MetaFilter<Head, FUNC>::result,
-                                       typename MetaFilter<TA_MetaTypelist<Source...>, FUNC>::result>::type;
+template <typename Head, typename... Source, template <typename T> class FUNC, typename Dest>
+struct MetaFilter<TA_MetaTypelist<Head, Source...>, FUNC, Dest> {
+    using result = typename MetaFilter<TA_MetaTypelist<Source...>, FUNC,
+                                       typename MetaFilter<Head, FUNC, Dest>::result>::result;
 };
 
 template <template <typename T> class FUNC, typename Dest> struct MetaFilter<TA_MetaTypelist<>, FUNC, Dest> {
