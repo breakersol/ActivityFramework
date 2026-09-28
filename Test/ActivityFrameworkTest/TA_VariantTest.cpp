@@ -134,6 +134,48 @@ TEST_F(TA_VariantTest, setTest) {
     EXPECT_EQ(res, -1);
 }
 
+TEST_F(TA_VariantTest, setVariantRvalueMovesSmallPayload) {
+    CoreAsync::TA_Variant source{ThrowingCopyValue{}};
+    CoreAsync::TA_Variant destination{17};
+    ThrowingCopyValue::throwOnCopy = true;
+    EXPECT_NO_THROW(destination.set(std::move(source)));
+    EXPECT_NO_THROW(destination.set(CoreAsync::TA_Variant{ThrowingCopyValue{}}));
+    ThrowingCopyValue::throwOnCopy = false;
+    EXPECT_EQ(destination.get<ThrowingCopyValue>().value, 42);
+}
+
+TEST_F(TA_VariantTest, setVariantLvalueCopiesSmallPayload) {
+    CoreAsync::TA_Variant source{ThrowingCopyValue{}};
+    const auto &constSource = source;
+    CoreAsync::TA_Variant destination{17};
+    ThrowingCopyValue::throwOnMove = true;
+    EXPECT_NO_THROW(destination.set(source));
+    EXPECT_NO_THROW(destination.set(constSource));
+    ThrowingCopyValue::throwOnMove = false;
+    EXPECT_EQ(source.get<ThrowingCopyValue>().value, 42);
+    EXPECT_EQ(destination.get<ThrowingCopyValue>().value, 42);
+}
+
+TEST_F(TA_VariantTest, setVariantRvalueTransfersHeapPayload) {
+    using LargeValue = std::array<int, 32>;
+    const LargeValue expected{42, 17};
+    CoreAsync::TA_Variant source{expected};
+    CoreAsync::TA_Variant destination{7};
+    destination.set(std::move(source));
+    EXPECT_FALSE(source.isValid());
+    EXPECT_EQ(destination.get<LargeValue>(), expected);
+    source.set(19);
+    EXPECT_EQ(source.get<int>(), 19);
+}
+
+TEST_F(TA_VariantTest, setVariantSelfAssignmentPreservesValue) {
+    CoreAsync::TA_Variant value{42};
+    value.set(value);
+    EXPECT_EQ(value.get<int>(), 42);
+    value.set(std::move(value));
+    EXPECT_EQ(value.get<int>(), 42);
+}
+
 TEST_F(TA_VariantTest, validTest) {
     CoreAsync::TA_Variant var{};
     EXPECT_EQ(var.isValid(), false);

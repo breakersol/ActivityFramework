@@ -145,10 +145,10 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     template <typename T> void set(T &&obj) {
         using RawType = std::remove_cvref_t<T>;
-        destroy();
         if constexpr (std::is_same_v<RawType, TA_Variant>) {
-            (*this) = obj;
+            (*this) = std::forward<T>(obj);
         } else {
+            destroy();
             m_typeId = typeid(RawType).hash_code();
             if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
                 new (m_storage.m_data) RawType(std::forward<T>(obj));
