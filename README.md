@@ -326,9 +326,9 @@ Holder signals are `pipelineStateChanged`, `pipelineReady`, and `activityComplet
 
 ## Releases
 
+- [v0.6.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.6.0)
 - [v0.5.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.5.1)
 - [v0.5.0](https://github.com/breakersol/ActivityFramework/releases/tag/v0.5.0)
-- [v0.4.1](https://github.com/breakersol/ActivityFramework/releases/tag/v0.4.1)
 
 ## Authors
 
