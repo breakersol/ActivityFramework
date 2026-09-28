@@ -90,15 +90,19 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
     TA_Variant &operator=(const TA_Variant &var) {
         if (this != &var) {
             destroy();
-            m_typeId = var.m_typeId;
-            m_storageKind = var.m_storageKind;
-            if (m_storageKind == StorageKind::SmallObject) {
+            // Keep an empty state until the payload copy succeeds.
+            m_typeId = typeid(std::nullptr_t).hash_code();
+            m_copySSOExp = nullptr;
+            m_moveSSOExp = nullptr;
+            if (var.m_storageKind == StorageKind::SmallObject) {
                 if (var.m_copySSOExp) {
                     var.m_copySSOExp(var.m_storage.m_data, m_storage.m_data);
                 }
-            } else if (m_storageKind == StorageKind::HeapObject) {
+            } else if (var.m_storageKind == StorageKind::HeapObject) {
                 new (&m_storage.m_ptr) std::shared_ptr<void>(var.m_storage.m_ptr);
             }
+            m_typeId = var.m_typeId;
+            m_storageKind = var.m_storageKind;
             m_destroySSOExp = var.m_destroySSOExp;
             m_copySSOExp = var.m_copySSOExp;
             m_moveSSOExp = var.m_moveSSOExp;
