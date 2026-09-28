@@ -37,7 +37,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
     template <typename T, typename... Args>
         requires(!std::is_same_v<std::remove_cvref_t<T>, TA_Variant> &&
             !std::is_same_v<std::remove_cvref_t<T>, std::in_place_t>)
-    TA_Variant(T &&value, Args &&...args) noexcept {
+    TA_Variant(T &&value, Args &&...args) {
         using RawType = std::remove_cvref_t<T>;
         m_typeId = typeid(RawType).hash_code();
         if constexpr (sizeof(RawType) <= ms_smallObjSize && std::alignment_of_v<RawType> <= ms_alignment) {
@@ -60,7 +60,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
 
     ~TA_Variant() { destroy(); }
 
-    TA_Variant(const TA_Variant &var) noexcept
+    TA_Variant(const TA_Variant &var)
         : m_typeId(var.m_typeId), m_storageKind(var.m_storageKind), m_destroySSOExp(var.m_destroySSOExp),
           m_copySSOExp(var.m_copySSOExp), m_moveSSOExp(var.m_moveSSOExp) {
         if (m_storageKind == StorageKind::SmallObject) {
@@ -73,7 +73,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         }
     }
 
-    TA_Variant(TA_Variant &&var) noexcept : m_typeId(std::move(var.m_typeId)), m_storageKind(std::move(var.m_storageKind)) {
+    TA_Variant(TA_Variant &&var) : m_typeId(std::move(var.m_typeId)), m_storageKind(std::move(var.m_storageKind)) {
         if (m_storageKind == StorageKind::SmallObject) {
             std::destroy_at(&m_storage.m_ptr);
             if (var.m_moveSSOExp) {
@@ -114,25 +114,31 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         return *this;
     }
 
-    TA_Variant &operator=(TA_Variant &&var) noexcept {
+    TA_Variant &operator=(TA_Variant &&var) {
         if (this != &var) {
             destroy();
-            m_typeId = std::move(var.m_typeId);
-             m_storageKind = std::move(var.m_storageKind);
-            if (m_storageKind == StorageKind::SmallObject) {
+            // A throwing payload move must leave the destination empty.
+            m_typeId = typeid(std::nullptr_t).hash_code();
+            m_copySSOExp = nullptr;
+            m_moveSSOExp = nullptr;
+            if (var.m_storageKind == StorageKind::SmallObject) {
                 if (var.m_moveSSOExp) {
                     var.m_moveSSOExp(var.m_storage.m_data, m_storage.m_data);
                 }
-            } else if (m_storageKind == StorageKind::HeapObject) {
+            } else if (var.m_storageKind == StorageKind::HeapObject) {
                 new (&m_storage.m_ptr) std::shared_ptr<void>(std::exchange(var.m_storage.m_ptr, nullptr));
+            }
+            m_typeId = var.m_typeId;
+            m_storageKind = var.m_storageKind;
+            m_destroySSOExp = std::move(var.m_destroySSOExp);
+            m_copySSOExp = std::move(var.m_copySSOExp);
+            m_moveSSOExp = std::move(var.m_moveSSOExp);
+            if (m_storageKind == StorageKind::HeapObject) {
                 var.destroy();
                 var.m_typeId = typeid(std::nullptr_t).hash_code();
                 var.m_copySSOExp = nullptr;
                 var.m_moveSSOExp = nullptr;
             }
-            m_destroySSOExp = std::move(var.m_destroySSOExp);
-            m_copySSOExp = std::move(var.m_copySSOExp);
-            m_moveSSOExp = std::move(var.m_moveSSOExp);
         }
         return *this;
     }

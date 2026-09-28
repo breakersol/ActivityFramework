@@ -23,6 +23,7 @@
 namespace {
 struct ThrowingCopyValue {
     inline static bool throwOnCopy = false;
+    inline static bool throwOnMove = false;
     inline static int liveCount = 0;
     int value = 42;
 
@@ -32,10 +33,80 @@ struct ThrowingCopyValue {
             throw std::runtime_error("Payload copy failed");
         ++liveCount;
     }
-    ThrowingCopyValue(ThrowingCopyValue &&other) noexcept : value(other.value) { ++liveCount; }
+    ThrowingCopyValue(ThrowingCopyValue &&other) : value(other.value) {
+        if (throwOnMove)
+            throw std::runtime_error("Payload move failed");
+        ++liveCount;
+    }
     ~ThrowingCopyValue() { --liveCount; }
 };
 } // namespace
+
+TEST_F(TA_VariantTest, payloadConstructionExceptionsPropagate) {
+    {
+        ThrowingCopyValue value;
+        ThrowingCopyValue::throwOnCopy = true;
+        EXPECT_THROW((CoreAsync::TA_Variant<64>{value}), std::runtime_error);
+        EXPECT_THROW((CoreAsync::TA_Variant<1>{value}), std::runtime_error);
+        ThrowingCopyValue::throwOnCopy = false;
+        ThrowingCopyValue::throwOnMove = true;
+        EXPECT_THROW((CoreAsync::TA_Variant<64>{std::move(value)}), std::runtime_error);
+        EXPECT_THROW((CoreAsync::TA_Variant<1>{std::move(value)}), std::runtime_error);
+        ThrowingCopyValue::throwOnMove = false;
+        EXPECT_EQ(ThrowingCopyValue::liveCount, 1);
+    }
+    EXPECT_EQ(ThrowingCopyValue::liveCount, 0);
+}
+
+TEST_F(TA_VariantTest, copyAndMoveConstructionExceptionsPropagate) {
+    {
+        CoreAsync::TA_Variant source{ThrowingCopyValue{}};
+        ThrowingCopyValue::throwOnCopy = true;
+        EXPECT_THROW((CoreAsync::TA_DefaultVariant{source}), std::runtime_error);
+        ThrowingCopyValue::throwOnCopy = false;
+        ThrowingCopyValue::throwOnMove = true;
+        EXPECT_THROW((CoreAsync::TA_DefaultVariant{std::move(source)}), std::runtime_error);
+        ThrowingCopyValue::throwOnMove = false;
+        EXPECT_EQ(ThrowingCopyValue::liveCount, 1);
+        EXPECT_EQ(source.get<ThrowingCopyValue>().value, 42);
+        CoreAsync::TA_Variant moved{std::move(source)};
+        EXPECT_EQ(moved.get<ThrowingCopyValue>().value, 42);
+    }
+    EXPECT_EQ(ThrowingCopyValue::liveCount, 0);
+}
+
+TEST_F(TA_VariantTest, throwingMoveAssignmentLeavesEmptyAndReusable) {
+    for (bool heapDestination : {false, true}) {
+        CoreAsync::TA_Variant source{ThrowingCopyValue{}};
+        auto owned = std::make_shared<int>(7);
+        std::weak_ptr<int> previousValue = owned;
+        CoreAsync::TA_Variant destination;
+        if (heapDestination) {
+            std::array<std::shared_ptr<int>, 16> largeValue{};
+            largeValue[0] = owned;
+            destination.set(std::move(largeValue));
+        } else {
+            destination.set(owned);
+        }
+        owned.reset();
+
+        ThrowingCopyValue::throwOnMove = true;
+        EXPECT_THROW(destination = std::move(source), std::runtime_error);
+        ThrowingCopyValue::throwOnMove = false;
+        ASSERT_FALSE(destination.isValid());
+        EXPECT_FALSE(destination.isSameType<ThrowingCopyValue>());
+        EXPECT_EQ(destination.get<std::nullptr_t>(), nullptr);
+        EXPECT_TRUE(previousValue.expired());
+        EXPECT_EQ(ThrowingCopyValue::liveCount, 1);
+        CoreAsync::TA_Variant copied{destination};
+        CoreAsync::TA_Variant moved{std::move(destination)};
+        EXPECT_FALSE(copied.isValid());
+        EXPECT_FALSE(moved.isValid());
+        destination = std::move(source);
+        EXPECT_EQ(destination.get<ThrowingCopyValue>().value, 42);
+    }
+    EXPECT_EQ(ThrowingCopyValue::liveCount, 0);
+}
 
 TA_VariantTest::TA_VariantTest() {}
 
