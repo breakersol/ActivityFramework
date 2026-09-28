@@ -66,8 +66,70 @@ TEST_F(TA_VariantTest, setTest) {
 TEST_F(TA_VariantTest, validTest) {
     CoreAsync::TA_Variant var{};
     EXPECT_EQ(var.isValid(), false);
+    EXPECT_EQ(var.get<std::nullptr_t>(), nullptr);
     var.set(m_pTest);
     EXPECT_EQ(var.isValid(), true);
+}
+
+TEST_F(TA_VariantTest, heapMoveConstructionLeavesSourceEmptyAndReusable) {
+    using LargeValue = std::array<int, 32>;
+    const LargeValue expected{42, 17};
+    CoreAsync::TA_Variant source{expected};
+    CoreAsync::TA_Variant destination{std::move(source)};
+
+    EXPECT_EQ(destination.get<LargeValue>(), expected);
+    EXPECT_FALSE(source.isValid());
+    EXPECT_FALSE(source.isSameType<LargeValue>());
+    EXPECT_EQ(source.typeId(), typeid(std::nullptr_t).hash_code());
+    EXPECT_EQ(source.get<LargeValue>(), LargeValue{});
+    EXPECT_EQ(source.get<std::nullptr_t>(), nullptr);
+
+    CoreAsync::TA_Variant copied{source};
+    CoreAsync::TA_Variant movedAgain{std::move(source)};
+    EXPECT_FALSE(copied.isValid());
+    EXPECT_FALSE(movedAgain.isValid());
+    EXPECT_EQ(copied.get<std::nullptr_t>(), nullptr);
+    EXPECT_EQ(movedAgain.get<std::nullptr_t>(), nullptr);
+    source.set(17);
+    EXPECT_EQ(source.get<int>(), 17);
+    source = destination;
+    EXPECT_EQ(source.get<LargeValue>(), expected);
+}
+
+TEST_F(TA_VariantTest, heapMoveAssignmentLeavesSourceEmptyAndReusable) {
+    using LargeValue = std::array<std::shared_ptr<int>, 16>;
+    for (bool heapDestination : {false, true}) {
+        LargeValue expected{};
+        expected[0] = std::make_shared<int>(42);
+        CoreAsync::TA_Variant source{expected};
+        CoreAsync::TA_Variant destination;
+        auto previous = std::make_shared<int>(7);
+        std::weak_ptr<int> previousValue = previous;
+        if (heapDestination) {
+            LargeValue oldValue{};
+            oldValue[0] = previous;
+            destination.set(std::move(oldValue));
+        } else {
+            destination.set(previous);
+        }
+        previous.reset();
+
+        destination = std::move(source);
+        EXPECT_TRUE(previousValue.expired());
+        EXPECT_EQ(destination.get<LargeValue>(), expected);
+        EXPECT_FALSE(source.isValid());
+        EXPECT_FALSE(source.isSameType<LargeValue>());
+        EXPECT_EQ(source.get<LargeValue>(), LargeValue{});
+        EXPECT_EQ(source.get<std::nullptr_t>(), nullptr);
+
+        CoreAsync::TA_Variant emptyCopy{17};
+        emptyCopy = source;
+        EXPECT_FALSE(emptyCopy.isValid());
+        emptyCopy = std::move(source);
+        EXPECT_FALSE(emptyCopy.isValid());
+        source.set(expected);
+        EXPECT_EQ(source.get<LargeValue>(), expected);
+    }
 }
 
 TEST_F(TA_VariantTest, assignmentOperatorTest) {

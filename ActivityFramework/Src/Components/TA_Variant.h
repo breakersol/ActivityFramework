@@ -81,6 +81,10 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
             }
         } else if (m_storageKind == StorageKind::HeapObject) {
             m_storage.m_ptr = std::exchange(var.m_storage.m_ptr, nullptr);
+            var.destroy();
+            var.m_typeId = typeid(std::nullptr_t).hash_code();
+            var.m_copySSOExp = nullptr;
+            var.m_moveSSOExp = nullptr;
         }
         m_destroySSOExp = std::move(var.m_destroySSOExp);
         m_copySSOExp = std::move(var.m_copySSOExp);
@@ -121,6 +125,10 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
                 }
             } else if (m_storageKind == StorageKind::HeapObject) {
                 new (&m_storage.m_ptr) std::shared_ptr<void>(std::exchange(var.m_storage.m_ptr, nullptr));
+                var.destroy();
+                var.m_typeId = typeid(std::nullptr_t).hash_code();
+                var.m_copySSOExp = nullptr;
+                var.m_moveSSOExp = nullptr;
             }
             m_destroySSOExp = std::move(var.m_destroySSOExp);
             m_copySSOExp = std::move(var.m_copySSOExp);
@@ -162,7 +170,7 @@ template <std::size_t SSO_SIZE = 64> class TA_Variant {
         if (m_typeId == typeid(VAR).hash_code()) {
             if (m_storageKind == StorageKind::SmallObject) {
                 return *reinterpret_cast<const VAR *>(m_storage.m_data);
-            } else if (m_storageKind == StorageKind::HeapObject) {
+            } else if (m_storageKind == StorageKind::HeapObject && m_storage.m_ptr) {
                 return *reinterpret_cast<VAR *>(m_storage.m_ptr.get());
             }
         }
