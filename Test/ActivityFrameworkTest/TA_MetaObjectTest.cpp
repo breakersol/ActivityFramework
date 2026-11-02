@@ -61,6 +61,27 @@ TEST_F(TA_MetaObjectTest, UniqueIdsBelongToInstances) {
     EXPECT_EQ(second.id(), secondId);
 }
 
+TEST_F(TA_MetaObjectTest, AffinityUsesWorkerHandles) {
+    auto &pool = CoreAsync::TA_ThreadHolder::get();
+    if (pool.size() < 2)
+        GTEST_SKIP() << "Requires two workers";
+    struct AffinityObject : CoreAsync::TA_MetaObject {
+        using CoreAsync::TA_MetaObject::isOnCurrentThread;
+    } object;
+    const auto original = object.affinityThread();
+    const auto target = pool.threadHandle((original.index() + 1) % pool.size());
+    EXPECT_FALSE(object.moveToThread({}));
+    EXPECT_FALSE(object.moveToThread(original));
+    ASSERT_TRUE(object.moveToThread(target));
+    EXPECT_EQ(object.affinityThread(), target);
+    auto activity = CoreAsync::TA_ActivityCreator::create([&object]() {
+        return AffinityObject::isOnCurrentThread(&object);
+    });
+    ASSERT_TRUE(activity->moveToThread(target));
+    ASSERT_TRUE(activity->setStolenEnabled(false));
+    EXPECT_TRUE(pool.postActivity(activity, true)().get<bool>());
+}
+
 TEST_F(TA_MetaObjectTest, UniqueIdsAreDistinctAcrossThreads) {
     constexpr std::size_t count = 256;
     std::vector<std::uint64_t> ids(count);

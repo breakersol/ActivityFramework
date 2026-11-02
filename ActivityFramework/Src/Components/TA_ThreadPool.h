@@ -66,6 +66,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     using QueueType = typename PlatformSelector::ActivityQueue;
     using LocalThread = typename PlatformSelector::ThreadModel;
 
+    using LocalThreadHandle = TA_LocalThreadHandle;
+
     explicit TA_ThreadPool(std::size_t size = std::thread::hardware_concurrency())
         : m_states(size), m_activityQueues(size), m_stealIdxs(size) {
         init();
@@ -81,11 +83,11 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
 
     void shutDown();
 
-    std::size_t topPriorityThread(std::thread::id depencyThread) const {
+    LocalThreadHandle topPriorityThread(std::thread::id depencyThread) const {
         return selectTopPriorityThread(&depencyThread);
     }
 
-    std::size_t topPriorityThread() const {
+    LocalThreadHandle topPriorityThread() const {
         return selectTopPriorityThread(nullptr);
     }
 
@@ -122,11 +124,20 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         return m_threads[idx].get_id();
     }
 
-    void setThreadDetached(std::size_t idx) {
-        if (idx >= m_threads.size()) {
-            throw std::invalid_argument("Idx is out of the range of thread size");
+    LocalThreadHandle threadHandle(std::size_t idx) const {
+        return {threadId(idx), idx};
+    }
+
+    bool contains(LocalThreadHandle handle) const {
+        return handle.isValid() && handle.index() < m_threads.size()
+            && m_threads[handle.index()].get_id() == handle.threadId();
+    }
+
+    void setThreadDetached(LocalThreadHandle handle) {
+        if (!contains(handle)) {
+            throw std::invalid_argument("Thread handle does not belong to this thread pool");
         }
-        m_threads[idx].detach();
+        m_threads[handle.index()].detach();
     }
 
   private:
@@ -136,10 +147,13 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
             throw std::runtime_error("Activity is not ready for submission");
         }
 
-        const auto affinityId = activity->affinityThread();
+        const auto affinity = activity->affinityThread();
+        if (affinity != LocalThreadHandle{} && !contains(affinity)) {
+            throw std::invalid_argument("Affinity handle does not belong to this thread pool");
+        }
         const auto dependencyThreadId = activity->dependencyThreadId();
-        const std::size_t idx =
-            affinityId < m_threads.size() ? affinityId : topPriorityThread(dependencyThreadId);
+        const auto threadHandle = affinity.isValid() ? affinity : topPriorityThread(dependencyThreadId);
+        const std::size_t idx = threadHandle.index();
         if (!m_activityQueues[idx].push(activity, std::move(*submission))) {
             throw std::runtime_error("Failed to push activity to queue");
         }
@@ -164,7 +178,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         return lhs.index < rhs.index;
     }
 
-    std::size_t selectTopPriorityThread(const std::thread::id *dependencyThread) const {
+    LocalThreadHandle selectTopPriorityThread(const std::thread::id *dependencyThread) const {
         ThreadSnapshot bestThread = {};
         bool hasBestThread = false;
         for (std::size_t idx = 0; idx < m_activityQueues.size(); ++idx) {
@@ -186,10 +200,10 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         if (!hasBestThread) {
             throw std::runtime_error("No available thread found in the thread pool.");
         }
-        return bestThread.index;
+        return LocalThreadHandle{m_threads[bestThread.index].get_id(), bestThread.index};
     }
 
-    [[deprecated("Use the version with const std::thread::id * instead")]] std::size_t selectTopPriorityThread(std::optional<std::thread::id> dependencyThread) const {
+    [[deprecated("Use the version with const std::thread::id * instead")]] LocalThreadHandle selectTopPriorityThread(std::optional<std::thread::id> dependencyThread) const {
         auto indices = std::views::iota(std::size_t{0}, m_activityQueues.size());
 
         auto validIndices = indices | std::views::filter([&](std::size_t idx) {
@@ -207,7 +221,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
             throw std::runtime_error("No available thread found in the thread pool.");
         }
 
-        return *bestIter;
+        return LocalThreadHandle{m_threads[*bestIter].get_id(), *bestIter};
     }
 
     void init();

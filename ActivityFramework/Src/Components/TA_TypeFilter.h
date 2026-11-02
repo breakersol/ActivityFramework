@@ -18,6 +18,7 @@
 #define TA_TYPEFILTER_H
 
 #include "Components/TA_TypeList.h"
+#include "TA_LocalThreadHandle.h"
 
 #include <memory>
 #include <functional>
@@ -311,8 +312,8 @@ concept StaticMethodType = IsStaticMethod<T>::value;
 template <typename T>
 concept ActivityType = requires(T t, const T ct) {
     { t() };
-    { ct.affinityThread() };
-    { t.moveToThread(std::size_t{}) } -> std::same_as<bool>;
+    { ct.affinityThread() } -> std::same_as<TA_LocalThreadHandle>;
+    { t.moveToThread(TA_LocalThreadHandle{}) } -> std::same_as<bool>;
     { ct.id() };
     { ct.dependencyThreadId() };
     { ct.stolenEnabled() } -> std::same_as<bool>;

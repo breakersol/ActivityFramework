@@ -27,7 +27,7 @@
 namespace CoreAsync {
 class TA_ActivityAffinityThread {
   public:
-    explicit TA_ActivityAffinityThread(std::size_t affinityThread = TA_ThreadHolder::get().topPriorityThread())
+    explicit TA_ActivityAffinityThread(TA_ThreadPool::LocalThreadHandle affinityThread = TA_ThreadHolder::get().topPriorityThread())
         : m_sourceThread(std::this_thread::get_id()), m_affinityThread(affinityThread) {}
 
     ~TA_ActivityAffinityThread() {}
@@ -50,10 +50,10 @@ class TA_ActivityAffinityThread {
 
     const std::thread::id sourceThread() const { return m_sourceThread; }
 
-    std::size_t affinityThread() const { return m_affinityThread.load(std::memory_order_acquire); }
+    TA_ThreadPool::LocalThreadHandle affinityThread() const { return m_affinityThread.load(std::memory_order_acquire); }
 
-    bool moveToThread(std::size_t thread) {
-        if (thread >= TA_ThreadHolder::get().size())
+    bool moveToThread(TA_ThreadPool::LocalThreadHandle thread) {
+        if (!thread.isValid())
             return false;
         m_affinityThread.store(thread, std::memory_order_release);
         return true;
@@ -61,7 +61,7 @@ class TA_ActivityAffinityThread {
 
   private:
     const std::thread::id m_sourceThread;
-    std::atomic_size_t m_affinityThread;
+    std::atomic<TA_ThreadPool::LocalThreadHandle> m_affinityThread;
 };
 } // namespace CoreAsync
 

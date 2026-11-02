@@ -106,26 +106,26 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     };
 
     TA_MetaObject() : m_sourceThread(std::this_thread::get_id()),
-                      m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
+                      m_affinityThread(TA_ThreadHolder::get().topPriorityThread()) {}
 
     virtual ~TA_MetaObject() = default;
 
     TA_MetaObject(const TA_MetaObject &object)
-        : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
+        : m_sourceThread(std::this_thread::get_id()), m_affinityThread(TA_ThreadHolder::get().topPriorityThread()) {}
 
     TA_MetaObject(TA_MetaObject &&object)
-        : m_sourceThread(std::this_thread::get_id()), m_affinityThreadIdx(TA_ThreadHolder::get().topPriorityThread()) {}
+        : m_sourceThread(std::this_thread::get_id()), m_affinityThread(TA_ThreadHolder::get().topPriorityThread()) {}
 
     TA_MetaObject &operator=(const TA_MetaObject &object) {
         if (this != &object) {
-            m_affinityThreadIdx.store(object.affinityThread(), std::memory_order_release);
+            m_affinityThread.store(object.affinityThread(), std::memory_order_release);
         }
         return *this;
     }
 
     TA_MetaObject &operator=(TA_MetaObject &&object) noexcept {
         if (this != &object) {
-            m_affinityThreadIdx.store(std::move(object.affinityThread()), std::memory_order_release);
+            m_affinityThread.store(std::move(object.affinityThread()), std::memory_order_release);
         }
         return *this;
     }
@@ -210,15 +210,15 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             throw std::runtime_error("Host object is being destroyed.");
         }
         pHost->pendingCountIncrement();
-        std::size_t idx = pHost->affinityThread();
-        if (idx >= TA_ThreadHolder::get().size()) {
+        auto threadHandle = pHost->affinityThread();
+        if (!TA_ThreadHolder::get().contains(threadHandle)) {
             throw std::out_of_range("Thread index out of range.");
         }
         if (pHost->isIdle()) {
             pHost->updateAffinityThread();
-            idx = pHost->affinityThread();
+            threadHandle = pHost->affinityThread();
         }
-        pActivity->moveToThread(idx);
+        pActivity->moveToThread(threadHandle);
         std::shared_ptr<TA_ActivityFetcherAwaitable> fetcherAwaitable =
             std::make_shared<TA_ActivityFetcherAwaitable>(std::make_shared<TA_ActivityProxy>(pActivity, autoDelete));
         auto res = co_await *fetcherAwaitable;
@@ -238,15 +238,15 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
             throw std::runtime_error("Host object is being destroyed.");
         }
         pHost->pendingCountIncrement();
-        std::size_t idx = pHost->affinityThread();
-        if (idx >= TA_ThreadHolder::get().size()) {
+        auto threadHandle = pHost->affinityThread();
+        if (!TA_ThreadHolder::get().contains(threadHandle)) {
             throw std::out_of_range("Thread index out of range.");
         }
         if (pHost->isIdle()) {
             pHost->updateAffinityThread();
-            idx = pHost->affinityThread();
+            threadHandle = pHost->affinityThread();
         }
-        pActivity->moveToThread(idx);
+        pActivity->moveToThread(threadHandle);
         auto fetcher = TA_ThreadHolder::get().postActivity(pActivity, autoDelete);
         // Have to call the fetcher to ensure the activity is executed temporarily.
         // In the future, we may provide a better way to handle fire-and-forget activities.
@@ -261,7 +261,7 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         if (!pObject) {
             return false;
         }
-        return TA_ThreadHolder::get().threadId(pObject->affinityThread()) == std::this_thread::get_id();
+        return pObject->affinityThread().threadId() == std::this_thread::get_id();
     }
 
   public:
@@ -322,17 +322,20 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
         return true;
     }
 
-    std::size_t affinityThread() const { return m_affinityThreadIdx.load(std::memory_order_acquire); }
+    TA_ThreadPool::LocalThreadHandle affinityThread() const { return m_affinityThread.load(std::memory_order_acquire); }
 
-    bool moveToThread(std::size_t idx) {
-        if (m_affinityThreadIdx.load(std::memory_order_acquire) == idx) {
+    bool moveToThread(TA_ThreadPool::LocalThreadHandle threadHandle) {
+        if (!TA_ThreadHolder::get().contains(threadHandle)) {
+            return false;
+        }
+        if (m_affinityThread.load(std::memory_order_acquire) == threadHandle) {
             return false;
         }
         if (isOnCurrentThread(this)) {
-            return m_moveToThreadImpl(idx, m_affinityThreadIdx);
+            return m_moveToThreadImpl(threadHandle, m_affinityThread);
         }
         auto activity = TA_ActivityCreator::create(
-            std::forward<decltype(m_moveToThreadImpl)>(m_moveToThreadImpl), idx, m_affinityThreadIdx);
+            std::forward<decltype(m_moveToThreadImpl)>(m_moveToThreadImpl), threadHandle, m_affinityThread);
         activity->setStolenEnabled(false);
         AsyncTaskRes res = invokeActivity(activity, this);
         auto taskResult = res.get();
@@ -940,21 +943,21 @@ class TA_MetaObject : public std::enable_shared_from_this<TA_MetaObject> {
     };
 
     void updateAffinityThread() {
-        m_affinityThreadIdx.store(TA_ThreadHolder::get().topPriorityThread(), std::memory_order_release);
+        m_affinityThread.store(TA_ThreadHolder::get().topPriorityThread(), std::memory_order_release);
     }
 
     TA_UniqueId m_id{};
     const std::thread::id m_sourceThread;
-    std::atomic_size_t m_affinityThreadIdx;
+    std::atomic<TA_ThreadPool::LocalThreadHandle> m_affinityThread;
     PendingCounter m_pendingCounter{};
     std::atomic_bool m_isBeingDestroyed{false};
 
-    bool(*m_moveToThreadImpl)(std::size_t idx, std::atomic_size_t &affinityThread) =
-        [](std::size_t idx, std::atomic_size_t &affinityThread) -> bool {
-            if (idx >= TA_ThreadHolder::get().size()) {
+    bool(*m_moveToThreadImpl)(TA_ThreadPool::LocalThreadHandle handle, std::atomic<TA_ThreadPool::LocalThreadHandle> &affinityThread) =
+        [](TA_ThreadPool::LocalThreadHandle handle, std::atomic<TA_ThreadPool::LocalThreadHandle> &affinityThread) -> bool {
+            if (!TA_ThreadHolder::get().contains(handle)) {
                 return false;
             }
-            affinityThread.store(idx, std::memory_order_release);
+            affinityThread.store(handle, std::memory_order_release);
             return true;
         };
 

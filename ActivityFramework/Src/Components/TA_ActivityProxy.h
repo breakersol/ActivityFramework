@@ -49,7 +49,7 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
                     var.set(static_cast<RawActivity *>(pObj.get())->operator()());
                 promise.set_value(std::move(var));
             };
-            m_pAffinityThreadExp = [](auto const &pObj) -> std::size_t {
+            m_pAffinityThreadExp = [](auto const &pObj) -> TA_LocalThreadHandle {
                 return static_cast<RawActivity *>(pObj.get())->affinityThread();
             };
 
@@ -59,7 +59,7 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
 
             m_pIdExp = [](auto const &pObj) -> std::uint64_t { return static_cast<RawActivity *>(pObj.get())->id(); };
 
-            m_pMoveThreadExp = [](auto &pObj, std::size_t thread) -> bool {
+            m_pMoveThreadExp = [](auto &pObj, TA_LocalThreadHandle thread) -> bool {
                 return static_cast<RawActivity *>(pObj.get())->moveToThread(thread);
             };
             m_pStolenEnabledExp = [](auto &pObj) -> bool {
@@ -150,13 +150,13 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
 
     bool isExecuted() const { return m_isExecuted.load(std::memory_order_acquire); }
 
-    std::size_t affinityThread() const { return m_pAffinityThreadExp(m_pActivity); }
+    TA_LocalThreadHandle affinityThread() const { return m_pAffinityThreadExp(m_pActivity); }
 
     std::thread::id dependencyThreadId() const { return m_pDependThreadIdExp(m_pActivity); }
 
     std::uint64_t id() const { return m_pIdExp(m_pActivity); }
 
-    bool moveToThread(std::size_t thread) { return m_pMoveThreadExp(m_pActivity, thread); }
+    bool moveToThread(TA_LocalThreadHandle thread) { return m_pMoveThreadExp(m_pActivity, thread); }
 
     bool stolenEnabled() const {
         return m_pStolenEnabledExp(m_pActivity);
@@ -176,10 +176,10 @@ class TA_ActivityProxy : public std::enable_shared_from_this<TA_ActivityProxy> {
   private:
     std::unique_ptr<void, void (*)(void *)> m_pActivity;
     Executor<void, std::unique_ptr<void, void (*)(void *)> &, std::promise<TA_DefaultVariant> &&> m_pExecuteExp{nullptr};
-    Executor<std::size_t, std::unique_ptr<void, void (*)(void *)> const &> m_pAffinityThreadExp{nullptr};
+    Executor<TA_LocalThreadHandle, std::unique_ptr<void, void (*)(void *)> const &> m_pAffinityThreadExp{nullptr};
     Executor<std::thread::id, std::unique_ptr<void, void (*)(void *)> const &> m_pDependThreadIdExp{nullptr};
     Executor<std::uint64_t, std::unique_ptr<void, void (*)(void *)> const &> m_pIdExp{nullptr};
-    Executor<bool, std::unique_ptr<void, void (*)(void *)> &, std::size_t> m_pMoveThreadExp{nullptr};
+    Executor<bool, std::unique_ptr<void, void (*)(void *)> &, TA_LocalThreadHandle> m_pMoveThreadExp{nullptr};
     Executor<bool, std::unique_ptr<void, void (*)(void *)> const &> m_pStolenEnabledExp{nullptr};
     Executor<TA_ActivityState, std::unique_ptr<void, void (*)(void *)> const &> m_pStateExp{nullptr};
     Executor<std::optional<TA_ActivitySubmission>, std::unique_ptr<void, void (*)(void *)> &>

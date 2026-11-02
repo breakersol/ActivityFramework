@@ -73,6 +73,37 @@ TEST_F(TA_ThreadPoolTest, threadSizeTest) {
     EXPECT_EQ(std::thread::hardware_concurrency(), CoreAsync::TA_ThreadHolder::get().size());
 }
 
+TEST_F(TA_ThreadPoolTest, handlesIdentifyWorkersAndExcludeDependencyThread) {
+    CoreAsync::TA_ThreadPool pool{2};
+    const auto first = pool.threadHandle(0);
+    EXPECT_TRUE(pool.contains(first));
+    EXPECT_EQ(first.threadId(), pool.threadId(0));
+    EXPECT_EQ(first.index(), 0u);
+    EXPECT_EQ(pool.topPriorityThread(first.threadId()), pool.threadHandle(1));
+    EXPECT_FALSE(pool.contains({}));
+    EXPECT_FALSE(pool.contains({first.threadId(), 1}));
+    EXPECT_THROW(pool.threadHandle(2), std::invalid_argument);
+}
+
+TEST_F(TA_ThreadPoolTest, proxyPreservesAffinityAndRejectsForeignPool) {
+    CoreAsync::TA_ThreadPool pool{2};
+    CoreAsync::TA_ThreadPool otherPool{1};
+    auto activity = CoreAsync::TA_ActivityCreator::create([]() { return std::this_thread::get_id(); });
+    auto proxy = std::make_shared<CoreAsync::TA_ActivityProxy>(activity, true);
+    EXPECT_EQ(proxy->affinityThread(), CoreAsync::TA_ThreadPool::LocalThreadHandle{});
+    EXPECT_FALSE(proxy->moveToThread({}));
+    ASSERT_TRUE(proxy->moveToThread(otherPool.threadHandle(0)));
+    EXPECT_THROW(static_cast<void>(pool.postActivity(proxy)), std::invalid_argument);
+    EXPECT_EQ(activity->state(), CoreAsync::TA_ActivityState::Configuring);
+    const auto target = pool.threadHandle(1);
+    ASSERT_TRUE(proxy->moveToThread(target));
+    ASSERT_TRUE(activity->setStolenEnabled(false));
+    EXPECT_EQ(proxy->affinityThread(), target);
+    auto result = pool.postActivity(proxy);
+    EXPECT_EQ(result().get<std::thread::id>(), target.threadId());
+    EXPECT_FALSE(proxy->moveToThread(pool.threadHandle(0)));
+}
+
 TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
     std::binary_semaphore ownerStarted{0};
     std::binary_semaphore releaseOwner{0};
@@ -86,7 +117,7 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
         ownerStarted.release();
         releaseOwner.acquire();
     });
-    blocker->moveToThread(1);
+    blocker->moveToThread(pool.threadHandle(1));
     blocker->setStolenEnabled(false);
     auto blockerResult = pool.postActivity(blocker, true);
     if (!ownerStarted.try_acquire_for(std::chrono::seconds{1})) {
@@ -100,7 +131,7 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
                                            std::memory_order_relaxed);
         stealableActivityRan.release();
     });
-    stealableActivity->moveToThread(1);
+    stealableActivity->moveToThread(pool.threadHandle(1));
     stealableActivity->setStolenEnabled(true);
     auto stealableResult = pool.postActivity(stealableActivity, true);
 
@@ -108,12 +139,12 @@ TEST_F(TA_ThreadPoolTest, nonStealableActivityRemainsOnItsAffinityThread) {
         ranOnWrongThread.store(std::this_thread::get_id() != affinityThread, std::memory_order_relaxed);
         protectedActivityRan.store(true, std::memory_order_release);
     });
-    protectedActivity->moveToThread(1);
+    protectedActivity->moveToThread(pool.threadHandle(1));
     protectedActivity->setStolenEnabled(false);
     auto protectedResult = pool.postActivity(protectedActivity, true);
 
     auto thiefTrigger = CoreAsync::TA_ActivityCreator::create([]() { return true; });
-    thiefTrigger->moveToThread(0);
+    thiefTrigger->moveToThread(pool.threadHandle(0));
     auto triggerResult = pool.postActivity(thiefTrigger, true);
     EXPECT_TRUE(triggerResult().get<bool>());
 

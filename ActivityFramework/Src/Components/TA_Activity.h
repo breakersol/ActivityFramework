@@ -143,7 +143,7 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
     TA_MetaActivity &operator=(TA_MetaActivity &&activity) = delete;
 
     TA_MetaActivity(MethodName, Paras &&...para)
-        : m_paras(std::forward<Paras>(para)...), m_affinityThread(std::numeric_limits<std::size_t>::max()) {}
+        : m_paras(std::forward<Paras>(para)...), m_affinityThread(TA_ThreadPool::LocalThreadHandle{}) {}
 
     decltype(auto) operator()() {
         if (!m_lifecycle.tryStartExecution()) {
@@ -158,7 +158,7 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
             return std::apply(ExpParser<MethodName, std::remove_reference_t<Paras>...>::exp, m_paras);
     }
 
-    std::size_t affinityThread() const { return m_affinityThread.affinityThread(); }
+    TA_ThreadPool::LocalThreadHandle affinityThread() const { return m_affinityThread.affinityThread(); }
 
     auto dependencyThreadId() const { return m_dependencyThreadId; }
 
@@ -171,13 +171,11 @@ template <MethodNameType MethodName, typename... Paras> class TA_MetaActivity {
         return m_stolenEnabled.load(std::memory_order_acquire);
     }
 
-    bool moveToThread(std::size_t thread) {
-        auto &holder = TA_ThreadHolder::get();
-        auto size = holder.size();
-        if (thread >= size) {
+    bool moveToThread(TA_ThreadPool::LocalThreadHandle thread) {
+        if (!thread.isValid()) {
             return false;
         }
-        if (m_dependencyThreadId == holder.threadId(thread)) {
+        if (m_dependencyThreadId == thread.threadId()) {
             return false;
         }
         bool moved = false;
@@ -236,7 +234,7 @@ template <typename Method, typename... Args> class TA_MethodActivity {
 
     TA_MethodActivity(Method method, Args &&...args)
         : m_method(std::move(method)), m_args(std::forward<Args>(args)...),
-          m_affinityThread(std::numeric_limits<std::size_t>::max()) {}
+          m_affinityThread(TA_ThreadPool::LocalThreadHandle{}) {}
 
     virtual ~TA_MethodActivity() = default;
 
@@ -248,7 +246,7 @@ template <typename Method, typename... Args> class TA_MethodActivity {
         return run();
     }
 
-    std::size_t affinityThread() const { return m_affinityThread.affinityThread(); }
+    TA_ThreadPool::LocalThreadHandle affinityThread() const { return m_affinityThread.affinityThread(); }
 
     auto dependencyThreadId() const { return m_dependencyThreadId; }
 
@@ -261,13 +259,11 @@ template <typename Method, typename... Args> class TA_MethodActivity {
         return m_stolenEnabled.load(std::memory_order_acquire);
     }
 
-    bool moveToThread(std::size_t thread) {
-        auto &holder = TA_ThreadHolder::get();
-        auto size = holder.size();
-        if (thread >= size) {
+    bool moveToThread(TA_ThreadPool::LocalThreadHandle thread) {
+        if (!thread.isValid()) {
             return false;
         }
-        if (m_dependencyThreadId == holder.threadId(thread)) {
+        if (m_dependencyThreadId == thread.threadId()) {
             return false;
         }
         bool moved = false;
