@@ -78,4 +78,8 @@ add_library(ActivityFramework SHARED
 
 target_compile_definitions(ActivityFramework PRIVATE ACTIVITY_FRAMEWORK_LIBRARY)
 target_link_libraries(ActivityFramework PRIVATE Threads::Threads)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Public headers use 16-byte atomic thread handles, whose operations need libatomic.
+    target_link_libraries(ActivityFramework PUBLIC atomic)
+endif()
 # target_compile_definitions(ActivityFramework PRIVATE DEBUG_INFO_ON)
