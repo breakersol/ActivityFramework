@@ -24,7 +24,7 @@
 #include "TA_ActivityFramework_global.h"
 
 #include <thread>
-#include <vector>
+#include <deque>
 #include <semaphore>
 #include <memory>
 
@@ -47,6 +47,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
             std::counting_semaphore<ActivityQueue::capacity()> resource{0};
             std::atomic_bool isBusy{false};
             std::atomic_bool stopRequested{false};
+            std::atomic_bool isAvailable{false};
         };
     };
 #else
@@ -60,6 +61,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
 
             std::counting_semaphore<ActivityQueue::capacity()> resource{0};
             std::atomic_bool isBusy{false};
+            std::atomic_bool isAvailable{false};
         };
     };
 #endif
@@ -90,6 +92,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     LocalThreadHandle topPriorityThread() const {
         return selectTopPriorityThread(nullptr);
     }
+
+    LocalThreadHandle addThread();
 
     template <ActivityType Activity>
     [[nodiscard]] auto postActivity(Activity *pActivity, bool autoDelete = false) -> TA_ActivityResultFetcher {
@@ -181,8 +185,13 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     LocalThreadHandle selectTopPriorityThread(const std::thread::id *dependencyThread) const {
         ThreadSnapshot bestThread = {};
         bool hasBestThread = false;
-        for (std::size_t idx = 0; idx < m_activityQueues.size(); ++idx) {
+        std::size_t threadCount = m_threads.size();
+        for (std::size_t idx = 0; idx < threadCount; ++idx) {
             if (dependencyThread && m_threads[idx].get_id() == *dependencyThread) {
+                continue;
+            }
+
+            if (!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
                 continue;
             }
 
@@ -207,7 +216,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         auto indices = std::views::iota(std::size_t{0}, m_activityQueues.size());
 
         auto validIndices = indices | std::views::filter([&](std::size_t idx) {
-            return !(dependencyThread.has_value() && m_threads[idx].get_id() == dependencyThread.value());
+            return !(dependencyThread.has_value() && m_threads[idx].get_id() == dependencyThread.value()) && 
+            m_states[idx].isAvailable.load(std::memory_order_acquire);
         });
 
         auto bestIter = std::ranges::min_element(validIndices, [&](std::size_t lhs, std::size_t rhs) {
@@ -228,15 +238,17 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx);
 
   private:
-    std::vector<PlatformSelector::ThreadState> m_states;
-    std::vector<LocalThread> m_threads;
-    std::vector<QueueType> m_activityQueues;
-    std::vector<std::size_t> m_stealIdxs;
+    std::deque<PlatformSelector::ThreadState> m_states;
+    std::deque<LocalThread> m_threads;
+    std::deque<QueueType> m_activityQueues;
+    std::deque<std::size_t> m_stealIdxs;
 };
 
 struct ACTIVITY_FRAMEWORK_EXPORT TA_ThreadHolder {
     static void create(std::size_t size = std::thread::hardware_concurrency());
     static TA_ThreadPool &get();
+
+    static TA_ThreadPool::LocalThreadHandle addThread();
 
   private:
     static TA_ThreadPool *m_pThreadPool;

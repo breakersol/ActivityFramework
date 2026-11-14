@@ -23,6 +23,7 @@ void TA_ThreadPool::shutDown() {
         m_states[idx].stopRequested.store(true, std::memory_order_release);
         m_states[idx].resource.release();
         m_states[idx].isBusy.store(false, std::memory_order_release);
+        m_states[idx].isAvailable.store(false, std::memory_order_release);
     }
     std::ranges::for_each(m_threads, [](std::thread &thread) {
         if (thread.joinable()) {
@@ -37,6 +38,10 @@ void  TA_ThreadPool::init() {
         m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
         m_threads.emplace_back([&, idx]() {  
             while(!m_states[idx].stopRequested.load(std::memory_order_acquire)) {
+                if(!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
+                    std::this_thread::yield();
+                    continue;
+                }
                 m_states[idx].resource.acquire();
                 m_states[idx].isBusy.store(true, std::memory_order_release);
                 while (!m_activityQueues[idx].isEmpty()) {
@@ -52,7 +57,38 @@ void  TA_ThreadPool::init() {
             }
             TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
         });
+        m_states[idx].isAvailable.store(true, std::memory_order_release);
     }
+}
+
+TA_ThreadPool::LocalThreadHandle TA_ThreadPool::addThread() {
+    const std::size_t idx = m_states.size();
+    m_states.emplace_back();
+    m_activityQueues.emplace_back();
+    m_stealIdxs.emplace_back((idx + 1) % (idx + 1));
+    m_threads.emplace_back([&, idx]() {
+        while(!m_states[idx].stopRequested.load(std::memory_order_acquire)) {
+            if(!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+                continue;
+            }
+            m_states[idx].resource.acquire();
+            m_states[idx].isBusy.store(true, std::memory_order_release);
+            while (!m_activityQueues[idx].isEmpty()) {
+                if (auto pActivity = m_activityQueues[idx].pop(); pActivity && pActivity.value()) {
+                    (*pActivity.value())();
+                }
+            }
+            std::shared_ptr<TA_ActivityProxy> pStealActivity{nullptr};
+            if (trySteal(pStealActivity, idx)) {
+                (*pStealActivity)();
+            }
+            m_states[idx].isBusy.store(false, std::memory_order_release);
+        }
+        TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
+    });
+    m_states[idx].isAvailable.store(true, std::memory_order_release);
+    return LocalThreadHandle{m_threads[idx].get_id(), idx};
 }
 
 bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx) {
@@ -77,6 +113,7 @@ void TA_ThreadPool::shutDown() {
         m_threads[idx].request_stop();
         m_states[idx].resource.release();
         m_states[idx].isBusy.store(false, std::memory_order_release);
+        m_states[idx].isAvailable.store(false, std::memory_order_release);
     }
     m_threads.clear();
 }
@@ -86,6 +123,10 @@ void  TA_ThreadPool::init() {
         m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
         m_threads.emplace_back([&, idx](const std::stop_token &st) {
             while (!st.stop_requested()) {
+                if(!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
+                    std::this_thread::yield();
+                    continue;
+                }
                 m_states[idx].resource.acquire();
                 m_states[idx].isBusy.store(true, std::memory_order_release);
                 while (!m_activityQueues[idx].isEmpty()) {
@@ -101,7 +142,38 @@ void  TA_ThreadPool::init() {
             }
             TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
         });
+        m_states[idx].isAvailable.store(true, std::memory_order_release);
     }
+}
+
+TA_LocalThreadHandle TA_ThreadPool::addThread() {
+    const std::size_t idx = m_states.size();
+    m_states.emplace_back();
+    m_activityQueues.emplace_back();
+    m_stealIdxs.emplace_back((idx + 1) % (idx + 1));
+    m_threads.emplace_back([&, idx](const std::stop_token &st) {
+        while (!st.stop_requested()) {
+            if(!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+                continue;
+            }
+            m_states[idx].resource.acquire();
+            m_states[idx].isBusy.store(true, std::memory_order_release);
+            while (!m_activityQueues[idx].isEmpty()) {
+                if (auto pActivity = m_activityQueues[idx].pop(); pActivity && pActivity.value()) {
+                    pActivity.value()->operator()();
+                }
+            }
+            std::shared_ptr<TA_ActivityProxy> pStolenActivity{nullptr};
+            if (trySteal(pStolenActivity, idx)) {
+                (*pStolenActivity)();
+            }
+            m_states[idx].isBusy.store(false, std::memory_order_release);
+        }
+        TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
+    });
+    m_states[idx].isAvailable.store(true, std::memory_order_release);
+    return LocalThreadHandle{m_threads[idx].get_id(), idx};
 }
 
 bool TA_ThreadPool::trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx) {
@@ -135,6 +207,12 @@ TA_ThreadPool &TA_ThreadHolder::get() {
     if(!m_pThreadPool)
         create(std::thread::hardware_concurrency());
     return *m_pThreadPool;
+}
+
+TA_ThreadPool::LocalThreadHandle TA_ThreadHolder::addThread() {
+    if(!m_pThreadPool)
+        create(std::thread::hardware_concurrency());
+    return m_pThreadPool->addThread();
 }
 
 }
