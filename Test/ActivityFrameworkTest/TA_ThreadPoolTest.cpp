@@ -18,9 +18,18 @@
 #include "Components/TA_Activity.h"
 
 #include <atomic>
+#include <barrier>
+#include <vector>
 #include <chrono>
+#include <exception>
+#include <new>
 #include <semaphore>
+#include <system_error>
 #include <thread>
+
+#if defined(_MSC_VER) && defined(_DEBUG)
+#include <crtdbg.h>
+#endif
 
 TA_ThreadPoolTest::TA_ThreadPoolTest() {
     activities.fill(nullptr);
@@ -198,3 +207,275 @@ TEST_F(TA_ThreadPoolTest, sameActivityCannotBeSubmittedThroughDifferentProxies) 
     }
     delete activity;
 }
+
+TEST_F(TA_ThreadPoolTest, concurrentGrowthPreservesHandlesAndSubmissions) {
+    CoreAsync::TA_ThreadPool pool{2};
+    const auto original = pool.threadHandle(0);
+    std::barrier start{5};
+    std::atomic_int completed{0};
+    std::atomic_bool failed{false};
+    std::vector<std::jthread> callers;
+    for (int caller = 0; caller < 4; ++caller) {
+        callers.emplace_back([&, caller]() {
+            start.arrive_and_wait();
+            try {
+                if (caller < 2) {
+                    for (int i = 0; i < 8; ++i) {
+                        const auto added = pool.addThread();
+                        if (!pool.contains(added) || pool.threadHandle(added.index()) != added) {
+                            failed.store(true);
+                        }
+                    }
+                } else {
+                    for (int i = 0; i < 200; ++i) {
+                        auto activity = CoreAsync::TA_ActivityCreator::create([&]() {
+                            completed.fetch_add(1);
+                            return 42;
+                        });
+                        // Exercise both affinity lookup and automatic selection.
+                        if (i % 2 == 0) {
+                            activity->moveToThread(original);
+                        }
+                        auto result = pool.postActivity(activity, true);
+                        if (result().get<int>() != 42 || !pool.contains(original)) {
+                            failed.store(true);
+                        }
+                        static_cast<void>(pool.size());
+                        static_cast<void>(pool.topPriorityThread());
+                    }
+                }
+            } catch (...) {
+                failed.store(true);
+            }
+        });
+    }
+    start.arrive_and_wait();
+    callers.clear();
+    EXPECT_FALSE(failed.load());
+    EXPECT_EQ(completed.load(), 400);
+    ASSERT_EQ(pool.size(), 18u);
+    EXPECT_EQ(pool.threadHandle(0), original);
+    for (std::size_t i = 0; i < pool.size(); ++i) {
+        const auto target = pool.threadHandle(i);
+        auto activity = CoreAsync::TA_ActivityCreator::create([]() { return std::this_thread::get_id(); });
+        activity->moveToThread(target);
+        activity->setStolenEnabled(false);
+        auto result = pool.postActivity(activity, true);
+        EXPECT_EQ(result().get<std::thread::id>(), target.threadId());
+    }
+}
+
+TEST_F(TA_ThreadPoolTest, activityCanAddWorker) {
+    CoreAsync::TA_ThreadPool pool{1};
+    auto activity = CoreAsync::TA_ActivityCreator::create([&]() { return pool.addThread(); });
+    auto result = pool.postActivity(activity, true);
+    const auto added = result().get<CoreAsync::TA_ThreadPool::LocalThreadHandle>();
+    EXPECT_EQ(added.index(), 1u);
+    EXPECT_TRUE(pool.contains(added));
+    EXPECT_EQ(pool.size(), 2u);
+}
+
+TEST_F(TA_ThreadPoolTest, concurrentAdditionAndShutdownCoordinatePublication) {
+    CoreAsync::TA_ThreadPool pool{2};
+    std::barrier start{2};
+    std::jthread grower([&]() {
+        start.arrive_and_wait();
+        for (int i = 0; i < 16; ++i) {
+            try {
+                pool.addThread();
+            } catch (const std::runtime_error &) {
+                return; // Shutdown won publication.
+            }
+        }
+    });
+    start.arrive_and_wait();
+    pool.shutDown();
+    grower.join();
+    EXPECT_EQ(pool.size(), 0u);
+    EXPECT_THROW(pool.addThread(), std::runtime_error);
+    EXPECT_NO_THROW(pool.shutDown());
+}
+
+TEST_F(TA_ThreadPoolTest, concurrentShutdownCallersWaitForWorkers) {
+    CoreAsync::TA_ThreadPool pool{1};
+    std::binary_semaphore started{0};
+    std::binary_semaphore release{0};
+    auto activity = CoreAsync::TA_ActivityCreator::create([&]() {
+        started.release();
+        release.acquire();
+        return 42;
+    });
+    auto result = pool.postActivity(activity, true);
+    if (!started.try_acquire_for(std::chrono::seconds{1})) {
+        release.release();
+        FAIL() << "Worker did not start";
+    }
+    std::barrier start{3};
+    std::atomic_int shutdowns{0};
+    auto shutdown = [&]() {
+        start.arrive_and_wait();
+        pool.shutDown();
+        shutdowns.fetch_add(1);
+    };
+    std::jthread first(shutdown);
+    std::jthread second(shutdown);
+    start.arrive_and_wait();
+    release.release();
+    first.join();
+    second.join();
+    EXPECT_EQ(shutdowns.load(), 2);
+    EXPECT_EQ(result().get<int>(), 42);
+    EXPECT_EQ(pool.size(), 0u);
+}
+
+TEST_F(TA_ThreadPoolTest, detachedWorkerFinishesBeforeShutdownReturns) {
+    CoreAsync::TA_ThreadPool pool{1};
+    const auto handle = pool.threadHandle(0);
+    auto activity = CoreAsync::TA_ActivityCreator::create([]() { return 42; });
+    auto result = pool.postActivity(activity, true);
+    pool.setThreadDetached(handle);
+    EXPECT_FALSE(pool.contains(handle));
+    EXPECT_EQ(pool.threadId(0), std::thread::id{});
+    EXPECT_THROW(pool.setThreadDetached(handle), std::invalid_argument);
+    pool.shutDown();
+    EXPECT_EQ(result().get<int>(), 42);
+}
+
+TEST_F(TA_ThreadPoolTest, shutdownCompletesEveryAcceptedSubmission) {
+    CoreAsync::TA_ThreadPool pool{0};
+    const auto worker = pool.addThread();
+    EXPECT_EQ(worker.index(), 0u);
+    std::vector<CoreAsync::TA_ActivityResultFetcher> results;
+    for (int i = 0; i < 100; ++i) {
+        auto activity = CoreAsync::TA_ActivityCreator::create([]() { return 42; });
+        results.push_back(pool.postActivity(activity, true));
+    }
+    pool.shutDown();
+    for (auto &result : results) {
+        EXPECT_EQ(result().get<int>(), 42);
+    }
+    EXPECT_FALSE(pool.contains(worker));
+    EXPECT_THROW(pool.threadId(0), std::invalid_argument);
+}
+
+#if defined(_MSC_VER) && defined(_DEBUG)
+namespace {
+// The shared debug CRT invokes this on the allocating thread, including DLL
+// allocations. Fail only the test caller, never a running worker's allocation.
+thread_local int allocationsBeforeFailure = -1;
+thread_local std::binary_semaphore *pauseAllocation = nullptr;
+thread_local std::binary_semaphore *resumeAllocation = nullptr;
+int failThreadPoolAllocation(int kind, void *, size_t, int, long, const unsigned char *, int) {
+    if (kind == _HOOK_ALLOC && pauseAllocation) {
+        auto *pause = pauseAllocation;
+        pauseAllocation = nullptr;
+        pause->release();
+        resumeAllocation->acquire();
+    }
+    if ((kind == _HOOK_ALLOC || kind == _HOOK_REALLOC) && allocationsBeforeFailure >= 0) {
+        if (allocationsBeforeFailure-- == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+}
+
+TEST_F(TA_ThreadPoolTest, allocationFailuresRollBackBeforeRetry) {
+    int failures = 0;
+    int threadCreationFailures = 0;
+    bool reachedSuccess = false;
+    for (int allocation = 0; allocation < 64; ++allocation) {
+        CoreAsync::TA_ThreadPool pool{2};
+        const auto original = pool.threadHandle(0);
+        const auto previousHook = _CrtSetAllocHook(failThreadPoolAllocation);
+        allocationsBeforeFailure = allocation;
+        bool threw = false;
+        std::exception_ptr unexpected;
+        try {
+            pool.addThread();
+        } catch (const std::bad_alloc &) {
+            threw = true;
+        } catch (const std::system_error &) {
+            // The CRT thread-start allocation reports resource exhaustion
+            // through std::thread rather than throwing std::bad_alloc.
+            threw = true;
+            ++threadCreationFailures;
+        } catch (...) {
+            unexpected = std::current_exception();
+        }
+        allocationsBeforeFailure = -1;
+        _CrtSetAllocHook(previousHook);
+        ASSERT_FALSE(unexpected);
+        if (!threw) {
+            reachedSuccess = true;
+            EXPECT_EQ(pool.size(), 3u);
+            break;
+        }
+        ++failures;
+        ASSERT_EQ(pool.size(), 2u);
+        ASSERT_EQ(pool.threadHandle(0), original);
+        const auto added = pool.addThread();
+        ASSERT_EQ(added.index(), 2u);
+        ASSERT_TRUE(pool.contains(added));
+        auto activity = CoreAsync::TA_ActivityCreator::create([]() { return std::this_thread::get_id(); });
+        activity->moveToThread(added);
+        activity->setStolenEnabled(false);
+        auto result = pool.postActivity(activity, true);
+        EXPECT_EQ(result().get<std::thread::id>(), added.threadId());
+        pool.shutDown();
+        EXPECT_EQ(pool.size(), 0u);
+    }
+    EXPECT_GT(failures, 0);
+    EXPECT_TRUE(reachedSuccess);
+    RecordProperty("injected_failures", failures);
+    RecordProperty("thread_creation_failures", threadCreationFailures);
+}
+TEST_F(TA_ThreadPoolTest, pausedAdditionDoesNotBlockScheduling) {
+    CoreAsync::TA_ThreadPool pool{1};
+    const auto original = pool.threadHandle(0);
+    std::binary_semaphore paused{0};
+    std::binary_semaphore resume{0};
+    std::binary_semaphore completed{0};
+    std::atomic_bool failed{false};
+    const auto previousHook = _CrtSetAllocHook(failThreadPoolAllocation);
+    std::jthread grower([&]() {
+        pauseAllocation = &paused;
+        resumeAllocation = &resume;
+        try {
+            pool.addThread();
+        } catch (...) {
+            failed.store(true);
+        }
+        pauseAllocation = nullptr;
+        resumeAllocation = nullptr;
+    });
+    const bool didPause = paused.try_acquire_for(std::chrono::seconds{1});
+    std::jthread submitter([&]() {
+        try {
+            if (pool.size() != 1 || !pool.contains(original)
+                || pool.topPriorityThread() != original) {
+                failed.store(true);
+            }
+            auto activity = CoreAsync::TA_ActivityCreator::create([]() { return 42; });
+            auto result = pool.postActivity(activity, true);
+            if (result().get<int>() != 42) {
+                failed.store(true);
+            }
+        } catch (...) {
+            failed.store(true);
+        }
+        completed.release();
+    });
+    const bool madeProgress = completed.try_acquire_for(std::chrono::seconds{1});
+    resume.release();
+    grower.join();
+    submitter.join();
+    _CrtSetAllocHook(previousHook);
+    EXPECT_TRUE(didPause);
+    EXPECT_TRUE(madeProgress);
+    EXPECT_FALSE(failed.load());
+    EXPECT_EQ(pool.size(), 2u);
+}
+
+#endif

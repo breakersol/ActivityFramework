@@ -237,11 +237,22 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     void init();
     bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx);
 
+    void waitStability() {
+        bool expected = true;
+        m_isStableRunning.wait(false, std::memory_order_acquire);
+    }
+
+    void notifyStability() {
+        m_isStableRunning.store(true, std::memory_order_release);
+        m_isStableRunning.notify_all();
+    }
+
   private:
     std::deque<PlatformSelector::ThreadState> m_states;
     std::deque<LocalThread> m_threads;
     std::deque<QueueType> m_activityQueues;
     std::deque<std::size_t> m_stealIdxs;
+    std::atomic_bool m_isStableRunning{false};
 };
 
 struct ACTIVITY_FRAMEWORK_EXPORT TA_ThreadHolder {
