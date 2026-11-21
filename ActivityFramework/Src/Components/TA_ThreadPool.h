@@ -47,7 +47,6 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
             std::counting_semaphore<ActivityQueue::capacity()> resource{0};
             std::atomic_bool isBusy{false};
             std::atomic_bool stopRequested{false};
-            std::atomic_bool isAvailable{false};
         };
     };
 #else
@@ -61,7 +60,6 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
 
             std::counting_semaphore<ActivityQueue::capacity()> resource{0};
             std::atomic_bool isBusy{false};
-            std::atomic_bool isAvailable{false};
         };
     };
 #endif
@@ -191,10 +189,6 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
                 continue;
             }
 
-            if (!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
-                continue;
-            }
-
             const ThreadSnapshot candidate = {
                 idx,
                 m_activityQueues[idx].size(),
@@ -216,8 +210,7 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
         auto indices = std::views::iota(std::size_t{0}, m_activityQueues.size());
 
         auto validIndices = indices | std::views::filter([&](std::size_t idx) {
-            return !(dependencyThread.has_value() && m_threads[idx].get_id() == dependencyThread.value()) && 
-            m_states[idx].isAvailable.load(std::memory_order_acquire);
+            return !(dependencyThread.has_value() && m_threads[idx].get_id() == dependencyThread.value());
         });
 
         auto bestIter = std::ranges::min_element(validIndices, [&](std::size_t lhs, std::size_t rhs) {
@@ -237,14 +230,14 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     void init();
     bool trySteal(std::shared_ptr<TA_ActivityProxy> &stolenActivity, std::size_t excludedIdx);
 
-    void waitStability() {
+    void waitStationary() {
         bool expected = true;
-        m_isStableRunning.wait(false, std::memory_order_acquire);
+        m_isStationary.wait(false, std::memory_order_acquire);
     }
 
-    void notifyStability() {
-        m_isStableRunning.store(true, std::memory_order_release);
-        m_isStableRunning.notify_all();
+    void notifyStationary() {
+        m_isStationary.store(true, std::memory_order_release);
+        m_isStationary.notify_all();
     }
 
   private:
@@ -252,7 +245,8 @@ class ACTIVITY_FRAMEWORK_EXPORT TA_ThreadPool {
     std::deque<LocalThread> m_threads;
     std::deque<QueueType> m_activityQueues;
     std::deque<std::size_t> m_stealIdxs;
-    std::atomic_bool m_isStableRunning{false};
+    std::atomic_bool m_isStationary{false};
+    std::atomic_bool m_requestPause{false};
 };
 
 struct ACTIVITY_FRAMEWORK_EXPORT TA_ThreadHolder {

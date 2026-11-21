@@ -23,7 +23,6 @@ void TA_ThreadPool::shutDown() {
         m_states[idx].stopRequested.store(true, std::memory_order_release);
         m_states[idx].resource.release();
         m_states[idx].isBusy.store(false, std::memory_order_release);
-        m_states[idx].isAvailable.store(false, std::memory_order_release);
     }
     std::ranges::for_each(m_threads, [](std::thread &thread) {
         if (thread.joinable()) {
@@ -38,10 +37,6 @@ void  TA_ThreadPool::init() {
         m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
         m_threads.emplace_back([&, idx]() {  
             while(!m_states[idx].stopRequested.load(std::memory_order_acquire)) {
-                if(!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
-                    std::this_thread::yield();
-                    continue;
-                }
                 m_states[idx].resource.acquire();
                 m_states[idx].isBusy.store(true, std::memory_order_release);
                 while (!m_activityQueues[idx].isEmpty()) {
@@ -57,7 +52,6 @@ void  TA_ThreadPool::init() {
             }
             TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
         });
-        m_states[idx].isAvailable.store(true, std::memory_order_release);
     }
 }
 
@@ -68,10 +62,6 @@ TA_ThreadPool::LocalThreadHandle TA_ThreadPool::addThread() {
     m_stealIdxs.emplace_back((idx + 1) % (idx + 1));
     m_threads.emplace_back([&, idx]() {
         while(!m_states[idx].stopRequested.load(std::memory_order_acquire)) {
-            if(!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
-                std::this_thread::yield();
-                continue;
-            }
             m_states[idx].resource.acquire();
             m_states[idx].isBusy.store(true, std::memory_order_release);
             while (!m_activityQueues[idx].isEmpty()) {
@@ -87,7 +77,6 @@ TA_ThreadPool::LocalThreadHandle TA_ThreadPool::addThread() {
         }
         TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
     });
-    m_states[idx].isAvailable.store(true, std::memory_order_release);
     return LocalThreadHandle{m_threads[idx].get_id(), idx};
 }
 
@@ -113,7 +102,6 @@ void TA_ThreadPool::shutDown() {
         m_threads[idx].request_stop();
         m_states[idx].resource.release();
         m_states[idx].isBusy.store(false, std::memory_order_release);
-        m_states[idx].isAvailable.store(false, std::memory_order_release);
     }
     m_threads.clear();
 }
@@ -123,10 +111,6 @@ void  TA_ThreadPool::init() {
         m_stealIdxs[idx] = (idx + 1) % m_stealIdxs.size();
         m_threads.emplace_back([&, idx](const std::stop_token &st) {
             while (!st.stop_requested()) {
-                if(!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
-                    std::this_thread::yield();
-                    continue;
-                }
                 m_states[idx].resource.acquire();
                 m_states[idx].isBusy.store(true, std::memory_order_release);
                 while (!m_activityQueues[idx].isEmpty()) {
@@ -142,7 +126,6 @@ void  TA_ThreadPool::init() {
             }
             TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
         });
-        m_states[idx].isAvailable.store(true, std::memory_order_release);
     }
 }
 
@@ -153,10 +136,6 @@ TA_LocalThreadHandle TA_ThreadPool::addThread() {
     m_stealIdxs.emplace_back((idx + 1) % (idx + 1));
     m_threads.emplace_back([&, idx](const std::stop_token &st) {
         while (!st.stop_requested()) {
-            if(!m_states[idx].isAvailable.load(std::memory_order_acquire)) {
-                std::this_thread::yield();
-                continue;
-            }
             m_states[idx].resource.acquire();
             m_states[idx].isBusy.store(true, std::memory_order_release);
             while (!m_activityQueues[idx].isEmpty()) {
@@ -172,7 +151,6 @@ TA_LocalThreadHandle TA_ThreadPool::addThread() {
         }
         TA_CommonTools::debugInfo(META_STRING("Shut down successuflly!\n"));
     });
-    m_states[idx].isAvailable.store(true, std::memory_order_release);
     return LocalThreadHandle{m_threads[idx].get_id(), idx};
 }
 
